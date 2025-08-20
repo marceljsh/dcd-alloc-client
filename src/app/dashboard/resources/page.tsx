@@ -1,12 +1,19 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,7 +21,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from "@/components/ui/dropdown-menu";
 import {
   Dialog,
   DialogContent,
@@ -23,113 +30,175 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Search, Plus, MoreHorizontal, Edit, Trash2, Mail, Phone, Calendar, MapPin, Copy } from "lucide-react"
-import { initials } from "@/lib/strings"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { toast } from "sonner"
-import { Toaster } from "@/components/ui/sonner"
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
-import { EMPLOYMENT_STATUS_OPTIONS, EmploymentStatus, Role, ROLE_LEVEL_OPTIONS, ROLE_OPTIONS, RoleLevel, Team, TEAM_OPTIONS } from "@/types/common"
-import rawEmployees from "@/data/employees.json"
-import { ContractEmployee, EmployeeRow, PermanentEmployee } from "@/types/employee"
-import { AddEmployeeFormValues, AddEmployeeForm } from "@/components/employee/AddEmployeeForm"
-import { Separator } from "@/components/ui/separator"
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Search,
+  Plus,
+  MoreHorizontal,
+  Edit,
+  Trash2,
+  Mail,
+  Phone,
+  Calendar,
+  MapPin,
+  Copy,
+} from "lucide-react";
+import { initials } from "@/lib/strings";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { toast } from "sonner";
+import { Toaster } from "@/components/ui/sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  EMPLOYMENT_STATUS_OPTIONS,
+  EmploymentStatus,
+  Role,
+  ROLE_LEVEL_OPTIONS,
+  ROLE_OPTIONS,
+  RoleLevel,
+  Team,
+  TEAM_OPTIONS,
+} from "@/types/common";
+import rawEmployees from "@/data/employees.json";
+import {
+  ContractEmployee,
+  EmployeeRow,
+  PermanentEmployee,
+} from "@/types/employee";
+import {
+  AddEmployeeFormValues,
+  AddEmployeeForm,
+} from "@/components/employee/AddEmployeeForm";
+import { Separator } from "@/components/ui/separator";
 
 const getRoleColor = (role: Role) => {
   switch (role) {
-    case 'System Analyst':    return 'bg-blue-100 text-blue-800'
-    case 'Data Engineer':     return 'bg-green-100 text-green-800'
-    case 'Software Engineer': return 'bg-purple-100 text-purple-800'
+    case "System Analyst":
+      return "bg-blue-100 text-blue-800";
+    case "Data Engineer":
+      return "bg-green-100 text-green-800";
+    case "Software Engineer":
+      return "bg-purple-100 text-purple-800";
   }
-}
+};
 
 const getStatusColor = (status: EmploymentStatus) => {
   switch (status) {
-    case 'Permanent': return 'bg-green-100 text-green-800'
-    case 'Contract':  return 'bg-yellow-100 text-yellow-800'
+    case "Permanent":
+      return "bg-green-100 text-green-800";
+    case "Contract":
+      return "bg-yellow-100 text-yellow-800";
   }
-}
+};
 
-const createEmployee = ({ status, ...data }: AddEmployeeFormValues): EmployeeRow => {
-  const now = new Date().toISOString()
+const createEmployee = ({
+  status,
+  ...data
+}: AddEmployeeFormValues): EmployeeRow => {
+  const now = new Date().toISOString();
   const base = {
     id: Math.floor(Math.random() * 1000000),
     createdAt: now,
     updatedAt: now,
     status,
-  }
+  };
 
   switch (status) {
-    case 'Permanent':
+    case "Permanent":
       return {
         ...base,
         ...data,
         code: `ORG-${Math.floor(Math.random() * 1000000)}`,
-      } as PermanentEmployee
+      } as PermanentEmployee;
 
-    case 'Contract':
+    case "Contract":
       return {
+        ...base,
         ...data,
-        status: 'Contract',
+        status: "Contract",
         code: `CR-${Math.floor(Math.random() * 10000000)}`,
-      } as ContractEmployee
+      } as ContractEmployee;
 
     default:
-      throw new Error('Invalid employee status')
+      throw new Error("Invalid employee status");
   }
-}
+};
 
-const initialEmployees: EmployeeRow[] = rawEmployees.map(({ status, ...data }: any) => {
-  switch (status) {
-      case 'Permanent': return { status, ...data } as PermanentEmployee
-      case 'Contract': return { status, ...data } as ContractEmployee
+const initialEmployees: EmployeeRow[] = rawEmployees.map(
+  ({ status, ...data }: any) => {
+    switch (status) {
+      case "Permanent":
+        return { status, ...data } as PermanentEmployee;
+      case "Contract":
+        return { status, ...data } as ContractEmployee;
 
-      default: throw new Error('Invalid employee status')
+      default:
+        throw new Error("Invalid employee status");
     }
-})
+  }
+);
 
 export default function ResourcesPage() {
-  const [employees, setEmployees] = useState<EmployeeRow[]>(initialEmployees)
-  const [searchTerm, setSearchTerm] = useState('')
-  const [selectedEmployee, setSelectedEmployee] = useState<EmployeeRow | null>(null)
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
-  const [employeeToDelete, setEmployeeToDelete] = useState<EmployeeRow | null>(null)
+  const [employees, setEmployees] = useState<EmployeeRow[]>(initialEmployees);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedEmployee, setSelectedEmployee] = useState<EmployeeRow | null>(
+    null
+  );
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [employeeToDelete, setEmployeeToDelete] = useState<EmployeeRow | null>(
+    null
+  );
 
   const matchWithSearch = (employee: EmployeeRow) => {
-    if (!searchTerm) return true
+    if (!searchTerm) return true;
 
     const searchableFields = [
       employee.name,
       employee.email,
       employee.code,
       employee.team,
-    ].map((field) => field.toLowerCase())
+    ].map((field) => field.toLowerCase());
 
-    const lwcSearch = searchTerm.toLowerCase()
-    return searchableFields.some((field) => field.includes(lwcSearch))
-  }
+    const lwcSearch = searchTerm.toLowerCase();
+    return searchableFields.some((field) => field.includes(lwcSearch));
+  };
 
-  const filteredEmployees = employees.filter(matchWithSearch).sort((a, b) => a.name.localeCompare(b.name))
+  const filteredEmployees = employees
+    .filter(matchWithSearch)
+    .sort((a, b) => a.name.localeCompare(b.name));
 
   const handleAddEmployee = (data: AddEmployeeFormValues) => {
-    const employee = createEmployee(data)
-    setEmployees([...employees, employee])
-    setIsAddDialogOpen(false)
+    const employee = createEmployee(data);
+    setEmployees([...employees, employee]);
+    setIsAddDialogOpen(false);
 
-    toast(`${employee.name} has been added to the team.`)
-  }
+    toast(`${employee.name} has been added to the team.`);
+  };
 
   const handleDeleteEmployee = (employee: EmployeeRow) => {
     /* delete from DB */
 
-    setEmployees(employees.filter((emp) => emp.id !== employee.id))
-    setEmployeeToDelete(null)
+    setEmployees(employees.filter((emp) => emp.id !== employee.id));
+    setEmployeeToDelete(null);
 
-    toast.success(`${employee.name} has been removed.`)
-  }
+    toast.success(`${employee.name} has been removed.`);
+  };
 
   return (
     <div className="space-y-6 mx-10">
@@ -137,7 +206,9 @@ export default function ResourcesPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Resources</h1>
-          <p className="text-muted-foreground">Manage your team members and their assignments</p>
+          <p className="text-muted-foreground">
+            Manage your team members and their assignments
+          </p>
         </div>
 
         {/* Add Resource Dialog */}
@@ -151,7 +222,9 @@ export default function ResourcesPage() {
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
               <DialogTitle>Add New Resource</DialogTitle>
-              <DialogDescription>Add a member to your domain.</DialogDescription>
+              <DialogDescription>
+                Add a member to your domain.
+              </DialogDescription>
             </DialogHeader>
 
             <AddEmployeeForm
@@ -166,12 +239,14 @@ export default function ResourcesPage() {
       <div className="grid gap-4 md:grid-cols-4">
         <Card className="py-4 gap-0">
           <CardHeader>
-            <CardTitle className="text-sm font-medium">Contract Resources</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Contract Resources
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <p>
               <span className="text-2xl font-bold">
-                {employees.filter(emp => emp.status === 'Contract').length}
+                {employees.filter((emp) => emp.status === "Contract").length}
               </span>
               {` / ${employees.length}`}
             </p>
@@ -180,10 +255,17 @@ export default function ResourcesPage() {
         </Card>
         <Card className="py-4 gap-0">
           <CardHeader>
-            <CardTitle className="text-sm font-medium">Software Engineer</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Software Engineer
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{employees.filter(emp => emp.role === 'Software Engineer').length}</p>
+            <p className="text-2xl font-bold">
+              {
+                employees.filter((emp) => emp.role === "Software Engineer")
+                  .length
+              }
+            </p>
             <p className="text-xs text-muted-foreground">Skilled Coders</p>
           </CardContent>
         </Card>
@@ -192,16 +274,22 @@ export default function ResourcesPage() {
             <CardTitle className="text-sm font-medium">Data Engineer</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{employees.filter(emp => emp.role === 'Data Engineer').length}</p>
+            <p className="text-2xl font-bold">
+              {employees.filter((emp) => emp.role === "Data Engineer").length}
+            </p>
             <p className="text-xs text-muted-foreground">Keen Minds</p>
           </CardContent>
         </Card>
         <Card className="py-4 gap-0">
           <CardHeader>
-            <CardTitle className="text-sm font-medium">System Analyst</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              System Analyst
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{employees.filter(emp => emp.role === 'System Analyst').length}</p>
+            <p className="text-2xl font-bold">
+              {employees.filter((emp) => emp.role === "System Analyst").length}
+            </p>
             <p className="text-xs text-muted-foreground">People</p>
           </CardContent>
         </Card>
@@ -209,7 +297,6 @@ export default function ResourcesPage() {
 
       {/* Table */}
       <Card className="py-4">
-
         {/* Search and Filters */}
         <CardHeader className="flex justify-between">
           <CardTitle className="text-xl">Team Members</CardTitle>
@@ -248,34 +335,47 @@ export default function ResourcesPage() {
                     <TableCell className="font-medium">
                       <div className="flex items-center space-x-3">
                         <Avatar>
-                          <AvatarFallback className={`font-mono text-background ${getRoleColor(employee.role)}`}>
+                          <AvatarFallback
+                            className={`font-mono text-background ${getRoleColor(
+                              employee.role
+                            )}`}
+                          >
                             {initials(employee.name)}
                           </AvatarFallback>
                         </Avatar>
                         <div>
                           <div className="font-medium">{employee.name}</div>
-                          <div className="font-normal text-sm text-muted-foreground">{employee.email}</div>
+                          <div className="font-normal text-sm text-muted-foreground">
+                            {employee.email}
+                          </div>
                         </div>
                       </div>
                     </TableCell>
                     <TableCell className="font-mono">
                       <span>{employee.code}</span>
-                      <Copy className="inline h-4 w-4 ml-1 text-muted-foreground cursor-pointer opacity-0 hover:opacity-100 transition-opacity"
+                      <Copy
+                        className="inline h-4 w-4 ml-1 text-muted-foreground cursor-pointer opacity-0 hover:opacity-100 transition-opacity"
                         onClick={() => {
-                          navigator.clipboard.writeText(employee.code)
+                          navigator.clipboard.writeText(employee.code);
                           // toast.success(`${employee.code} copied to clipboard`)
                         }}
                       />
                     </TableCell>
                     <TableCell>
-                      <Badge variant="outline" className={getRoleColor(employee.role)}>
+                      <Badge
+                        variant="outline"
+                        className={getRoleColor(employee.role)}
+                      >
                         {employee.role}
                       </Badge>
                     </TableCell>
                     <TableCell>{employee.level}</TableCell>
                     <TableCell>{employee.team}</TableCell>
                     <TableCell>
-                      <Badge variant="outline" className={getStatusColor(employee.status)}>
+                      <Badge
+                        variant="outline"
+                        className={getStatusColor(employee.status)}
+                      >
                         {employee.status}
                       </Badge>
                     </TableCell>
@@ -291,11 +391,17 @@ export default function ResourcesPage() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="center">
                           <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <DropdownMenuItem onClick={() => setSelectedEmployee(employee)}>
+                          <DropdownMenuItem
+                            onClick={() => setSelectedEmployee(employee)}
+                          >
                             <Edit className="mr-2 h-4 w-4" />
                             View Details
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => toast.success(`Sent email to ${employee.email}`)}>
+                          <DropdownMenuItem
+                            onClick={() =>
+                              toast.success(`Sent email to ${employee.email}`)
+                            }
+                          >
                             <Mail className="mr-2 h-4 w-4" />
                             Send Email
                           </DropdownMenuItem>
@@ -319,20 +425,29 @@ export default function ResourcesPage() {
       </Card>
 
       {/* Employee Detail Dialog */}
-      <Dialog open={!!selectedEmployee} onOpenChange={() => setSelectedEmployee(null)}>
+      <Dialog
+        open={!!selectedEmployee}
+        onOpenChange={() => setSelectedEmployee(null)}
+      >
         <DialogContent className="sm:max-w-[425px]">
           {selectedEmployee && (
             <>
               <DialogHeader>
                 <DialogTitle className="flex items-center space-x-3">
                   <Avatar>
-                    <AvatarFallback className={`font-mono text-background ${getRoleColor(selectedEmployee.role)}`}>
+                    <AvatarFallback
+                      className={`font-mono text-background ${getRoleColor(
+                        selectedEmployee.role
+                      )}`}
+                    >
                       {initials(selectedEmployee.name)}
                     </AvatarFallback>
                   </Avatar>
                   <div>
                     <div>{selectedEmployee.name}</div>
-                    <div className="text-sm text-muted-foreground font-normal">{selectedEmployee.role}</div>
+                    <div className="text-sm text-muted-foreground font-normal">
+                      {selectedEmployee.role}
+                    </div>
                   </div>
                 </DialogTitle>
               </DialogHeader>
@@ -347,11 +462,18 @@ export default function ResourcesPage() {
                 </div>
                 <div className="flex items-center space-x-2">
                   <MapPin className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm">{selectedEmployee.location || 'N/A'}</span>
+                  <span className="text-sm">
+                    {selectedEmployee.location || "N/A"}
+                  </span>
                 </div>
                 <div className="flex items-center space-x-2">
                   <Calendar className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm">Joined {new Date(selectedEmployee.joinDate).toLocaleDateString('id-ID')}</span>
+                  <span className="text-sm">
+                    Joined{" "}
+                    {new Date(selectedEmployee.joinDate).toLocaleDateString(
+                      "id-ID"
+                    )}
+                  </span>
                 </div>
 
                 {/* Task Progress */}
@@ -373,18 +495,55 @@ export default function ResourcesPage() {
                     <p className="text-md font-semibold">Contract Details</p>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-1">
-                        <Label className="text-xs text-muted-foreground">Start</Label>
-                        <p className="text-sm">{selectedEmployee.contractStartDate}</p>
+                        <Label className="text-xs text-muted-foreground">
+                          Start
+                        </Label>
+                        <p className="text-sm">
+                          {selectedEmployee.contractStartDate}
+                        </p>
                       </div>
                       <div className="space-y-1">
-                        <Label className="text-xs text-muted-foreground">End</Label>
-                        <p className="text-sm">{selectedEmployee.contractEndDate}</p>
+                        <Label className="text-xs text-muted-foreground">
+                          End
+                        </Label>
+                        <p className="text-sm">
+                          {selectedEmployee.contractEndDate}
+                        </p>
                       </div>
                     </div>
                     <div className="space-y-1">
-                      <Label className="text-xs text-muted-foreground">Contract Document</Label>
+                      <Label className="text-xs text-muted-foreground">
+                        Contract Document
+                      </Label>
                       <div className="mt-1">
-                        <div className="h-40 w-full bg-gray-300 rounded animate-pulse"></div>
+                        {selectedEmployee.contractFilePath ? (
+                          selectedEmployee.contractFilePath
+                            .toLowerCase()
+                            .endsWith(".pdf") ? (
+                            <iframe
+                              src={selectedEmployee.contractFilePath}
+                              className="w-full h-40 rounded border"
+                            />
+                          ) : (
+                            <div className="h-40 w-full rounded border flex items-center justify-between px-3">
+                              <span className="text-sm text-muted-foreground">
+                                Preview not available. Open the document to
+                                view.
+                              </span>
+                              <a
+                                href={selectedEmployee.contractFilePath}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                <Button size="sm">Open</Button>
+                              </a>
+                            </div>
+                          )
+                        ) : (
+                          <div className="h-40 w-full rounded border bg-muted/30 flex items-center justify-center text-sm text-muted-foreground">
+                            No contract document uploaded
+                          </div>
+                        )}
                       </div>
                     </div>
                   </>
@@ -396,19 +555,24 @@ export default function ResourcesPage() {
       </Dialog>
 
       {/* Delete Confirmation dialog */}
-      <AlertDialog open={!!employeeToDelete} onOpenChange={() => setEmployeeToDelete(null)}>
+      <AlertDialog
+        open={!!employeeToDelete}
+        onOpenChange={() => setEmployeeToDelete(null)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently remove{' '}
+              This action cannot be undone. This will permanently remove{" "}
               <strong>{employeeToDelete?.name}</strong> from your team.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => employeeToDelete && handleDeleteEmployee(employeeToDelete)}
+              onClick={() =>
+                employeeToDelete && handleDeleteEmployee(employeeToDelete)
+              }
               className="bg-red-600 hover:bg-red-700"
             >
               Delete
@@ -419,5 +583,5 @@ export default function ResourcesPage() {
 
       <Toaster theme="light" position="top-center" richColors />
     </div>
-  )
+  );
 }
