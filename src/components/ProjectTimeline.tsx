@@ -295,7 +295,7 @@ export default function ProjectTimeline() {
 
                         return (
                           <Tooltip key={task.id}>
-                            <TooltipTrigger asChild>
+                            <TooltipTrigger asChild> 
                               <div
                                 onMouseDown={(e) => handleMouseDown(task, e)}
                                 className={cn(
