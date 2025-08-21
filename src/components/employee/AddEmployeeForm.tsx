@@ -1,65 +1,160 @@
-import { EMPLOYMENT_STATUS_OPTIONS, ROLE_OPTIONS, ROLE_LEVEL_OPTIONS, TEAM_OPTIONS } from "@/types/common"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { useForm } from "react-hook-form"
-import { z } from "zod"
-import { Button } from "@/components/ui/button"
-import { Separator } from "@/components/ui/separator"
-import { DatePicker } from "@/components/DatePicker"
-import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import {
+  EMPLOYMENT_STATUS_OPTIONS,
+  ROLE_OPTIONS,
+  ROLE_LEVEL_OPTIONS,
+  TEAM_OPTIONS,
+} from "@/types/common";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
+import { DatePicker } from "@/components/DatePicker";
+import {
+  Form,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormControl,
+  FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useState } from "react";
+import { toast } from "sonner";
+
+async function getSignedUploadUrl(args: { path: string; bucket?: string }) {
+  const res = await fetch("/api/storage/signed-upload-url", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(args),
+  });
+  if (!res.ok) {
+    throw new Error((await res.json()).error || "Failed to get signed URL");
+  }
+  return (await res.json()) as {
+    signedUrl: string;
+    token: string | null;
+    publicUrl?: string | null;
+    path: string;
+    bucket: string;
+  };
+}
+
+async function uploadViaSignedUrlWithToken(
+  bucket: string,
+  path: string,
+  token: string,
+  file: File
+) {
+  const { supabase } = await import("@/lib/supabaseClient");
+  const { error } = await supabase.storage
+    .from(bucket)
+    .uploadToSignedUrl(path, token, file);
+  if (error) {
+    throw error;
+  }
+}
 
 const schema = z.object({
-  name: z.string().min(1, 'Name is required'),
-  email: z.email('Invalid email'),
-  role: z.enum(ROLE_OPTIONS, 'Role is required'),
-  level: z.enum(ROLE_LEVEL_OPTIONS, 'Level is required'),
-  status: z.enum(EMPLOYMENT_STATUS_OPTIONS, 'Status is required'),
-  team: z.enum(TEAM_OPTIONS, 'Team is required'),
-  phone: z.string().min(1, 'Phone number is required')
-           .regex(/^\+?[0-9\s]+$/, 'Invalid phone number'),
-  location: z.string().min(1, 'Location is required'),
-  joinDate: z.string().min(1, 'Join date is required')
-           .refine((date) => !isNaN(Date.parse(date)), 'Invalid date format'),
+  name: z.string().min(1, "Name is required"),
+  email: z.email("Invalid email"),
+  role: z.enum(ROLE_OPTIONS, "Role is required"),
+  level: z.enum(ROLE_LEVEL_OPTIONS, "Level is required"),
+  status: z.enum(EMPLOYMENT_STATUS_OPTIONS, "Status is required"),
+  team: z.enum(TEAM_OPTIONS, "Team is required"),
+  phone: z
+    .string()
+    .min(1, "Phone number is required")
+    .regex(/^\+?[0-9\s]+$/, "Invalid phone number"),
+  location: z.string().min(1, "Location is required"),
+  joinDate: z
+    .string()
+    .min(1, "Join date is required")
+    .refine((date) => !isNaN(Date.parse(date)), "Invalid date format"),
   // Optional fields for contract employees
   contractFilePath: z.string().optional(),
   contractStartDate: z.string().optional(),
   contractEndDate: z.string().optional(),
-})
+});
 
-export type AddEmployeeFormValues = z.infer<typeof schema>
+export type AddEmployeeFormValues = z.infer<typeof schema>;
 
 interface AddEmployeeFormProps {
-  onSubmit: (data: AddEmployeeFormValues) => void
-  onCancel: () => void
+  onSubmit: (data: AddEmployeeFormValues) => void;
+  onCancel: () => void;
 }
 
 export function AddEmployeeForm({ onSubmit, onCancel }: AddEmployeeFormProps) {
   const form = useForm<AddEmployeeFormValues>({
     resolver: zodResolver(schema),
-    mode: 'onSubmit', // don't show errors until submit
+    mode: "onSubmit", // don't show errors until submit
     shouldUnregister: true, // removes fields when unmounted (good for contract fields)
     defaultValues: {
-      name: '',
-      email: '',
+      name: "",
+      email: "",
       role: undefined,
       level: undefined,
       status: undefined,
       team: undefined,
-      phone: '',
-      location: '',
-      joinDate: '',
+      phone: "",
+      location: "",
+      joinDate: "",
     } as any,
-  })
+  });
 
-  const status = form.watch('status')
+  const status = form.watch("status");
+  const [contractFile, setContractFile] = useState<File | null>(null);
+
+  async function uploadContractFileIfNeeded(
+    currentStatus: string | undefined
+  ): Promise<string | undefined> {
+    if (currentStatus !== "Contract" || !contractFile) return undefined;
+
+    const bucket = "contracts"; // Ensure this bucket exists in Supabase Storage
+    const safeName = contractFile.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const filePath = `employee-contracts/${Date.now()}-${Math.random()
+      .toString(36)
+      .slice(2)}-${safeName}`;
+
+    try {
+      // Request signed URL from backend
+      const { token, publicUrl } = await getSignedUploadUrl({
+        path: filePath,
+        bucket,
+      });
+      if (!token) throw new Error("No token returned for signed upload");
+
+      // Upload using the signed URL token
+      await uploadViaSignedUrlWithToken(bucket, filePath, token, contractFile);
+
+      return publicUrl || undefined;
+    } catch (err) {
+      toast.error("Failed to upload contract file");
+      console.error(err);
+      return undefined;
+    }
+  }
 
   return (
     <Form {...form}>
       <form
-        onSubmit={form.handleSubmit((data) => {
-          onSubmit(data)
-          form.reset()
+        onSubmit={form.handleSubmit(async (data) => {
+          // Upload to Supabase if contract and a file was selected
+          const uploadedUrl = await uploadContractFileIfNeeded(data.status);
+          if (uploadedUrl) {
+            data.contractFilePath = uploadedUrl;
+          }
+
+          onSubmit(data);
+          form.reset();
+          setContractFile(null);
         })}
         className="space-y-4"
       >
@@ -72,10 +167,13 @@ export function AddEmployeeForm({ onSubmit, onCancel }: AddEmployeeFormProps) {
               <FormLabel className="text-left">Name</FormLabel>
               <div className="col-span-3">
                 <FormControl>
-                  <Input {...field} onChange={(e) => {
-                    field.onChange(e)
-                    form.clearErrors('name')
-                  }} />
+                  <Input
+                    {...field}
+                    onChange={(e) => {
+                      field.onChange(e);
+                      form.clearErrors("name");
+                    }}
+                  />
                 </FormControl>
                 <FormMessage />
               </div>
@@ -92,10 +190,14 @@ export function AddEmployeeForm({ onSubmit, onCancel }: AddEmployeeFormProps) {
               <FormLabel className="text-left">Email</FormLabel>
               <div className="col-span-3">
                 <FormControl>
-                  <Input type="email" {...field} onChange={(e) => {
-                    field.onChange(e)
-                    form.clearErrors('email')
-                  }} />
+                  <Input
+                    type="email"
+                    {...field}
+                    onChange={(e) => {
+                      field.onChange(e);
+                      form.clearErrors("email");
+                    }}
+                  />
                 </FormControl>
                 <FormMessage />
               </div>
@@ -113,8 +215,8 @@ export function AddEmployeeForm({ onSubmit, onCancel }: AddEmployeeFormProps) {
               <div className="col-span-3">
                 <Select
                   onValueChange={(val) => {
-                    field.onChange(val)
-                    form.clearErrors('role')
+                    field.onChange(val);
+                    form.clearErrors("role");
                   }}
                   defaultValue={field.value}
                 >
@@ -125,7 +227,9 @@ export function AddEmployeeForm({ onSubmit, onCancel }: AddEmployeeFormProps) {
                   </FormControl>
                   <SelectContent>
                     {ROLE_OPTIONS.map((role) => (
-                      <SelectItem key={role} value={role}>{role}</SelectItem>
+                      <SelectItem key={role} value={role}>
+                        {role}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -145,8 +249,8 @@ export function AddEmployeeForm({ onSubmit, onCancel }: AddEmployeeFormProps) {
               <div className="col-span-3">
                 <Select
                   onValueChange={(val) => {
-                    field.onChange(val)
-                    form.clearErrors('level')
+                    field.onChange(val);
+                    form.clearErrors("level");
                   }}
                   defaultValue={field.value}
                 >
@@ -157,7 +261,9 @@ export function AddEmployeeForm({ onSubmit, onCancel }: AddEmployeeFormProps) {
                   </FormControl>
                   <SelectContent>
                     {ROLE_LEVEL_OPTIONS.map((level) => (
-                      <SelectItem key={level} value={level}>{level}</SelectItem>
+                      <SelectItem key={level} value={level}>
+                        {level}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -177,8 +283,8 @@ export function AddEmployeeForm({ onSubmit, onCancel }: AddEmployeeFormProps) {
               <div className="col-span-3">
                 <Select
                   onValueChange={(val) => {
-                    field.onChange(val)
-                    form.clearErrors('status')
+                    field.onChange(val);
+                    form.clearErrors("status");
                   }}
                   defaultValue={field.value}
                 >
@@ -189,7 +295,9 @@ export function AddEmployeeForm({ onSubmit, onCancel }: AddEmployeeFormProps) {
                   </FormControl>
                   <SelectContent>
                     {EMPLOYMENT_STATUS_OPTIONS.map((status) => (
-                      <SelectItem key={status} value={status}>{status}</SelectItem>
+                      <SelectItem key={status} value={status}>
+                        {status}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -209,8 +317,8 @@ export function AddEmployeeForm({ onSubmit, onCancel }: AddEmployeeFormProps) {
               <div className="col-span-3">
                 <Select
                   onValueChange={(val) => {
-                    field.onChange(val)
-                    form.clearErrors('team')
+                    field.onChange(val);
+                    form.clearErrors("team");
                   }}
                   defaultValue={field.value}
                 >
@@ -221,7 +329,9 @@ export function AddEmployeeForm({ onSubmit, onCancel }: AddEmployeeFormProps) {
                   </FormControl>
                   <SelectContent>
                     {TEAM_OPTIONS.map((team) => (
-                      <SelectItem key={team} value={team}>{team}</SelectItem>
+                      <SelectItem key={team} value={team}>
+                        {team}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -240,10 +350,13 @@ export function AddEmployeeForm({ onSubmit, onCancel }: AddEmployeeFormProps) {
               <FormLabel className="text-left">Phone</FormLabel>
               <div className="col-span-3">
                 <FormControl>
-                  <Input {...field} onChange={(e) => {
-                    field.onChange(e)
-                    form.clearErrors('phone')
-                  }} />
+                  <Input
+                    {...field}
+                    onChange={(e) => {
+                      field.onChange(e);
+                      form.clearErrors("phone");
+                    }}
+                  />
                 </FormControl>
                 <FormMessage />
               </div>
@@ -260,10 +373,13 @@ export function AddEmployeeForm({ onSubmit, onCancel }: AddEmployeeFormProps) {
               <FormLabel className="text-left">Location</FormLabel>
               <div className="col-span-3">
                 <FormControl>
-                  <Input {...field} onChange={(e) => {
-                    field.onChange(e)
-                    form.clearErrors('location')
-                  }} />
+                  <Input
+                    {...field}
+                    onChange={(e) => {
+                      field.onChange(e);
+                      form.clearErrors("location");
+                    }}
+                  />
                 </FormControl>
                 <FormMessage />
               </div>
@@ -282,17 +398,18 @@ export function AddEmployeeForm({ onSubmit, onCancel }: AddEmployeeFormProps) {
                 <DatePicker
                   value={field.value}
                   onDateChange={(date) => {
-                    field.onChange(date)
-                    form.clearErrors('joinDate')
+                    field.onChange(date);
+                    form.clearErrors("joinDate");
                   }}
-                  className={fieldState.error ? 'bg-red-200 border-red-500' : ""}
+                  className={
+                    fieldState.error ? "bg-red-200 border-red-500" : ""
+                  }
                 />
                 <FormMessage />
               </div>
             </FormItem>
           )}
         />
-
 
         {/* Contract-only fields */}
         {status === "Contract" && (
@@ -308,10 +425,13 @@ export function AddEmployeeForm({ onSubmit, onCancel }: AddEmployeeFormProps) {
                 <FormItem className="grid grid-cols-4 items-center gap-4">
                   <FormLabel className="text-left">Start Date</FormLabel>
                   <div className="col-span-3">
-                    <DatePicker value={field.value} onDateChange={(date) => {
-                      field.onChange(date)
-                      form.clearErrors('contractStartDate')
-                    }} />
+                    <DatePicker
+                      value={field.value}
+                      onDateChange={(date) => {
+                        field.onChange(date);
+                        form.clearErrors("contractStartDate");
+                      }}
+                    />
                     <FormMessage />
                   </div>
                 </FormItem>
@@ -326,10 +446,13 @@ export function AddEmployeeForm({ onSubmit, onCancel }: AddEmployeeFormProps) {
                 <FormItem className="grid grid-cols-4 items-center gap-4">
                   <FormLabel className="text-left">End Date</FormLabel>
                   <div className="col-span-3">
-                    <DatePicker value={field.value} onDateChange={(date) => {
-                      field.onChange(date)
-                      form.clearErrors('contractEndDate')
-                    }} />
+                    <DatePicker
+                      value={field.value}
+                      onDateChange={(date) => {
+                        field.onChange(date);
+                        form.clearErrors("contractEndDate");
+                      }}
+                    />
                     <FormMessage />
                   </div>
                 </FormItem>
@@ -342,13 +465,19 @@ export function AddEmployeeForm({ onSubmit, onCancel }: AddEmployeeFormProps) {
               name="contractFilePath"
               render={({ field }) => (
                 <FormItem className="grid grid-cols-4 items-center gap-4">
-                  <FormLabel className="text-left">File Path</FormLabel>
+                  <FormLabel className="text-left">Contract File</FormLabel>
                   <div className="col-span-3">
                     <FormControl>
-                      <Input {...field} onChange={(e) => {
-                        field.onChange(e)
-                        form.clearErrors('contractFilePath')
-                      }} />
+                      <Input
+                        type="file"
+                        accept=".pdf,.doc,.docx"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0] || null;
+                          setContractFile(file);
+                          field.onChange(file ? file.name : "");
+                          form.clearErrors("contractFilePath");
+                        }}
+                      />
                     </FormControl>
                     <FormMessage />
                   </div>
@@ -360,10 +489,12 @@ export function AddEmployeeForm({ onSubmit, onCancel }: AddEmployeeFormProps) {
 
         {/* Actions */}
         <div className="flex justify-end gap-2 pt-2">
-          <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
+          <Button type="button" variant="outline" onClick={onCancel}>
+            Cancel
+          </Button>
           <Button type="submit">Add Resource</Button>
         </div>
       </form>
     </Form>
-  )
+  );
 }
