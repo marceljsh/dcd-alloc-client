@@ -17,8 +17,6 @@ import {
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -32,6 +30,9 @@ import { ProjectCategory, ProjectPriority } from "@/types/common"
 import { toast } from "sonner"
 import { Toaster } from "@/components/ui/sonner"
 import { AddProjectForm } from "@/components/project/AddProjectForm"
+
+// ✅ OriGantt
+import ProjectTimeline from "@/components/ProjectTimeline"
 
 const projects: ProjectRow[] = rawProjects as ProjectRow[]
 
@@ -52,35 +53,73 @@ const getPriorityColor = (priority: ProjectPriority) => {
   }
 }
 
+// Demo projects untuk timeline
+type Employee = { id: number, name: string, role: string }
+type Task = { id: number, name: string, employeeId: number, startDate: string, endDate: string, storyPoints: number }
+type Stage = { id: number, name: string, tasks: Task[] }
+type Project = { id: number, name: string, stages: Stage[] }
+
+const demoProjects: Project[] = [
+  {
+    id: 1,
+    name: 'Project Alpha',
+    stages: [
+      {
+        id: 1,
+        name: 'Analysis',
+        tasks: [
+          { id: 1, name: 'Requirements', employeeId: 1, startDate: '2024-01-01', endDate: '2024-01-05', storyPoints: 8 },
+        ]
+      },
+      {
+        id: 2,
+        name: 'Development',
+        tasks: [
+          { id: 2, name: 'API', employeeId: 2, startDate: '2024-01-06', endDate: '2024-01-15', storyPoints: 13 },
+        ]
+      },
+    ]
+  },
+  {
+    id: 2,
+    name: 'Project Beta',
+    stages: [
+      {
+        id: 3,
+        name: 'Planning',
+        tasks: [
+          { id: 3, name: 'Planning Task', employeeId: 1, startDate: '2024-01-03', endDate: '2024-01-08', storyPoints: 5 },
+        ]
+      }
+    ]
+  }
+]
+
 export default function ProjectsPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedProject, setSelectedProject] = useState<ProjectRow | null>(null)
+  const [showTimeline, setShowTimeline] = useState(false)
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
 
   const filteredProjects = projects.filter((project) => {
     if (!searchTerm) return true
-
-    const searchableFields = [
-      project.code,
-      project.name,
-      project.budgetCode,
-    ].map((field) => field.toLowerCase())
-
-    const lowerCaseSearchTerm = searchTerm.toLowerCase()
-    return searchableFields.some((field) => {
-      const isMatch = field.includes(lowerCaseSearchTerm)
-      console.log(field, `matches "${lowerCaseSearchTerm}":`, isMatch)
-      return isMatch
-    })
+    const searchableFields = [project.code, project.name, project.budgetCode].map(f => f.toLowerCase())
+    return searchableFields.some(field => field.includes(searchTerm.toLowerCase()))
   })
 
-  const totalProjects = projects.length
   const totalBudget = projects.reduce((sum, p) => sum + p.budget, 0)
-  const bigSizedRatio = projects.filter(p => p.category === 'Big').length / totalProjects
-  const criticalPriorityRatio = projects.filter(p => p.priority === 'Critical').length / totalProjects
+  const bigSizedRatio = projects.filter(p => p.category === 'Big').length / projects.length
+  const criticalPriorityRatio = projects.filter(p => p.priority === 'Critical').length / projects.length
+
+  // Handler untuk menutup dialog apapun
+  const handleCloseDialog = () => {
+    setShowTimeline(false)
+    setSelectedProject(null)
+  }
 
   return (
     <div className="space-y-6 mx-10">
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -97,9 +136,8 @@ export default function ProjectsPage() {
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
               <DialogTitle>Add New Project</DialogTitle>
-              <DialogDescription>Create a new project to track progress and manage resources.</DialogDescription>
+              <p className="text-sm text-muted-foreground mt-1">Create a new project to track progress and manage resources.</p>
             </DialogHeader>
-
             <AddProjectForm onCancel={() => setIsAddDialogOpen(false)} />
           </DialogContent>
         </Dialog>
@@ -108,7 +146,7 @@ export default function ProjectsPage() {
       {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-4">
         <Card className="py-4 gap-0">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex justify-between pb-2">
             <CardTitle className="text-sm font-medium">Total Projects</CardTitle>
             <Target className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
@@ -117,8 +155,9 @@ export default function ProjectsPage() {
             <p className="text-xs text-muted-foreground">Things to Do</p>
           </CardContent>
         </Card>
+
         <Card className="py-4 gap-0">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex justify-between pb-2">
             <CardTitle className="text-sm font-medium">Total Budget</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
@@ -127,8 +166,9 @@ export default function ProjectsPage() {
             <p className="text-xs text-muted-foreground">Ready to Spend</p>
           </CardContent>
         </Card>
+
         <Card className="py-4 gap-0">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex justify-between pb-2">
             <CardTitle className="text-sm font-medium">Big Sized Projects</CardTitle>
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
@@ -137,8 +177,9 @@ export default function ProjectsPage() {
             <p className="text-xs text-muted-foreground">of All Projects</p>
           </CardContent>
         </Card>
+
         <Card className="py-4 gap-0">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex justify-between pb-2">
             <CardTitle className="text-sm font-medium">Critical Projects</CardTitle>
             <Target className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
@@ -149,26 +190,21 @@ export default function ProjectsPage() {
         </Card>
       </div>
 
-      {/* Table */}
+      {/* Project Table */}
       <Card className="py-4">
-
-        {/* Search and Filters */}
         <CardHeader className="flex justify-between">
           <CardTitle className="text-xl">Project Portfolio</CardTitle>
-          <div className="flex justify-end">
-            <div className="relative">
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search projects..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-8"
-              />
-            </div>
+          <div className="relative">
+            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search projects..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-8"
+            />
           </div>
         </CardHeader>
 
-        {/* Content */}
         <CardContent>
           <ScrollArea className="h-[500px]">
             <Table>
@@ -189,22 +225,19 @@ export default function ProjectsPage() {
               </TableHeader>
 
               <TableBody>
-                {filteredProjects.map((project) => (
+                {filteredProjects.map(project => (
                   <TableRow key={project.id}>
                     <TableCell className="font-mono">
-                      <span>{project.code}</span>
-                      <Copy className="inline h-4 w-4 ml-1 text-muted-foreground cursor-pointer opacity-0 hover:opacity-100 transition-opacity"
+                      {project.code}
+                      <Copy
+                        className="inline h-4 w-4 ml-1 text-muted-foreground cursor-pointer opacity-0 hover:opacity-100 transition-opacity"
                         onClick={() => {
                           navigator.clipboard.writeText(project.code)
                           toast(`${project.code} copied to clipboard`)
                         }}
                       />
                     </TableCell>
-                    <TableCell>
-                      <div>
-                        <div className="font-medium">{project.name}</div>
-                      </div>
-                    </TableCell>
+                    <TableCell>{project.name}</TableCell>
                     <TableCell>{project.team}</TableCell>
                     <TableCell>
                       <Badge variant="outline" className={getCategoryColor(project.category)}>
@@ -216,15 +249,14 @@ export default function ProjectsPage() {
                         {project.priority}
                       </Badge>
                     </TableCell>
-                    <TableCell>
-                      <div className="flex items-center space-x-1">
-                        <Users className="h-4 w-4 text-muted-foreground" />
-                        <span>{project.crew}</span>
-                      </div>
+                    <TableCell className="flex items-center space-x-1">
+                      <Users className="h-4 w-4 text-muted-foreground" />
+                      <span>{project.crew}</span>
                     </TableCell>
                     <TableCell className="font-mono">
-                      <span>{project.budgetCode}</span>
-                      <Copy className="inline h-4 w-4 ml-1 text-muted-foreground cursor-pointer opacity-0 hover:opacity-100 transition-opacity"
+                      {project.budgetCode}
+                      <Copy
+                        className="inline h-4 w-4 ml-1 text-muted-foreground cursor-pointer opacity-0 hover:opacity-100 transition-opacity"
                         onClick={() => {
                           navigator.clipboard.writeText(project.budgetCode)
                           toast(`${project.budgetCode} copied to clipboard`)
@@ -232,10 +264,9 @@ export default function ProjectsPage() {
                       />
                     </TableCell>
                     <TableCell>${project.budget.toLocaleString()}</TableCell>
-                    <TableCell>{new Date(project.startDate).toLocaleDateString('id-ID')}</TableCell>
-                    <TableCell>{new Date(project.endDate).toLocaleDateString('id-ID')}</TableCell>
+                    <TableCell>{new Date(project.startDate).toLocaleDateString()}</TableCell>
+                    <TableCell>{new Date(project.endDate).toLocaleDateString()}</TableCell>
 
-                    {/* Action */}
                     <TableCell>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -246,18 +277,25 @@ export default function ProjectsPage() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="start">
                           <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <DropdownMenuItem onClick={() => setSelectedProject(project)}>
-                            <Edit className="mr-2 h-4 w-4" />
-                            View Details
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setSelectedProject(project)
+                              setShowTimeline(false)
+                            }}
+                          >
+                            <Edit className="mr-2 h-4 w-4" /> View Details
                           </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <Calendar className="mr-2 h-4 w-4" />
-                            View Timeline
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setSelectedProject(project)
+                              setShowTimeline(true)
+                            }}
+                          >
+                            <Calendar className="mr-2 h-4 w-4" /> View Timeline
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem className="text-red-400">
-                            <Trash2 className="mr-2 h-4 w-4 text-red-400" />
-                            Archive
+                            <Trash2 className="mr-2 h-4 w-4 text-red-400" /> Archive
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -265,14 +303,13 @@ export default function ProjectsPage() {
                   </TableRow>
                 ))}
               </TableBody>
-
             </Table>
           </ScrollArea>
         </CardContent>
       </Card>
 
       {/* Project Detail Dialog */}
-      <Dialog open={!!selectedProject} onOpenChange={() => setSelectedProject(null)}>
+      <Dialog open={!!selectedProject && !showTimeline} onOpenChange={handleCloseDialog}>
         <DialogContent className="sm:max-w-[500px]">
           {selectedProject && (
             <>
@@ -282,13 +319,13 @@ export default function ProjectsPage() {
               <div className="grid gap-4 py-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label className="text-sm font-medium">Category</Label>
+                    <Label>Category</Label>
                     <Badge variant="outline" className={`mt-1 ${getCategoryColor(selectedProject.category)}`}>
                       {selectedProject.category}
                     </Badge>
                   </div>
                   <div>
-                    <Label className="text-sm font-medium">Priority</Label>
+                    <Label>Priority</Label>
                     <Badge variant="outline" className={`mt-1 ${getPriorityColor(selectedProject.priority)}`}>
                       {selectedProject.priority}
                     </Badge>
@@ -296,47 +333,56 @@ export default function ProjectsPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label className="text-sm font-medium">Start Date</Label>
-                    <p className="text-sm mt-1">{new Date(selectedProject.startDate).toLocaleDateString()}</p>
+                    <Label>Start Date</Label>
+                    <p className="mt-1">{new Date(selectedProject.startDate).toLocaleDateString()}</p>
                   </div>
                   <div>
-                    <Label className="text-sm font-medium">End Date</Label>
-                    <p className="text-sm mt-1">{new Date(selectedProject.endDate).toLocaleDateString()}</p>
+                    <Label>End Date</Label>
+                    <p className="mt-1">{new Date(selectedProject.endDate).toLocaleDateString()}</p>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label className="text-sm font-medium">Crew</Label>
-                    <p className="text-sm mt-1">{selectedProject.crew} members</p>
+                    <Label>Crew</Label>
+                    <p className="mt-1">{selectedProject.crew} members</p>
                   </div>
                   <div>
-                    <Label className="text-sm font-medium">Budget</Label>
-                    <p className="text-sm mt-1">${selectedProject.budget.toLocaleString()}</p>
+                    <Label>Budget</Label>
+                    <p className="mt-1">${selectedProject.budget.toLocaleString()}</p>
                   </div>
                 </div>
                 <div>
-                  <Label className="text-sm font-medium">Assigned Team</Label>
-                  <p className="text-sm mt-1">
-                     {['DMA', 'NCM', 'CRM', 'CM', 'FRM', 'RRM'].at(Number(selectedProject.id) % 6)}
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span>Overall Progress</span>
-                    <span>
-                      13/20 tasks
-                    </span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div id="progress-bar" className="bg-blue-600 h-2 rounded-full w-[65%]" />
-                  </div>
-                  <p className="text-sm text-muted-foreground">65% complete</p>
+                  <Label>Assigned Team</Label>
+                  <p className="mt-1">{['DMA','NCM','CRM','CM','FRM','RRM'].at(Number(selectedProject.id) % 6)}</p>
                 </div>
               </div>
             </>
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Project Timeline Dialog */}
+      <Dialog open={!!selectedProject && showTimeline} onOpenChange={handleCloseDialog}>
+        <DialogContent className="sm:max-w-[1200px] p-0">
+          {selectedProject && (
+            <>
+              <DialogHeader className="px-4 py-2">
+                <DialogTitle>{selectedProject.name} - Timeline</DialogTitle>
+              </DialogHeader>
+
+              {/* Scrollable container */}
+              <div className="overflow-x-auto">
+                <div style={{ minWidth: '1600px', padding: '16px' }}>
+                  <ProjectTimeline
+                    project={demoProjects.find(p => p.id === selectedProject.id) ?? demoProjects[0]}
+                  />
+                </div>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
 
       <Toaster position="top-center" />
     </div>
