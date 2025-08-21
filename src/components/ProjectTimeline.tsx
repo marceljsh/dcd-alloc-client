@@ -87,7 +87,6 @@ const generateDummyProject = (): Project => {
   return { id: 1, name: 'Project Alpha', stages }
 }
 
-
 export default function ProjectTimeline() {
   const [project, setProject] = useState<Project>(generateDummyProject)
   const dayWidth = 32
@@ -106,35 +105,38 @@ export default function ProjectTimeline() {
   const dailyHeaders = useMemo(() => {
     const headers: Date[] = []
     const current = new Date(startDate)
-    while (current <= endDate) {
+    // Add 14 days before start for padding
+    current.setDate(current.getDate() - 14)
+    const end = new Date(endDate)
+    // Add 14 days after end for padding
+    end.setDate(end.getDate() + 14)
+
+    while (current <= end) {
       headers.push(new Date(current))
       current.setDate(current.getDate() + 1)
     }
     return headers
   }, [startDate, endDate])
 
-  // ===== Group headers by month =====
   const monthHeaders = useMemo(() => {
     const months: { name: string, span: number }[] = []
-    let currentMonth = dailyHeaders[0].getMonth()
-    let count = 0
-    dailyHeaders.forEach((d, i) => {
-      if (d.getMonth() === currentMonth) {
-        count++
+    dailyHeaders.forEach((d) => {
+      const lastMonth = months[months.length - 1]
+      const currentMonthName = d.toLocaleString('en-US', { month: 'long', year: 'numeric' })
+
+      if (!lastMonth || lastMonth.name !== currentMonthName) {
+        months.push({ name: currentMonthName, span: 1 })
       } else {
-        months.push({ name: d.toLocaleString('en-US', { month: 'short' }), span: count })
-        currentMonth = d.getMonth()
-        count = 1
+        lastMonth.span++
       }
-      if (i === dailyHeaders.length - 1) months.push({ name: d.toLocaleString('en-US', { month: 'short' }), span: count })
     })
     return months
   }, [dailyHeaders])
 
   return (
     <Card>
-      <CardContent className="p-0 overflow-auto">
-        <div className="flex justify-between items-center p-2 border-b">
+      <CardContent className="p-0">
+        <div className="flex justify-between items-center p-4 border-b">
           <h2 className="font-semibold">{project.name} - Timeline</h2>
           <button
             onClick={() => setProject(generateDummyProject())}
@@ -144,70 +146,64 @@ export default function ProjectTimeline() {
           </button>
         </div>
 
-        {/* Scrollable container */}
-        <div className="overflow-x-auto">
-          <div style={{ minWidth: `${dailyHeaders.length * dayWidth + 220}px` }}>
-            {/* Month Header */}
-            <div className="flex border-b">
-              <div className="w-56 border-r bg-gray-50"></div>
-              {monthHeaders.map((m, i) => (
-                <div
-                  key={i}
-                  className="text-center text-xs font-medium border-r flex items-center justify-center bg-gray-100"
-                  style={{ width: `${m.span * dayWidth}px` }}
-                >
-                  {m.name}
+        <div className="relative overflow-x-auto overflow-y-auto max-h-[700px]">
+          <div className="min-w-fit">
+            {/* Main Headers - Sticky Top */}
+            <div className="sticky top-0 z-20 bg-white">
+              <div className="flex">
+                {/* Stage/Task Header (top-left corner) - Sticky Top & Left */}
+                <div className="w-64 p-4 font-semibold border-r border-b bg-gray-50 sticky left-0 top-0 z-30">
+                  Stage / Task
                 </div>
-              ))}
+
+                {/* Timeline Headers */}
+                <div className="flex-grow">
+                  {/* Month Header */}
+                  <div className="flex border-b">
+                    {monthHeaders.map((m, i) => (
+                      <div
+                        key={i}
+                        className="text-center text-xs font-medium border-r flex items-center justify-center bg-gray-100"
+                        style={{ width: `${m.span * dayWidth}px`, height: '48px' }}
+                      >
+                        {m.name}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Weekday + Date Header */}
+                  <div className="flex border-b">
+                    {dailyHeaders.map((d, i) => (
+                      <div
+                        key={i}
+                        className={cn(
+                          "p-1 text-center text-xs border-r flex flex-col justify-center",
+                          "sticky top-[48px] z-20", // Adjusted top position
+                          isWeekend(d) ? 'bg-gray-100' : 'bg-white'
+                        )}
+                        style={{ width: `${dayWidth}px`, height: '48px' }}
+                      >
+                        <div className="font-medium">{d.toLocaleDateString('en-US', { weekday: 'short' })}</div>
+                        <div className="text-gray-600">{d.getDate()}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
             </div>
 
-            {/* Weekly Header */}
-            <div className="flex border-b">
-              <div className="w-56 border-r bg-gray-50"></div>
-              {dailyHeaders.reduce<{ start: Date, end: Date }[]>((weeks, day, idx) => {
-                if (idx % 7 === 0) {
-                  weeks.push({ start: day, end: dailyHeaders[Math.min(idx + 6, dailyHeaders.length - 1)] });
-                }
-                return weeks;
-              }, []).map((week, i) => (
-                <div
-                  key={i}
-                  className="text-center text-xs font-medium border-r flex flex-col justify-center bg-gray-200"
-                  style={{ width: `${((new Date(week.end).getTime() - new Date(week.start).getTime()) / (1000 * 60 * 60 * 24) + 1) * dayWidth}px` }}
-                >
-                  <div>{week.start.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
-                  <div>{week.end.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
-                </div>
-              ))}
-            </div>
-
-            {/* Weekday + Date Header */}
-            <div className="flex border-b">
-              <div className="w-56 p-2 border-r font-semibold bg-gray-50 sticky left-0 z-10">Stage / Task</div>
-              {dailyHeaders.map((d: Date) => (
-                <div
-                  key={d.toISOString()}
-                  className={cn("p-1 text-center text-xs border-r flex flex-col justify-center",
-                    isWeekend(d) ? 'bg-gray-100' : 'bg-white')}
-                  style={{ width: `${dayWidth}px` }}
-                >
-                  <div className="font-medium">{d.toLocaleDateString('en-US', { weekday: 'short' })}</div>
-                  <div className="text-gray-600">{d.getDate()}</div>
-                </div>
-              ))}
-            </div>
-
-            {/* Stage + Tasks */}
-            <div className="relative">
+            {/* Stage + Tasks Rows */}
+            <TooltipProvider>
               {project.stages.map((stage) => {
-                const stageTasks = stage.tasks
-                const taskLevels = getTaskLevels(stageTasks)
-                const rowHeight = Math.max(64, (Math.max(...Object.values(taskLevels), 0) + 1) * 32 + 20)
+                const stageTasks = stage.tasks;
+                const taskLevels = getTaskLevels(stageTasks);
+                const rowHeight = Math.max(64, (Math.max(...Object.values(taskLevels), 0) + 1) * 32 + 20);
 
                 return (
                   <div key={stage.id} style={{ minHeight: `${rowHeight}px` }} className="flex border-b relative">
-                    {/* Stage Label */}
-                    <div className="w-56 px-3 py-4 border-r bg-white sticky left-0 z-10 flex flex-col justify-center">
+                    
+                    {/* Stage Label - Sticky Left */}
+                    <div className="w-64 px-4 py-4 border-r bg-white sticky left-0 z-10 flex flex-col justify-center">
                       <div className="flex items-center gap-2">
                         <Layers className="h-4 w-4 text-gray-500" />
                         <span className="font-semibold">{stage.name}</span>
@@ -215,7 +211,7 @@ export default function ProjectTimeline() {
                       <span className="text-xs text-gray-500 mt-1">{stage.tasks.length} tasks</span>
                     </div>
 
-                    {/* Task Bars */}
+                    {/* Task Bars Timeline Area */}
                     <div className="flex-1 relative">
                       {/* Grid background */}
                       <div className="absolute inset-0 flex">
@@ -226,49 +222,47 @@ export default function ProjectTimeline() {
 
                       <div className="relative p-2">
                         {stageTasks.map((task, index) => {
-                          const pos = getTaskPosition(task, dailyHeaders, dayWidth)
-                          const level = taskLevels[task.id]
-                          const topOffset = level * 32 + 8
-                          const employee = employees.find(e => e.id === task.employeeId)
+                          const pos = getTaskPosition(task, dailyHeaders, dayWidth);
+                          const level = taskLevels[task.id];
+                          const topOffset = level * 32 + 8;
+                          const employee = employees.find(e => e.id === task.employeeId);
                           return (
-                            <TooltipProvider key={task.id}>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <div
-                                    className={cn(
-                                      "absolute h-7 px-2 flex items-center text-white text-xs font-medium cursor-pointer rounded shadow-sm transition hover:shadow-md hover:opacity-90",
-                                      getTaskColor(index)
-                                    )}
-                                    style={{ left: pos.left, width: pos.width, top: `${topOffset}px` }}
-                                  >
-                                    {task.name}
+                            <Tooltip key={task.id}>
+                              <TooltipTrigger asChild>
+                                <div
+                                  className={cn(
+                                    "absolute h-7 px-2 flex items-center text-white text-xs font-medium cursor-pointer rounded shadow-sm transition hover:shadow-md hover:opacity-90",
+                                    getTaskColor(index)
+                                  )}
+                                  style={{ left: pos.left, width: pos.width, top: `${topOffset}px` }}
+                                >
+                                  {task.name}
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent side="top" className="max-w-xs">
+                                <div className="space-y-1">
+                                  <div className="font-semibold">{task.name}</div>
+                                  <div className="text-sm flex gap-2 items-center">
+                                    <Calendar className="h-3 w-3" /> {task.startDate} - {task.endDate}
                                   </div>
-                                </TooltipTrigger>
-                                <TooltipContent side="top" className="max-w-xs">
-                                  <div className="space-y-1">
-                                    <div className="font-semibold">{task.name}</div>
-                                    <div className="text-sm flex gap-2 items-center">
-                                      <Calendar className="h-3 w-3" /> {task.startDate} - {task.endDate}
-                                    </div>
-                                    <div className="text-sm flex gap-2 items-center">
-                                      <User className="h-3 w-3" /> {employee?.name} • {employee?.role}
-                                    </div>
-                                    <div className="text-sm flex gap-2 items-center">
-                                      <Zap className="h-3 w-3" /> {task.storyPoints} story points
-                                    </div>
-                                    <div className="text-sm text-gray-500">Stage: {stage.name}</div>
+                                  <div className="text-sm flex gap-2 items-center">
+                                    <User className="h-3 w-3" /> {employee?.name} • {employee?.role}
                                   </div>
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                          )
+                                  <div className="text-sm flex gap-2 items-center">
+                                    <Zap className="h-3 w-3" /> {task.storyPoints} story points
+                                  </div>
+                                  <div className="text-sm text-gray-500">Stage: {stage.name}</div>
+                                </div>
+                              </TooltipContent>
+                            </Tooltip>
+                          );
                         })}
                       </div>
                     </div>
                   </div>
-                )
+                );
               })}
-            </div>
+            </TooltipProvider>
           </div>
         </div>
       </CardContent>
