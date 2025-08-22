@@ -21,13 +21,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { datesOverlap } from '@/lib/dates'
 import { Employee } from '@/types/employee'
 import { ProjectData, ProjectDraft, ProjectStage, Task } from '@/types/project'
-import { Edit2, Plus, X } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { Edit2, Plus, X, ChevronLeft, ChevronRight } from 'lucide-react'
+import { useEffect, useState, useRef } from 'react'
 import { toast } from 'sonner'
 import employeesData from '@/data/employees.json'
 import { updateRecordKey } from '@/lib/containers'
 import * as Strings from '@/lib/strings'
 import { useSearchParams } from 'next/navigation'
+
 
 const uniqueRoles = ['all', 'System Analyst', 'Data Engineer', 'Software Engineer']
 
@@ -66,6 +67,50 @@ export default function AllocatorPage() {
       }
     }
   }, [])
+
+    const scrollRef = useRef<HTMLDivElement | null>(null)
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null)
+  const [isDragging, setIsDragging] = useState(false)
+  const [startX, setStartX] = useState(0)
+  const [scrollLeft, setScrollLeft] = useState(0)
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (!scrollRef.current) return
+    setIsDragging(true)
+    setStartX(e.pageX - scrollRef.current.offsetLeft)
+    setScrollLeft(scrollRef.current.scrollLeft)
+  }
+  const handleMouseLeave = () => setIsDragging(false)
+  const handleMouseUp = () => setIsDragging(false)
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging || !scrollRef.current) return
+    e.preventDefault()
+    const x = e.pageX - scrollRef.current.offsetLeft
+    const walk = (x - startX) * 1.5
+    scrollRef.current.scrollLeft = scrollLeft - walk
+  }
+
+  const [touchStartX, setTouchStartX] = useState(0)
+  const [touchScrollLeft, setTouchScrollLeft] = useState(0)
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (!scrollRef.current) return
+    setTouchStartX(e.touches[0].pageX - scrollRef.current.offsetLeft)
+    setTouchScrollLeft(scrollRef.current.scrollLeft)
+  }
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!scrollRef.current) return
+    const x = e.touches[0].pageX - scrollRef.current.offsetLeft
+    const walk = (x - touchStartX) * 1.5
+    scrollRef.current.scrollLeft = touchScrollLeft - walk
+  }
+
+  const scrollByAmount = (amount: number) => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollBy({ left: amount, behavior: 'smooth' })
+    }
+  }
+
 
   const getAvailableEmployees = (taskId: string): Employee[] => {
     if (!selectedTaskId || selectedTaskId !== taskId) {
@@ -227,8 +272,11 @@ export default function AllocatorPage() {
   }
 
   const handleSelectTask = (taskId: string | null) => {
-    setSelectedTaskId(taskId)
-    setRoleFilter('all')
+    setRoleFilter("all")
+
+    setSelectedTaskId(prev => 
+      prev === taskId ? null : taskId
+    )
   }
 
   const handleUpdateTask = (taskId: string, updates: Partial<Task>) => {
@@ -362,97 +410,83 @@ export default function AllocatorPage() {
           </div>
         </div>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <div className="mb-4 flex items-center gap-2">
-            <TabsList className="flex-1">
-              {/* if no stages exist */}
-              {projectStages.length === 0 && <span className="text-muted-foreground">No stages added yet</span>}
+<Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+  <div className="flex items-center gap-2 mb-4">
+    {/* Tombol scroll kiri */}
+    <button
+      onClick={() => scrollByAmount(-150)}
+      className="p-1 rounded bg-muted hover:bg-muted-foreground/20"
+    >
+      <ChevronLeft className="h-4 w-4" />
+    </button>
 
-              {projectStages.map(stage => (
-                <div key={stage.id} className="group relative flex-1">
-                  <TabsTrigger value={stage.id} className="flex w-full items-center gap-2 text-center">
-                    {editingStage === stage.id ? (
-                      <Input
-                        autoFocus
-                        className="h-6 min-w-0 px-1 text-sm"
-                        value={editStageValue}
-                        onBlur={() => handleFinishEditStage(stage.id)}
-                        onChange={(e) => setEditStageValue(e.target.value)}
-                        onClick={(e) => e.stopPropagation()}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            handleFinishEditStage(stage.id)
-                          } else if (e.key === 'Escape') {
-                            handleCancelEditStage()
-                          }
-                        }}
-                      />
-                    ) : (
-                      <>
-                        <span className="truncate">{stage.label}</span>
-                        <div
-                          className="opacity-0 transition-opacity group-hover:opacity-100"
-                          onClick={e => {
-                            e.stopPropagation()
-                            handleStartEditStage(stage.id)
-                          }}
-                        >
-                          <Edit2 />
-                        </div>
-                      </>
-                    )}
-                  </TabsTrigger>
-                  {projectStages.length > 1 && (
-                    <button
-                      className="bg-destructive text-destructive-foreground absolute -top-1 -right-1 z-10 rounded-full p-0.5 opacity-0 transition-opacity group-hover:opacity-100"
-                      onClick={() => setDeleteStageDialog(stage.id)}
-                    >
-                      <X className="h-3 w-3 text-white" />
-                    </button>
-                  )}
-                </div>
-              ))}
-            </TabsList>
+    {/* Wrapper agar bisa discroll */}
+    <div
+      ref={scrollContainerRef}
+      className="flex-1 overflow-x-auto scrollbar-none"
+    >
+      <TabsList className="flex w-max gap-2">
+        {projectStages.map((stage) => (
+          <TabsTrigger key={stage.id} value={stage.id}>
+            {stage.label}
+          </TabsTrigger>
+        ))}
+      </TabsList>
+    </div>
+
+    {/* Tombol scroll kanan */}
+    <button
+      onClick={() => scrollByAmount(150)}
+      className="p-1 rounded bg-muted hover:bg-muted-foreground/20"
+    >
+      <ChevronRight className="h-4 w-4" />
+    </button>
+  </div>
+
+  {/* Konten tiap stage */}
+  {projectStages.map((stage) => (
+    <TabsContent key={stage.id} value={stage.id} className="mt-6">
+      <div className="grid h-[calc(100vh-300px)] grid-cols-12 gap-6">
+        {/* Left Side - Employee List */}
+        <div className="col-span-4 overflow-y-auto pr-2">
+          <EmployeeList
+            employees={getAvailableEmployees(selectedTaskId || "")}
+            selectedTaskId={selectedTaskId}
+            roleFilter={roleFilter}
+            onRoleFilterChange={setRoleFilter}
+            uniqueRoles={uniqueRoles}
+            onAssignEmployee={handleAssignEmployee}
+          />
+        </div>
+
+        {/* Right Side - Task List */}
+        <div className="col-span-8 overflow-y-auto px-1">
+          <div className="mb-4 w-full flex items-center justify-end">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowAddTaskDialog(true)}
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Add Task
+            </Button>
           </div>
 
-          {projectStages.map(stage => (
-            <TabsContent key={stage.id} value={stage.id} className="mt-6">
-              <div className="grid h-[calc(100vh-300px)] grid-cols-12 gap-6">
-                {/* Left Side - Employee List */}
-                <div className="col-span-4 overflow-y-auto pr-2">
-                  <EmployeeList
-                    employees={getAvailableEmployees(selectedTaskId || '')}
-                    selectedTaskId={selectedTaskId}
-                    roleFilter={roleFilter}
-                    onRoleFilterChange={setRoleFilter}
-                    uniqueRoles={uniqueRoles}
-                    onAssignEmployee={handleAssignEmployee}
-                  />
-                </div>
+          <TaskList
+            stage={stage.id}
+            tasks={projectData[stage.id] || []}
+            onTaskUpdate={handleUpdateTask}
+            onTaskSelection={handleSelectTask}
+            onTaskDelete={handleDeleteTask}
+            onTaskRename={handleRenameTask}
+            selectedTaskId={selectedTaskId}
+          />
+        </div>
+      </div>
+    </TabsContent>
+  ))}
+</Tabs>
 
-                {/* Right Side - Task List */}
-                <div className="col-span-8 overflow-y-auto px-1">
-                  <div className="mb-4 w-full flex items-center justify-end">
-                    <Button variant="outline" size="sm" onClick={() => setShowAddTaskDialog(true)}>
-                      <Plus className="mr-2 h-4 w-4" />
-                      Add Task
-                    </Button>
-                  </div>
-
-                  <TaskList
-                    stage={stage.id}
-                    tasks={projectData[stage.id] || []}
-                    onTaskUpdate={handleUpdateTask}
-                    onTaskSelection={handleSelectTask}
-                    onTaskDelete={handleDeleteTask}
-                    onTaskRename={handleRenameTask}
-                    selectedTaskId={selectedTaskId}
-                  />
-                </div>
-              </div>
-            </TabsContent>
-          ))}
-        </Tabs>
       </div>
 
       {/* Add Stage Dialog */}

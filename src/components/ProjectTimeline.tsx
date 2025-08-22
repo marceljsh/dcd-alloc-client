@@ -111,6 +111,7 @@ export default function ProjectTimeline() {
   const [draggingTask, setDraggingTask] = useState<Task | null>(null)
   const [dragStartX, setDragStartX] = useState(0)
   const [dragStartDate, setDragStartDate] = useState<Date | null>(null)
+  const [dragOverStage, setDragOverStage] = useState<number | null>(null)
 
   const handleMouseDown = (task: Task, e: React.MouseEvent) => {
     setDraggingTask(task)
@@ -149,6 +150,23 @@ export default function ProjectTimeline() {
     setDragStartDate(null)
   }
 
+  const handleDropToStage = (stageId: number) => {
+    if (!draggingTask) return
+    setProject(prev => {
+      const newStages = prev.stages.map(stage => {
+        const filteredTasks = stage.tasks.filter(t => t.id !== draggingTask.id)
+        if (stage.id === stageId) {
+          return { ...stage, tasks: [...filteredTasks, draggingTask] }
+        }
+        return { ...stage, tasks: filteredTasks }
+      })
+      return { ...prev, stages: newStages }
+    })
+    setDraggingTask(null)
+    setDragStartDate(null)
+    setDragOverStage(null)
+  }
+
   // ---------------------------
   // Calculate Project Date Range
   // ---------------------------
@@ -168,9 +186,9 @@ export default function ProjectTimeline() {
   const dailyHeaders = useMemo(() => {
     const headers: Date[] = []
     const current = new Date(startDate)
-    current.setDate(current.getDate() - 14)
+    current.setDate(current.getDate() - 4)
     const end = new Date(endDate)
-    end.setDate(end.getDate() + 14)
+    end.setDate(end.getDate() + 4)
     while (current <= end) {
       headers.push(new Date(current))
       current.setDate(current.getDate() + 1)
@@ -262,7 +280,20 @@ export default function ProjectTimeline() {
               const rowHeight = Math.max(64, (Math.max(...Object.values(taskLevels), 0) + 1) * 36 + 16)
 
               return (
-                <div key={stage.id} style={{ minHeight: `${rowHeight}px` }} className="flex border-b relative">
+                <div
+                  key={stage.id}
+                  style={{ minHeight: `${rowHeight}px` }}
+                  className={cn(
+                    "flex border-b relative",
+                    dragOverStage === stage.id ? "bg-blue-50" : ""
+                  )}
+                  onDragOver={(e) => {
+                    e.preventDefault()
+                    setDragOverStage(stage.id)
+                  }}
+                  onDragLeave={() => setDragOverStage(null)}
+                  onDrop={() => handleDropToStage(stage.id)}
+                >
                   {/* Stage Column */}
                   <div className="w-64 px-4 py-3 border-r bg-white sticky left-0 z-20 flex flex-col justify-center">
                     <div className="flex items-center gap-2">
@@ -285,6 +316,11 @@ export default function ProjectTimeline() {
                       ))}
                     </div>
 
+                    {/* Drop indicator */}
+                    {dragOverStage === stage.id && (
+                      <div className="absolute top-0 left-0 right-0 h-0.5 bg-blue-500" />
+                    )}
+
                     {/* Task Elements */}
                     <div className="relative p-2">
                       {stage.tasks.map((task, index) => {
@@ -297,7 +333,13 @@ export default function ProjectTimeline() {
                           <Tooltip key={task.id}>
                             <TooltipTrigger asChild> 
                               <div
+                                draggable
                                 onMouseDown={(e) => handleMouseDown(task, e)}
+                                onDragStart={() => setDraggingTask(task)}
+                                onDragEnd={() => {
+                                  setDraggingTask(null)
+                                  setDragOverStage(null)
+                                }}
                                 className={cn(
                                   "absolute h-8 flex items-center text-white text-xs font-medium cursor-grab rounded shadow-sm transition hover:shadow-md hover:opacity-90",
                                   getTaskColor(index)
