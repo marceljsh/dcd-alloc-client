@@ -626,7 +626,8 @@ export default function AllocatorPage() {
             {/* scrollable container */}
             <div
               ref={scrollRef}
-              className="flex-1 overflow-x-auto scrollbar-none"
+              className="flex-1 overflow-x-auto [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-thumb]:rounded-full 
+                        [&::-webkit-scrollbar-thumb]:bg-gray-400/70 [&::-webkit-scrollbar-track]:bg-transparent"
               onMouseDown={handleMouseDown}
               onMouseUp={handleMouseUp}
               onMouseLeave={handleMouseLeave}
@@ -644,7 +645,7 @@ export default function AllocatorPage() {
                   items={projectStages.map(s => s.id)}
                   strategy={horizontalListSortingStrategy}
                 >
-                  <TabsList className="flex w-max gap-2">
+                  <TabsList className="flex w-max gap-3">
                     {projectStages.map((stage) => (
                       <SortableStage
                         key={stage.id}
