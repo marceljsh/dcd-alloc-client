@@ -29,25 +29,9 @@ interface TaskItemProps {
 }
 
 export function TaskItem({ task, onTaskUpdate, onTaskSelection, onTaskDelete, onTaskRename, isSelected }: TaskItemProps) {
-  const [isOpen, setIsOpen] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [editValue, setEditValue] = useState(task.name)
-
-  useEffect(() => {
-    if (isSelected && !isOpen) {
-      setIsOpen(true)
-    }
-  }, [isSelected, isOpen])
-
-  const handleToggle = (open: boolean) => {
-    setIsOpen(open)
-    if (open) {
-      onTaskSelection(task.id)
-    } else if (isSelected) {
-      onTaskSelection(null)
-    }
-  }
 
   const handleDateChange = (field: 'startDate' | 'endDate', value: string) => {
     onTaskUpdate(task.id, { [field]: value })
@@ -93,13 +77,21 @@ export function TaskItem({ task, onTaskUpdate, onTaskSelection, onTaskDelete, on
 
   return (
     <>
-      <Collapsible open={isOpen} onOpenChange={handleToggle}>
+      <Collapsible open={isSelected} onOpenChange={() => onTaskSelection(isSelected ? null : task.id)}>
         <Card className={cardClasses}>
           <div className="relative">
             <CollapsibleTrigger className="hover:bg-accent w-full p-4 text-left transition-colors hover:rounded-lg">
               <div className="flex items-center justify-between">
                 <div className="flex min-w-0 flex-1 items-center gap-2">
-                  {isOpen ? <ChevronDown className="h-4 w-4 flex-shrink-0" /> : <ChevronRight className="h-4 w-4 flex-shrink-0" />}
+                  {isSelected ? (
+                    <ChevronDown   className={`h-4 w-4 flex-shrink-0 transform transition-transform duration-300 ${
+    isSelected ? "rotate-90" : ""
+  }`}/>
+                  ) : (
+                    <ChevronRight   className={`h-4 w-4 flex-shrink-0 transform transition-transform duration-300 ${
+    isSelected ? "rotate-90" : ""
+  }`}/>
+                  )}
 
                   {isEditing ? (
                     <Input
@@ -159,7 +151,7 @@ export function TaskItem({ task, onTaskUpdate, onTaskSelection, onTaskDelete, on
             </CollapsibleTrigger>
           </div>
 
-          <CollapsibleContent>
+          <CollapsibleContent className="transition-all duration-500 ease-in-out overflow-hidden">
             <div className="space-y-4 p-4 pt-0">
               <div className="grid grid-cols-4 gap-4">
                 <div>
@@ -168,7 +160,7 @@ export function TaskItem({ task, onTaskUpdate, onTaskSelection, onTaskDelete, on
                     disableWeekends
                     value={task.startDate}
                     onDateChange={value => handleDateChange('startDate', value)}
-                   />
+                  />
                 </div>
                 <div>
                   <Label htmlFor={`end-date-${task.id}`}>End Date</Label>
@@ -196,9 +188,13 @@ export function TaskItem({ task, onTaskUpdate, onTaskSelection, onTaskDelete, on
                 <Label>Assigned Resources</Label>
                 <div className="border-border mt-2 flex min-h-[60px] gap-2 overflow-x-auto rounded border-2 border-dashed p-2 pb-2">
                   {task.assignedEmployees.length > 0 ? (
-                    task.assignedEmployees.map(employee => <EmployeeCard key={employee.id} employee={employee} onRemove={handleRemoveEmployee} />)
+                    task.assignedEmployees.map(employee => (
+                      <EmployeeCard key={employee.id} employee={employee} onRemove={handleRemoveEmployee} />
+                    ))
                   ) : (
-                    <div className="text-muted-foreground flex flex-1 items-center justify-center text-sm">No employees assigned.</div>
+                    <div className="text-muted-foreground flex flex-1 items-center justify-center text-sm">
+                      No employees assigned.
+                    </div>
                   )}
                 </div>
               </div>
@@ -220,7 +216,10 @@ export function TaskItem({ task, onTaskUpdate, onTaskSelection, onTaskDelete, on
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Batalkan</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteTask} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            <AlertDialogAction
+              onClick={handleDeleteTask}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
               Hapus
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -229,3 +228,4 @@ export function TaskItem({ task, onTaskUpdate, onTaskSelection, onTaskDelete, on
     </>
   )
 }
+
