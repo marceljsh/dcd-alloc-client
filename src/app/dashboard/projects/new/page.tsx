@@ -21,23 +21,128 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { datesOverlap } from '@/lib/dates'
 import { Employee } from '@/types/employee'
 import { ProjectData, ProjectDraft, ProjectStage, Task } from '@/types/project'
+<<<<<<< HEAD
 import { Edit2, Plus, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
+=======
+import { Edit2, Plus, X, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react'
+import { useEffect, useState, useRef } from 'react'
+>>>>>>> d185057 (drag and drop stage in page new project)
 import { toast } from 'sonner'
 import employeesData from '@/data/employees.json'
 import { updateRecordKey } from '@/lib/containers'
 import * as Strings from '@/lib/strings'
 import { useSearchParams } from 'next/navigation'
+<<<<<<< HEAD
+=======
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+  DragStartEvent,
+} from "@dnd-kit/core"
+import {
+  arrayMove,
+  SortableContext,
+  useSortable,
+  horizontalListSortingStrategy,
+} from "@dnd-kit/sortable"
+import { CSS } from "@dnd-kit/utilities"
+>>>>>>> d185057 (drag and drop stage in page new project)
 
 const uniqueRoles = ['all', 'System Analyst', 'Data Engineer', 'Software Engineer']
 
+// -------------------------
+// SortableStage Component
+// -------------------------
+type SortableStageProps = {
+  stage: ProjectStage
+  editingStage: string | null
+  editStageValue: string
+  handleStartEditStage: (id: string) => void
+  handleFinishEditStage: (id: string) => void
+  handleCancelEditStage: () => void
+  onDeleteStage: (id: string) => void
+  setEditStageValue: (v: string) => void
+  activeTab?: string
+}
+
+function SortableStage({
+  stage,
+  editingStage,
+  editStageValue,
+  handleStartEditStage,
+  handleFinishEditStage,
+  handleCancelEditStage,
+  onDeleteStage,
+  setEditStageValue,
+  activeTab,
+}: SortableStageProps) {
+  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: stage.id })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  }
+
+  return (
+    <div ref={setNodeRef} style={style} {...attributes} {...listeners} className="inline-block">
+      <TabsTrigger
+        value={stage.id}
+        onDoubleClick={() => handleStartEditStage(stage.id)}
+        className="group"
+      >
+        <div className="flex items-center gap-1">
+          {editingStage === stage.id ? (
+            <input
+              type="text"
+              value={editStageValue}
+              autoFocus
+              onChange={(e) => setEditStageValue(e.target.value)}
+              onBlur={() => handleFinishEditStage(stage.id)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleFinishEditStage(stage.id)
+                if (e.key === "Escape") handleCancelEditStage()
+              }}
+              className="px-1 py-0.5 text-sm rounded border focus:outline-none focus:ring"
+            />
+          ) : (
+            <span className="whitespace-nowrap">{stage.label}</span>
+          )}
+
+          {/* Delete only on hover (keeps tab clean) */}
+          {editingStage !== stage.id && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                onDeleteStage(stage.id)
+
+              }}
+              className="hidden group-hover:flex text-red-500 hover:text-red-600 p-1 rounded"
+              aria-label={`Delete stage ${stage.label}`}
+            >
+              <Trash2 size={14} />
+            </button>
+          )}
+        </div>
+      </TabsTrigger>
+    </div>
+  )
+}
+
+// -------------------------
+// Main Page
+// -------------------------
 export default function AllocatorPage() {
   const [employees, setEmployees] = useState<Employee[]>(employeesData as Employee[])
   const [projectStages, setProjectStages] = useState<ProjectStage[]>([])
   const [projectData, setProjectData] = useState<ProjectData>({})
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
   const [roleFilter, setRoleFilter] = useState<string>('all')
-  const [activeTab, setActiveTab] = useState<string | undefined>(projectStages[0]?.id ?? undefined)
+  const [activeTab, setActiveTab] = useState<string | undefined>(undefined)
 
   // Dialog states
   const [showAddStageDialog, setShowAddStageDialog] = useState(false)
@@ -50,23 +155,83 @@ export default function AllocatorPage() {
 
   const draftId = useSearchParams().get('ts')
 
+  // initialize from draft if present
   useEffect(() => {
     if (draftId) {
       const rawDraft = sessionStorage.getItem(`project-${draftId}`)
       if (rawDraft) {
         const draft: ProjectDraft = JSON.parse(rawDraft)
-        setProjectStages(draft.stages.map(stage => ({ id: Strings.toKebab(stage), label: stage })))
-        setProjectData(
-          draft.stages.reduce((acc, stage) => {
-            acc[Strings.toKebab(stage)] = []
-            return acc
-          }, {} as ProjectData),
-        )
-        setActiveTab(Strings.toKebab(draft.stages[0]))
+        const stages = draft.stages.map(stage => ({ id: Strings.toKebab(stage), label: stage }))
+        setProjectStages(stages)
+        const data = stages.reduce((acc, stage) => {
+          acc[stage.id] = []
+          return acc
+        }, {} as ProjectData)
+        setProjectData(data)
+        setActiveTab(stages[0]?.id)
       }
     }
-  }, [])
+  }, [draftId])
 
+<<<<<<< HEAD
+=======
+  // ensure activeTab set when stages change
+  useEffect(() => {
+    if (!activeTab && projectStages.length > 0) {
+      setActiveTab(projectStages[0].id)
+    }
+    if (projectStages.length === 0) {
+      setActiveTab(undefined)
+    }
+  }, [projectStages, activeTab])
+
+  // scroll dragging (for horizontal tabs)
+  const scrollRef = useRef<HTMLDivElement | null>(null)
+  const [isDragging, setIsDragging] = useState(false)
+  const [startX, setStartX] = useState(0)
+  const [scrollLeft, setScrollLeft] = useState(0)
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (!scrollRef.current) return
+    setIsDragging(true)
+    setStartX(e.pageX - scrollRef.current.offsetLeft)
+    setScrollLeft(scrollRef.current.scrollLeft)
+  }
+  const handleMouseLeave = () => setIsDragging(false)
+  const handleMouseUp = () => setIsDragging(false)
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging || !scrollRef.current) return
+    e.preventDefault()
+    const x = e.pageX - scrollRef.current.offsetLeft
+    const walk = (x - startX) * 1.5
+    scrollRef.current.scrollLeft = scrollLeft - walk
+  }
+
+  const [touchStartX, setTouchStartX] = useState(0)
+  const [touchScrollLeft, setTouchScrollLeft] = useState(0)
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (!scrollRef.current) return
+    setTouchStartX(e.touches[0].pageX - scrollRef.current.offsetLeft)
+    setTouchScrollLeft(scrollRef.current.scrollLeft)
+  }
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!scrollRef.current) return
+    const x = e.touches[0].pageX - scrollRef.current.offsetLeft
+    const walk = (x - touchStartX) * 1.5
+    scrollRef.current.scrollLeft = touchScrollLeft - walk
+  }
+
+  const scrollByAmount = (amount: number) => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollBy({ left: amount, behavior: 'smooth' })
+    }
+  }
+
+  // -------------------------
+  // Handlers (kept as original)
+  // -------------------------
+>>>>>>> d185057 (drag and drop stage in page new project)
   const getAvailableEmployees = (taskId: string): Employee[] => {
     if (!selectedTaskId || selectedTaskId !== taskId) {
       return employees.filter(employee => roleFilter === 'all' || employee.role === roleFilter)
@@ -93,7 +258,6 @@ export default function AllocatorPage() {
           const isAssigned = task.assignedEmployees.some(emp => emp.id === employee.id)
           if (!isAssigned || !task.startDate || !task.endDate) return false
 
-          // TODO: jangen skip jika sudah di-assign ke task lain. seharusnya bisa overlap.
           return datesOverlap(selectedTask.startDate, selectedTask.endDate, task.startDate, task.endDate)
         })
 
@@ -128,8 +292,9 @@ export default function AllocatorPage() {
 
     setProjectStages(prev => prev.filter(stage => stage.id !== stageId))
     setProjectData(prev => {
-      delete prev[stageId]
-      return { ...prev }
+      const copy = { ...prev }
+      delete copy[stageId]
+      return copy
     })
 
     // if deleting active tab, switch to first available tab
@@ -137,6 +302,8 @@ export default function AllocatorPage() {
       const remainingStages = projectStages.filter(stage => stage.id !== stageId)
       if (remainingStages.length > 0) {
         setActiveTab(remainingStages[0].id)
+      } else {
+        setActiveTab(undefined)
       }
     }
 
@@ -152,9 +319,11 @@ export default function AllocatorPage() {
 
     setProjectData(prev => {
       const updatedData = updateRecordKey(prev, stageId, newId)
-      updatedData[newId].forEach(task => {
-        task.id = task.id.replace(new RegExp(`^${stageId}#`), `${newId}#`)
-      })
+      if (updatedData[newId]) {
+        updatedData[newId].forEach(task => {
+          task.id = task.id.replace(new RegExp(`^${stageId}#`), `${newId}#`)
+        })
+      }
       return updatedData
     })
 
@@ -227,8 +396,16 @@ export default function AllocatorPage() {
   }
 
   const handleSelectTask = (taskId: string | null) => {
+<<<<<<< HEAD
     setSelectedTaskId(taskId)
     setRoleFilter('all')
+=======
+    setRoleFilter("all")
+
+    setSelectedTaskId(prev =>
+      prev === taskId ? null : taskId
+    )
+>>>>>>> d185057 (drag and drop stage in page new project)
   }
 
   const handleUpdateTask = (taskId: string, updates: Partial<Task>) => {
@@ -248,11 +425,11 @@ export default function AllocatorPage() {
     if (!task) return
 
     setProjectData(prev => {
-      prev[activeTab] = prev[activeTab].filter(task => task.id !== taskId)
-      return { ...prev }
+      const copy = { ...prev }
+      copy[activeTab] = copy[activeTab].filter(task => task.id !== taskId)
+      return copy
     })
 
-    // clear selection if deleted task was selected
     if (selectedTaskId === taskId) {
       setSelectedTaskId(null)
     }
@@ -298,10 +475,9 @@ export default function AllocatorPage() {
 
     const rawData = projectStages.map(stage => {
       return {
-        id: (stage.id as any) instanceof String ? 'string' : null, // cek apa null bisa dikirim
+        id: (stage.id as any) instanceof String ? 'string' : null,
         name: stage.label,
-        tasks: projectData[stage.id].map(task => {
-          // remove task.id and return the rest
+        tasks: (projectData[stage.id] || []).map(task => {
           const { id, assignedEmployees, ...taskData } = task
           return {
             ...taskData,
@@ -315,7 +491,7 @@ export default function AllocatorPage() {
       new Promise((resolve, reject) => {
         setTimeout(() => {
           projectStages.forEach(stage => {
-            projectData[stage.id].forEach(task => {
+            (projectData[stage.id] || []).forEach(task => {
               if (!task.startDate || !task.endDate) {
                 reject(`${task.name} @ ${stage.label} is missing start or end date.`)
                 return
@@ -345,21 +521,51 @@ export default function AllocatorPage() {
     )
   }
 
+  // -------------------------
+  // DnD sensors & handlers
+  // -------------------------
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+  )
+
+  const onDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+    if (over && active.id !== over.id) {
+      setProjectStages(prev => {
+        const oldIndex = prev.findIndex(s => s.id === active.id)
+        const newIndex = prev.findIndex(s => s.id === over.id)
+        if (oldIndex === -1 || newIndex === -1) return prev
+        return arrayMove(prev, oldIndex, newIndex)
+      })
+    }
+  }
+
+  const onDragStart = (_event: DragStartEvent) => {
+    // optional: you could set a dragging state if you'd like to style
+  }
+
+  // -------------------------
+  // Render
+  // -------------------------
   return (
     <div className="bg-background min-h-fit mx-10">
       <div>
         <div className="mb-6">
           <div className="flex items-center justify-between">
-            <Button variant="outline" size="sm" onClick={() => setShowAddStageDialog(true)}>
-              <Plus className="mr-2 h-4 w-4" />
-              Add Stage
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={() => setShowAddStageDialog(true)}>
+                <Plus className="mr-2 h-4 w-4" />
+                Add Stage
+              </Button>
+            </div>
+
             <Button onClick={handleSaveProject} size="lg">
               Save Project
             </Button>
           </div>
         </div>
 
+<<<<<<< HEAD
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <div className="mb-4 flex items-center gap-2">
             <TabsList className="flex-1">
@@ -414,12 +620,64 @@ export default function AllocatorPage() {
           </div>
 
           {projectStages.map(stage => (
+=======
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v)} className="w-full">
+          <div className="flex items-center gap-2 mb-4">
+            {/* scrollable container */}
+            <div
+              ref={scrollRef}
+              className="flex-1 overflow-x-auto scrollbar-none"
+              onMouseDown={handleMouseDown}
+              onMouseUp={handleMouseUp}
+              onMouseLeave={handleMouseLeave}
+              onMouseMove={handleMouseMove}
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+            >
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={onDragEnd}
+                onDragStart={onDragStart}
+              >
+                <SortableContext
+                  items={projectStages.map(s => s.id)}
+                  strategy={horizontalListSortingStrategy}
+                >
+                  <TabsList className="flex w-max gap-2">
+                    {projectStages.map((stage) => (
+                      <SortableStage
+                        key={stage.id}
+                        stage={stage}
+                        editingStage={editingStage}
+                        editStageValue={editStageValue}
+                        handleStartEditStage={handleStartEditStage}
+                        handleFinishEditStage={handleFinishEditStage}
+                        handleCancelEditStage={handleCancelEditStage}
+                        onDeleteStage={(id) => setDeleteStageDialog(id)}
+                        setEditStageValue={setEditStageValue}
+                        activeTab={activeTab}
+                      />
+                    ))}
+                  </TabsList>
+                </SortableContext>
+              </DndContext>
+            </div>
+          </div>
+
+          {/* Konten tiap stage */}
+          {projectStages.map((stage) => (
+>>>>>>> d185057 (drag and drop stage in page new project)
             <TabsContent key={stage.id} value={stage.id} className="mt-6">
               <div className="grid h-[calc(100vh-300px)] grid-cols-12 gap-6">
                 {/* Left Side - Employee List */}
                 <div className="col-span-4 overflow-y-auto pr-2">
                   <EmployeeList
+<<<<<<< HEAD
                     employees={getAvailableEmployees(selectedTaskId || '')}
+=======
+                    employees={getAvailableEmployees(selectedTaskId || "")}
+>>>>>>> d185057 (drag and drop stage in page new project)
                     selectedTaskId={selectedTaskId}
                     roleFilter={roleFilter}
                     onRoleFilterChange={setRoleFilter}
@@ -429,9 +687,19 @@ export default function AllocatorPage() {
                 </div>
 
                 {/* Right Side - Task List */}
+<<<<<<< HEAD
                 <div className="col-span-8 px-1">
                   <div className="mb-4 w-full flex items-center justify-end">
                     <Button variant="outline" size="sm" onClick={() => setShowAddTaskDialog(true)}>
+=======
+                <div className="col-span-8 overflow-y-auto px-1">
+                  <div className="mb-4 w-full flex items-center justify-end">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowAddTaskDialog(true)}
+                    >
+>>>>>>> d185057 (drag and drop stage in page new project)
                       <Plus className="mr-2 h-4 w-4" />
                       Add Task
                     </Button>
@@ -494,10 +762,7 @@ export default function AllocatorPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              Add New Task to
-              &ldquo;
-              {projectStages.find(p => p.id === activeTab)?.label}
-              &rdquo;
+              Add New Task to &ldquo;{projectStages.find(p => p.id === activeTab)?.label}&rdquo;
             </DialogTitle>
           </DialogHeader>
           <div className="mt-2 space-y-4">
@@ -531,26 +796,30 @@ export default function AllocatorPage() {
       </Dialog>
 
       {/* Delete Stage Confirmation Dialog */}
-      <AlertDialog open={!!deleteStageDialog} onOpenChange={() => setDeleteStageDialog(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Hapus &ldquo{projectStages.find(p => p.id === deleteStageDialog)?.label}&rdquo?</AlertDialogTitle>
-            <AlertDialogDescription>
-              <p>Ini akan menghapus semua task, assigment, dan data untuk stage ini.</p>
-              <p>Tindakan ini tidak dapat dibatalkan.</p>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setDeleteStageDialog(null)}>Batalkan</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => deleteStageDialog && handleDeleteStage(deleteStageDialog)}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Hapus
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+{/* Dialog konfirmasi hapus stage */}
+<AlertDialog open={!!deleteStageDialog} onOpenChange={() => setDeleteStageDialog(null)}>
+  <AlertDialogContent>
+    <AlertDialogHeader>
+      <AlertDialogTitle>
+        Hapus “{projectStages.find(p => p.id === deleteStageDialog)?.label}”?
+      </AlertDialogTitle>
+      <AlertDialogDescription>
+        Semua task pada stage ini akan ikut terhapus. Tindakan ini tidak bisa dibatalkan.
+      </AlertDialogDescription>
+    </AlertDialogHeader>
+    <AlertDialogFooter>
+      <AlertDialogCancel onClick={() => setDeleteStageDialog(null)}>
+        Batalkan
+      </AlertDialogCancel>
+      <AlertDialogAction
+        onClick={() => deleteStageDialog && handleDeleteStage(deleteStageDialog)}
+        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+      >
+        Hapus
+      </AlertDialogAction>
+    </AlertDialogFooter>
+  </AlertDialogContent>
+</AlertDialog>
 
       <Toaster theme="light" position="bottom-center" />
     </div>
