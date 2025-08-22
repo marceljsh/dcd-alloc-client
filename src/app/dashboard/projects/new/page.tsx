@@ -412,13 +412,6 @@ export default function AllocatorPage() {
 
 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
   <div className="flex items-center gap-2 mb-4">
-    {/* Tombol scroll kiri */}
-    <button
-      onClick={() => scrollByAmount(-150)}
-      className="p-1 rounded bg-muted hover:bg-muted-foreground/20"
-    >
-      <ChevronLeft className="h-4 w-4" />
-    </button>
 
     {/* Wrapper agar bisa discroll */}
     <div
@@ -434,13 +427,6 @@ export default function AllocatorPage() {
       </TabsList>
     </div>
 
-    {/* Tombol scroll kanan */}
-    <button
-      onClick={() => scrollByAmount(150)}
-      className="p-1 rounded bg-muted hover:bg-muted-foreground/20"
-    >
-      <ChevronRight className="h-4 w-4" />
-    </button>
   </div>
 
   {/* Konten tiap stage */}
