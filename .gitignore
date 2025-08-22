@@ -2,6 +2,7 @@
 
 todo.txt
 /backup
+.env
 
 # dependencies
 /node_modules
