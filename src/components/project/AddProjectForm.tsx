@@ -304,6 +304,13 @@ export function AddProjectForm({ onCancel }: AddProjectFormProps) {
           <Button type="button" variant="outline" onClick={onCancel}>
             Cancel
           </Button>
+
+          <Button type="button" variant="outline" className="bg-gray-100 text-gray-700 hover:bg-gray-200"
+            // onClick={onSaveDraft} // handler save draft
+          >
+            Save Draft
+          </Button>
+
           <Button type="submit">Continue</Button>
         </div>
       </form>
