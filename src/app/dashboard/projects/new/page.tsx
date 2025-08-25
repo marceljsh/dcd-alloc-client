@@ -544,9 +544,6 @@ export default function AllocatorPage() {
     // optional: you could set a dragging state if you'd like to style
   }
 
-  // -------------------------
-  // Render
-  // -------------------------
   return (
     <div className="bg-background min-h-fit mx-10">
       <div>
@@ -645,7 +642,7 @@ export default function AllocatorPage() {
                   items={projectStages.map(s => s.id)}
                   strategy={horizontalListSortingStrategy}
                 >
-                  <TabsList className="flex w-max gap-3">
+                  <TabsList   className="w-max min-w-full" >
                     {projectStages.map((stage) => (
                       <SortableStage
                         key={stage.id}
@@ -796,7 +793,7 @@ export default function AllocatorPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Stage Confirmation Dialog */}
+
 {/* Dialog konfirmasi hapus stage */}
 <AlertDialog open={!!deleteStageDialog} onOpenChange={() => setDeleteStageDialog(null)}>
   <AlertDialogContent>
