@@ -115,7 +115,7 @@ function SortableStage({
 
           {/* Delete only on hover (keeps tab clean) */}
           {editingStage !== stage.id && (
-            <button
+            <div
               onClick={(e) => {
                 e.stopPropagation()
                 onDeleteStage(stage.id)
@@ -125,7 +125,7 @@ function SortableStage({
               aria-label={`Delete stage ${stage.label}`}
             >
               <Trash2 size={14} />
-            </button>
+            </div>
           )}
         </div>
       </TabsTrigger>
