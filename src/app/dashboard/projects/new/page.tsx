@@ -1,4 +1,3 @@
-
 'use client'
 
 import { EmployeeList } from '@/components/employee/EmployeeList'
@@ -18,7 +17,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Toaster } from '@/components/ui/sonner'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Tabs, TabsContent } from '@/components/ui/tabs' // TabsList dihapus dari impor
 import { datesOverlap } from '@/lib/dates'
 import { Employee } from '@/types/employee'
 import { ProjectData, ProjectDraft, ProjectStage, Task } from '@/types/project'
@@ -29,7 +28,7 @@ import employeesData from '@/data/employees.json'
 import { updateRecordKey } from '@/lib/containers'
 import * as Strings from '@/lib/strings'
 import { useSearchParams } from 'next/navigation'
-
+import { DnDPills } from '@/components/DnDPills' // Mengimpor komponen DnDPills
 
 const uniqueRoles = ['all', 'System Analyst', 'Data Engineer', 'Software Engineer']
 
@@ -69,7 +68,7 @@ export default function AllocatorPage() {
     }
   }, [])
 
-    const scrollRef = useRef<HTMLDivElement | null>(null)
+  const scrollRef = useRef<HTMLDivElement | null>(null)
   const scrollContainerRef = useRef<HTMLDivElement | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [startX, setStartX] = useState(0)
@@ -112,7 +111,6 @@ export default function AllocatorPage() {
     }
   }
 
-
   const getAvailableEmployees = (taskId: string): Employee[] => {
     if (!selectedTaskId || selectedTaskId !== taskId) {
       return employees.filter(employee => roleFilter === 'all' || employee.role === roleFilter)
@@ -139,7 +137,6 @@ export default function AllocatorPage() {
           const isAssigned = task.assignedEmployees.some(emp => emp.id === employee.id)
           if (!isAssigned || !task.startDate || !task.endDate) return false
 
-          // TODO: jangen skip jika sudah di-assign ke task lain. seharusnya bisa overlap.
           return datesOverlap(selectedTask.startDate, selectedTask.endDate, task.startDate, task.endDate)
         })
 
@@ -395,6 +392,28 @@ export default function AllocatorPage() {
       },
     )
   }
+  
+  // Fungsi untuk menangani perubahan urutan stage (tab)
+  const handleStageOrderChange = (newLabels: string[]) => {
+    // Cari objek stage berdasarkan label dan susun ulang
+    const newStages = newLabels
+      .map(label => projectStages.find(stage => stage.label === label))
+      .filter(Boolean) as ProjectStage[];
+
+    setProjectStages(newStages);
+
+    // Pastikan data proyek juga mengikuti urutan stage yang baru
+    const updatedProjectData: ProjectData = {};
+    newStages.forEach(stage => {
+      updatedProjectData[stage.id] = projectData[stage.id];
+    });
+    setProjectData(updatedProjectData);
+  
+    // Atur ulang tab aktif jika tab saat ini tidak ada di urutan baru
+    if (activeTab && !newStages.some(s => s.id === activeTab)) {
+      setActiveTab(newStages[0]?.id || undefined);
+    }
+  };
 
   return (
     <div className="bg-background min-h-screen p-6">
@@ -413,76 +432,95 @@ export default function AllocatorPage() {
 
 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
   <div className="flex items-center gap-2 mb-4">
-
-    {/* Wrapper agar bisa discroll */}
-    <div
-      ref={scrollContainerRef}
-      className="flex-1 overflow-x-auto scrollbar-none"
+    <Button
+      variant="ghost"
+      size="sm"
+      className="p-1"
+      onClick={() => scrollByAmount(-200)}
     >
-      <TabsList className="flex w-max gap-2">
-        {projectStages.map((stage) => (
-          <TabsTrigger key={stage.id} value={stage.id}>
-            {stage.label}
-          </TabsTrigger>
-        ))}
-      </TabsList>
+      <ChevronLeft className="h-4 w-4" />
+    </Button>
+
+    {/* Container untuk scroll horizontal */}
+    <div
+      ref={scrollRef}
+      onMouseDown={handleMouseDown}
+      onMouseLeave={handleMouseLeave}
+      onMouseUp={handleMouseUp}
+      onMouseMove={handleMouseMove}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      className="flex-1 overflow-x-auto scrollbar-hide"
+    >
+      <div className="flex w-max items-center gap-2">
+        <DnDPills
+          pills={projectStages.map(stage => stage.label)}
+          onChange={handleStageOrderChange}
+        />
+      </div>
     </div>
 
+    <Button
+      variant="ghost"
+      size="sm"
+      className="p-1"
+      onClick={() => scrollByAmount(200)}
+    >
+      <ChevronRight className="h-4 w-4" />
+    </Button>
   </div>
 
-  {/* Konten tiap stage */}
-  {projectStages.map((stage) => (
-    <TabsContent key={stage.id} value={stage.id} className="mt-6">
-      <div className="grid h-[calc(100vh-300px)] grid-cols-12 gap-6">
-        {/* Left Side - Employee List */}
-        <div className="col-span-4 overflow-y-auto pr-2">
-          <EmployeeList
-            employees={getAvailableEmployees(selectedTaskId || "")}
-            selectedTaskId={selectedTaskId}
-            roleFilter={roleFilter}
-            onRoleFilterChange={setRoleFilter}
-            uniqueRoles={uniqueRoles}
-            onAssignEmployee={handleAssignEmployee}
-          />
-        </div>
+      {/* Konten tiap stage */}
+      {projectStages.map((stage) => (
+        <TabsContent key={stage.id} value={stage.id} className="mt-3">
+          <div className="grid h-[calc(100vh-300px)] grid-cols-12 gap-6">
+            <div className="col-span-4">
+              <EmployeeList
+                employees={getAvailableEmployees(selectedTaskId || "")}
+                selectedTaskId={selectedTaskId}
+                roleFilter={roleFilter}
+                onRoleFilterChange={setRoleFilter}
+                uniqueRoles={uniqueRoles}
+                onAssignEmployee={handleAssignEmployee}
+              />
+            </div>
 
-        {/* Right Side - Task List */}
-        <div className="col-span-8 overflow-y-auto px-1">
-          <div className="mb-4 w-full flex items-center justify-end">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowAddTaskDialog(true)}
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              Add Task
-            </Button>
+            {/* Right Side - Task List */}
+            <div className="col-span-8 px-1">
+              <div className="mb-4 w-full flex items-center justify-end">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowAddTaskDialog(true)}
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Task
+                </Button>
+              </div>
+
+              <TaskList
+                stage={stage.id}
+                tasks={projectData[stage.id] || []}
+                onTaskUpdate={handleUpdateTask}
+                onTaskSelection={handleSelectTask}
+                onTaskDelete={handleDeleteTask}
+                onTaskRename={handleRenameTask}
+                selectedTaskId={selectedTaskId}
+              />
+            </div>
           </div>
-
-          <TaskList
-            stage={stage.id}
-            tasks={projectData[stage.id] || []}
-            onTaskUpdate={handleUpdateTask}
-            onTaskSelection={handleSelectTask}
-            onTaskDelete={handleDeleteTask}
-            onTaskRename={handleRenameTask}
-            selectedTaskId={selectedTaskId}
-          />
-        </div>
-      </div>
-    </TabsContent>
-  ))}
-</Tabs>
+        </TabsContent>
+      ))}
+    </Tabs>
 
       </div>
-
       {/* Add Stage Dialog */}
       <Dialog open={showAddStageDialog} onOpenChange={setShowAddStageDialog}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Add New Stage</DialogTitle>
           </DialogHeader>
-          <div className="mt-2 space-y-4">
+          <div className="mt-2 space-y-2">
             <div>
               <Label htmlFor="stage-name">Stage Name</Label>
               <Input
