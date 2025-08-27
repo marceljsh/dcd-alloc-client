@@ -456,6 +456,13 @@ export default function AllocatorPage() {
         <DnDPills
           pills={projectStages.map(stage => stage.label)}
           onChange={handleStageOrderChange}
+          onRename={handleRenameStage}
+          onDelete={(label) => {
+            const stage = projectStages.find(s => s.label === label);
+            if (stage) {
+              setDeleteStageDialog(stage.id);
+            }
+          }}
         />
       </div>
     </div>

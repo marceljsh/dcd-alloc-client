@@ -61,7 +61,6 @@ type ActiveDialog = 'add' | 'detail' | 'timeline' | null;
 export default function ProjectsPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedProject, setSelectedProject] = useState<ProjectRow | null>(null)
-  // Perubahan: Mengganti state terpisah dengan satu state tunggal
   const [activeDialog, setActiveDialog] = useState<ActiveDialog>(null);
 
   const filteredProjects = projects.filter((project) => {
