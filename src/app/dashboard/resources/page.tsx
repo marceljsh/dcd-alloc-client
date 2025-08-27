@@ -1,11 +1,11 @@
-"use client";
+"use client"
 
-import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { useState } from "react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import {
   Table,
   TableBody,
@@ -13,7 +13,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from "@/components/ui/table"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,24 +21,16 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@/components/ui/dropdown-menu"
 import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+} from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
 import {
   Search,
   Plus,
@@ -50,11 +42,11 @@ import {
   Calendar,
   MapPin,
   Copy,
-} from "lucide-react";
-import { initials } from "@/lib/strings";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { toast } from "sonner";
-import { Toaster } from "@/components/ui/sonner";
+} from "lucide-react"
+import { initials } from "@/lib/strings"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { toast } from "sonner"
+import { Toaster } from "@/components/ui/sonner"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -64,60 +56,41 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import {
-  EMPLOYMENT_STATUS_OPTIONS,
-  EmploymentStatus,
-  Role,
-  ROLE_LEVEL_OPTIONS,
-  ROLE_OPTIONS,
-  RoleLevel,
-  Team,
-  TEAM_OPTIONS,
-} from "@/types/common";
-import rawEmployees from "@/data/employees.json";
-import {
-  ContractEmployee,
-  EmployeeRow,
-  PermanentEmployee,
-} from "@/types/employee";
-import {
-  AddEmployeeFormValues,
-  AddEmployeeForm,
-} from "@/components/employee/AddEmployeeForm";
-import { Separator } from "@/components/ui/separator";
+} from "@/components/ui/alert-dialog"
+import { EmploymentStatus, Role } from "@/types/common"
+import rawEmployees from "@/data/employees.json"
+import { ContractEmployee, EmployeeRow, PermanentEmployee } from "@/types/employee"
+import { AddEmployeeFormValues, AddEmployeeForm } from "@/components/employee/AddEmployeeForm"
+import { Separator } from "@/components/ui/separator"
 
 const getRoleColor = (role: Role) => {
   switch (role) {
-    case "System Analyst":
-      return "bg-blue-100 text-blue-800";
-    case "Data Engineer":
-      return "bg-green-100 text-green-800";
-    case "Software Engineer":
-      return "bg-purple-100 text-purple-800";
+    case "System Analyst":    return "bg-blue-100 text-blue-800"
+    case "Data Engineer":     return "bg-green-100 text-green-800"
+    case "Software Engineer": return "bg-purple-100 text-purple-800"
   }
-};
+}
 
 const getStatusColor = (status: EmploymentStatus) => {
   switch (status) {
     case "Permanent":
-      return "bg-green-100 text-green-800";
+      return "bg-green-100 text-green-800"
     case "Contract":
-      return "bg-yellow-100 text-yellow-800";
+      return "bg-yellow-100 text-yellow-800"
   }
-};
+}
 
 const createEmployee = ({
   status,
   ...data
 }: AddEmployeeFormValues): EmployeeRow => {
-  const now = new Date().toISOString();
+  const now = new Date().toISOString()
   const base = {
     id: Math.floor(Math.random() * 1000000),
     createdAt: now,
     updatedAt: now,
     status,
-  };
+  }
 
   switch (status) {
     case "Permanent":
@@ -125,7 +98,7 @@ const createEmployee = ({
         ...base,
         ...data,
         code: `ORG-${Math.floor(Math.random() * 1000000)}`,
-      } as PermanentEmployee;
+      } as PermanentEmployee
 
     case "Contract":
       return {
@@ -133,72 +106,72 @@ const createEmployee = ({
         ...data,
         status: "Contract",
         code: `CR-${Math.floor(Math.random() * 10000000)}`,
-      } as ContractEmployee;
+      } as ContractEmployee
 
     default:
-      throw new Error("Invalid employee status");
+      throw new Error("Invalid employee status")
   }
-};
+}
 
 const initialEmployees: EmployeeRow[] = rawEmployees.map(
   ({ status, ...data }: any) => {
     switch (status) {
       case "Permanent":
-        return { status, ...data } as PermanentEmployee;
+        return { status, ...data } as PermanentEmployee
       case "Contract":
-        return { status, ...data } as ContractEmployee;
+        return { status, ...data } as ContractEmployee
 
       default:
-        throw new Error("Invalid employee status");
+        throw new Error("Invalid employee status")
     }
   }
-);
+)
 
 export default function ResourcesPage() {
-  const [employees, setEmployees] = useState<EmployeeRow[]>(initialEmployees);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [employees, setEmployees] = useState<EmployeeRow[]>(initialEmployees)
+  const [searchTerm, setSearchTerm] = useState("")
   const [selectedEmployee, setSelectedEmployee] = useState<EmployeeRow | null>(
     null
-  );
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  )
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [employeeToDelete, setEmployeeToDelete] = useState<EmployeeRow | null>(
     null
-  );
+  )
 
   const matchWithSearch = (employee: EmployeeRow) => {
-    if (!searchTerm) return true;
+    if (!searchTerm) return true
 
     const searchableFields = [
       employee.name,
       employee.email,
       employee.code,
       employee.team,
-    ].map((field) => field.toLowerCase());
+    ].map((field) => field.toLowerCase())
 
-    const lwcSearch = searchTerm.toLowerCase();
-    return searchableFields.some((field) => field.includes(lwcSearch));
-  };
+    const lwcSearch = searchTerm.toLowerCase()
+    return searchableFields.some((field) => field.includes(lwcSearch))
+  }
 
   const filteredEmployees = employees
     .filter(matchWithSearch)
-    .sort((a, b) => a.name.localeCompare(b.name));
+    .sort((a, b) => a.name.localeCompare(b.name))
 
   const handleAddEmployee = (data: AddEmployeeFormValues) => {
-    const employee = createEmployee(data);
-    setEmployees([...employees, employee]);
-    setIsAddDialogOpen(false);
+    const employee = createEmployee(data)
+    setEmployees([...employees, employee])
+    setIsAddDialogOpen(false)
 
-    toast(`${employee.name} has been added to the team.`);
-  };
+    toast(`${employee.name} has been added to the team.`)
+  }
 
   const handleDeleteEmployee = (employee: EmployeeRow) => {
     /* delete from DB */
 
-    setEmployees(employees.filter((emp) => emp.id !== employee.id));
-    setEmployeeToDelete(null);
+    setEmployees(employees.filter((emp) => emp.id !== employee.id))
+    setEmployeeToDelete(null)
 
-    toast.success(`${employee.name} has been removed.`);
-  };
+    toast.success(`${employee.name} has been removed.`)
+  }
 
   return (
     <div className="space-y-6 mx-10">
@@ -356,7 +329,7 @@ export default function ResourcesPage() {
                       <Copy
                         className="inline h-4 w-4 ml-1 text-muted-foreground cursor-pointer opacity-0 hover:opacity-100 transition-opacity"
                         onClick={() => {
-                          navigator.clipboard.writeText(employee.code);
+                          navigator.clipboard.writeText(employee.code)
                           // toast.success(`${employee.code} copied to clipboard`)
                         }}
                       />
@@ -583,5 +556,5 @@ export default function ResourcesPage() {
 
       <Toaster theme="light" position="top-center" richColors />
     </div>
-  );
+  )
 }

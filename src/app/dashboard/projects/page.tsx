@@ -374,7 +374,7 @@ export default function ProjectsPage() {
               <div className="overflow-x-auto">
                 <div style={{ minWidth: '1600px', padding: '16px' }}>
                   <ProjectTimeline
-                    project={demoProjects.find(p => p.id === selectedProject.id) ?? demoProjects[0]}
+                    // project={demoProjects.find(p => p.id === selectedProject.id) ?? demoProjects[0]}
                   />
                 </div>
               </div>

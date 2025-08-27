@@ -1,10 +1,18 @@
-'use client'
+"use client"
 
-import { Box, FolderOpen, LayoutDashboard, UserRound } from "lucide-react"
-import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar"
-import Link from "next/link"
-import Image from "next/image"
+import { Box, FolderOpen, LayoutDashboard, Users } from "lucide-react"
+import { Sidebar,
+  SidebarContent,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarTrigger,
+  useSidebar,
+} from "@/components/ui/sidebar"
 import { usePathname } from "next/navigation"
+import Image from "next/image"
+import Link from "next/link"
 
 const menuItems = [
   {
@@ -15,7 +23,7 @@ const menuItems = [
   {
     title: 'Resources',
     url: '/dashboard/resources',
-    icon: UserRound,
+    icon: Users,
   },
   {
     title: 'Projects',
@@ -30,37 +38,38 @@ const menuItems = [
 ]
 
 export function AppSidebar() {
-  const currentPath = usePathname().substring(1) // remove leading slash
-  const fragments = currentPath.split('/')
-
-  const tab = fragments.length > 1 ? fragments.slice(0, 2).join('/') : fragments[0]
+  const path = usePathname().substring(1)
+  const { open } = useSidebar()
 
   return (
-    <Sidebar className="pl-5">
-      <SidebarHeader className="pl-5">
-        <Link href="/">
-          <span className="flex items-center text-lg font-bold">
-            <Image className="h-[35px] w-auto" src="/bmri.svg" alt="LOGO" height={0} width={0} priority />
-          </span>
-        </Link>
+    <Sidebar collapsible="icon" className="border-r border-border bg-background" variant="inset">
+      <SidebarHeader className="border-b border-border h-14">
+        <div className="flex items-baseline justify-between">
+          <div className="group-data-[collapsible=icon]:hidden px-2">
+            <Image src="/bmri.svg" alt="BMRI Logo" width={0} height={0} className="h-8 w-auto" />
+          </div>
+          <div className="px-1">
+            <SidebarTrigger />
+          </div>
+        </div>
       </SidebarHeader>
+
       <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupContent>
-            <SidebarMenu className="gap-2">
-              {menuItems.map(item => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild isActive={item.url.substring(1) === tab}>
-                    <Link href={item.url}>
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        <SidebarMenu className="px-2 py-5 gap-3">
+          {menuItems.map((item) => (
+            <SidebarMenuItem key={item.title}>
+              <SidebarMenuButton
+                isActive={path === item.url.substring(1)}
+                className="w-full px-4 py-6"
+              >
+                <Link href={item.url} className="flex gap-2">
+                  <item.icon className="h-5 w-5 inline" />
+                  {open && <span>{item.title}</span>}
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          ))}
+        </SidebarMenu>
       </SidebarContent>
     </Sidebar>
   )

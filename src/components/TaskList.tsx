@@ -21,7 +21,7 @@ export function TaskList({ stage, tasks, onTaskUpdate, onTaskSelection, onTaskDe
     );
   }
   return (
-    <div>
+    <div className="overflow-y-auto max-h-[65vh] p-1">
       {tasks.map(task => (
         <TaskItem
           key={task.id}

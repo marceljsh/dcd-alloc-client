@@ -228,4 +228,3 @@ export function TaskItem({ task, onTaskUpdate, onTaskSelection, onTaskDelete, on
     </>
   )
 }
-
