@@ -32,30 +32,37 @@ import { ProjectCategory, ProjectPriority } from "@/types/common"
 import { toast } from "sonner"
 import { Toaster } from "@/components/ui/sonner"
 import { AddProjectForm } from "@/components/project/AddProjectForm"
+import ProjectTimeline from "@/components/ProjectTimeline"
 
 const projects: ProjectRow[] = rawProjects as ProjectRow[]
 
+// Helper function untuk warna kategori
 const getCategoryColor = (category: ProjectCategory) => {
   switch (category) {
     case 'Small':   return 'bg-blue-100 text-blue-800'
     case 'Medium':  return 'bg-green-100 text-green-800'
-    case 'Big':     return 'bg-yellow-100 text-yellow-800'
+    case 'Big':      return 'bg-yellow-100 text-yellow-800'
   }
 }
 
+// Helper function untuk warna prioritas
 const getPriorityColor = (priority: ProjectPriority) => {
   switch (priority) {
-    case 'Low':      return 'bg-green-100 text-green-800'
-    case 'Medium':   return 'bg-yellow-100 text-yellow-800'
-    case 'High':     return 'bg-orange-100 text-orange-800'
-    case 'Critical': return 'bg-red-100 text-red-800'
+    case 'Low':       return 'bg-green-100 text-green-800'
+    case 'Medium':    return 'bg-yellow-100 text-yellow-800'
+    case 'High':      return 'bg-orange-100 text-orange-800'
+    case 'Critical':  return 'bg-red-100 text-red-800'
   }
 }
+
+// Tipe untuk state dialog
+type ActiveDialog = 'add' | 'detail' | 'timeline' | null;
 
 export default function ProjectsPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedProject, setSelectedProject] = useState<ProjectRow | null>(null)
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
+  // Perubahan: Mengganti state terpisah dengan satu state tunggal
+  const [activeDialog, setActiveDialog] = useState<ActiveDialog>(null);
 
   const filteredProjects = projects.filter((project) => {
     if (!searchTerm) return true
@@ -67,17 +74,19 @@ export default function ProjectsPage() {
     ].map((field) => field.toLowerCase())
 
     const lowerCaseSearchTerm = searchTerm.toLowerCase()
-    return searchableFields.some((field) => {
-      const isMatch = field.includes(lowerCaseSearchTerm)
-      console.log(field, `matches "${lowerCaseSearchTerm}":`, isMatch)
-      return isMatch
-    })
+    return searchableFields.some((field) => field.includes(lowerCaseSearchTerm))
   })
 
   const totalProjects = projects.length
   const totalBudget = projects.reduce((sum, p) => sum + p.budget, 0)
   const bigSizedRatio = projects.filter(p => p.category === 'Big').length / totalProjects
   const criticalPriorityRatio = projects.filter(p => p.priority === 'Critical').length / totalProjects
+
+  // Fungsi untuk menutup dialog apa pun dan membersihkan selectedProject
+  const handleCloseDialog = () => {
+    setActiveDialog(null);
+    setSelectedProject(null);
+  };
 
   return (
     <div className="space-y-6 mx-10">
@@ -87,9 +96,12 @@ export default function ProjectsPage() {
           <h1 className="text-3xl font-bold">Projects</h1>
           <p className="text-muted-foreground">Manage your projects and track their progress</p>
         </div>
-        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+        <Dialog open={activeDialog === 'add'} onOpenChange={(open) => {
+          if (!open) handleCloseDialog();
+          else setActiveDialog('add');
+        }}>
           <DialogTrigger asChild>
-            <Button>
+            <Button onClick={() => setActiveDialog('add')}>
               <Plus className="h-4 w-4 mr-2" />
               Add Project
             </Button>
@@ -99,14 +111,13 @@ export default function ProjectsPage() {
               <DialogTitle>Add New Project</DialogTitle>
               <DialogDescription>Create a new project to track progress and manage resources.</DialogDescription>
             </DialogHeader>
-
-            <AddProjectForm onCancel={() => setIsAddDialogOpen(false)} />
+            <AddProjectForm onCancel={handleCloseDialog} />
           </DialogContent>
         </Dialog>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-3 md:grid-cols-4">
         <Card className="py-4 gap-0">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Projects</CardTitle>
@@ -151,8 +162,6 @@ export default function ProjectsPage() {
 
       {/* Table */}
       <Card className="py-4">
-
-        {/* Search and Filters */}
         <CardHeader className="flex justify-between">
           <CardTitle className="text-xl">Project Portfolio</CardTitle>
           <div className="flex justify-end">
@@ -246,11 +255,18 @@ export default function ProjectsPage() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="start">
                           <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <DropdownMenuItem onClick={() => setSelectedProject(project)}>
+                          <DropdownMenuItem onClick={() => {
+                            setSelectedProject(project);
+                            setActiveDialog('detail');
+                          }}>
                             <Edit className="mr-2 h-4 w-4" />
                             View Details
                           </DropdownMenuItem>
-                          <DropdownMenuItem>
+                          {/* Perubahan: Tombol untuk membuka timeline */}
+                          <DropdownMenuItem onClick={() => {
+                            setSelectedProject(project);
+                            setActiveDialog('timeline');
+                          }}>
                             <Calendar className="mr-2 h-4 w-4" />
                             View Timeline
                           </DropdownMenuItem>
@@ -265,14 +281,13 @@ export default function ProjectsPage() {
                   </TableRow>
                 ))}
               </TableBody>
-
             </Table>
           </ScrollArea>
         </CardContent>
       </Card>
 
       {/* Project Detail Dialog */}
-      <Dialog open={!!selectedProject} onOpenChange={() => setSelectedProject(null)}>
+      <Dialog open={activeDialog === 'detail'} onOpenChange={(open) => !open && handleCloseDialog()}>
         <DialogContent className="sm:max-w-[500px]">
           {selectedProject && (
             <>
@@ -297,11 +312,11 @@ export default function ProjectsPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label className="text-sm font-medium">Start Date</Label>
-                    <p className="text-sm mt-1">{new Date(selectedProject.startDate).toLocaleDateString()}</p>
+                    <p className="text-sm mt-1">{new Date(selectedProject.startDate).toLocaleDateString('id-ID')}</p>
                   </div>
                   <div>
                     <Label className="text-sm font-medium">End Date</Label>
-                    <p className="text-sm mt-1">{new Date(selectedProject.endDate).toLocaleDateString()}</p>
+                    <p className="text-sm mt-1">{new Date(selectedProject.endDate).toLocaleDateString('id-ID')}</p>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
@@ -317,7 +332,7 @@ export default function ProjectsPage() {
                 <div>
                   <Label className="text-sm font-medium">Assigned Team</Label>
                   <p className="text-sm mt-1">
-                     {['DMA', 'NCM', 'CRM', 'CM', 'FRM', 'RRM'].at(Number(selectedProject.id) % 6)}
+                      {['DMA', 'NCM', 'CRM', 'CM', 'FRM', 'RRM'].at(Number(selectedProject.id) % 6)}
                   </p>
                 </div>
                 <div className="space-y-2">
@@ -335,6 +350,21 @@ export default function ProjectsPage() {
               </div>
             </>
           )}
+        </DialogContent>
+      </Dialog>
+      
+      {/* Perubahan: Dialog untuk Project Timeline */}
+      <Dialog open={activeDialog === 'timeline'} onOpenChange={(open) => !open && handleCloseDialog()}>
+        <DialogContent className="sm:max-w-7xl">
+          <DialogHeader>
+            <DialogTitle>Project Timeline</DialogTitle>
+            <DialogDescription>
+              Visualisasi timeline untuk project: {selectedProject?.name}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4 overflow-x-auto">
+            {selectedProject && <ProjectTimeline project={selectedProject} />}
+          </div>
         </DialogContent>
       </Dialog>
 

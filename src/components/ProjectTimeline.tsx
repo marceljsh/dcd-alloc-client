@@ -212,7 +212,7 @@ export default function ProjectTimeline() {
           <div className="sticky top-0 z-30 bg-white">
             <div className="flex">
               {/* Stage / Task Column */}
-              <div className="w-64 p-3 font-semibold border-r border-b bg-gray-100 sticky left-0 top-0 z-40 truncate">
+              <div className="w-64 p-3 font-semibold border-r border-b bg-gray-100 sticky left-0 top-2 z-40 truncate">
                 Stage / Task
               </div>
 

@@ -76,6 +76,22 @@ const productivityTrendAll = [
   { month: "Dec", "Software Engineer": 85, "Data Engineer": 65, "System Analyst": 90 },
 ];
 
+interface CategoryColorMap {
+  [key: string]: string;
+}
+
+type Category = 'Small' | 'Medium' | 'Big';
+
+const getCategoryColor = (category: Category | string): string => {
+  const colorMap: CategoryColorMap = {
+    Small: 'bg-blue-100 text-blue-800',
+    Medium: 'bg-green-100 text-green-800',
+    Big: 'bg-yellow-100 text-yellow-800',
+  };
+  return colorMap[category] || 'bg-gray-100 text-gray-800';
+};
+
+
 const generateDaysInMonth = (monthName: string, year: number) => {
   const monthIndex = new Date(`${monthName} 1, ${year}`).getMonth();
   const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
@@ -100,7 +116,6 @@ function ProjectTable({ filteredProjects }: { filteredProjects: typeof allProjec
   });
 
   const itemsPerPage = 5;
-
   const handleSort = (key: keyof typeof allProjects[0]) => {
     setSortConfig((prev) => ({
       key,
