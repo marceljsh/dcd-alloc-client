@@ -1,3 +1,4 @@
+"use client";
 import { Task } from "@/types/project";
 import React, { useState } from "react";
 
