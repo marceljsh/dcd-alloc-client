@@ -17,18 +17,24 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Toaster } from '@/components/ui/sonner'
-import { Tabs, TabsContent } from '@/components/ui/tabs' // TabsList dihapus dari impor
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { datesOverlap } from '@/lib/dates'
 import { Employee } from '@/types/employee'
 import { ProjectData, ProjectDraft, ProjectStage, Task } from '@/types/project'
-import { Edit2, Plus, X, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Plus, ChevronLeft, ChevronRight, MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
 import { useEffect, useState, useRef } from 'react'
 import { toast } from 'sonner'
 import employeesData from '@/data/employees.json'
 import { updateRecordKey } from '@/lib/containers'
 import * as Strings from '@/lib/strings'
 import { useSearchParams } from 'next/navigation'
-import { DnDPills } from '@/components/DnDPills' // Mengimpor komponen DnDPills
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 
 const uniqueRoles = ['all', 'System Analyst', 'Data Engineer', 'Software Engineer']
 
@@ -180,6 +186,8 @@ export default function AllocatorPage() {
       const remainingStages = projectStages.filter(stage => stage.id !== stageId)
       if (remainingStages.length > 0) {
         setActiveTab(remainingStages[0].id)
+      } else {
+        setActiveTab(undefined)
       }
     }
 
@@ -272,7 +280,7 @@ export default function AllocatorPage() {
   const handleSelectTask = (taskId: string | null) => {
     setRoleFilter("all")
 
-    setSelectedTaskId(prev => 
+    setSelectedTaskId(prev =>
       prev === taskId ? null : taskId
     )
   }
@@ -392,28 +400,8 @@ export default function AllocatorPage() {
       },
     )
   }
-  
-  // Fungsi untuk menangani perubahan urutan stage (tab)
-  const handleStageOrderChange = (newLabels: string[]) => {
-    // Cari objek stage berdasarkan label dan susun ulang
-    const newStages = newLabels
-      .map(label => projectStages.find(stage => stage.label === label))
-      .filter(Boolean) as ProjectStage[];
 
-    setProjectStages(newStages);
-
-    // Pastikan data proyek juga mengikuti urutan stage yang baru
-    const updatedProjectData: ProjectData = {};
-    newStages.forEach(stage => {
-      updatedProjectData[stage.id] = projectData[stage.id];
-    });
-    setProjectData(updatedProjectData);
-  
-    // Atur ulang tab aktif jika tab saat ini tidak ada di urutan baru
-    if (activeTab && !newStages.some(s => s.id === activeTab)) {
-      setActiveTab(newStages[0]?.id || undefined);
-    }
-  };
+  const tabsListClass = projectStages.length <= 4 ? "flex w-full justify-around" : "flex w-max"; // Modified this line
 
   return (
     <div className="bg-background min-h-screen p-6">
@@ -430,95 +418,132 @@ export default function AllocatorPage() {
           </div>
         </div>
 
-<Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-  <div className="flex items-center gap-2 mb-4">
-    <Button
-      variant="ghost"
-      size="sm"
-      className="p-1"
-      onClick={() => scrollByAmount(-200)}
-    >
-      <ChevronLeft className="h-4 w-4" />
-    </Button>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <div className="flex items-center gap-2 mb-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              className={`p-1 ${projectStages.length <= 4 ? 'invisible' : ''}`} // Hide arrows if not many stages
+              onClick={() => scrollByAmount(-200)}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
 
-    {/* Container untuk scroll horizontal */}
-    <div
-      ref={scrollRef}
-      onMouseDown={handleMouseDown}
-      onMouseLeave={handleMouseLeave}
-      onMouseUp={handleMouseUp}
-      onMouseMove={handleMouseMove}
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      className="flex-1 overflow-x-auto scrollbar-hide"
-    >
-      <div className="flex w-max items-center gap-2">
-        <DnDPills
-          pills={projectStages.map(stage => stage.label)}
-          onChange={handleStageOrderChange}
-          onRename={handleRenameStage}
-          onDelete={(label) => {
-            const stage = projectStages.find(s => s.label === label);
-            if (stage) {
-              setDeleteStageDialog(stage.id);
-            }
-          }}
-        />
-      </div>
-    </div>
-
-    <Button
-      variant="ghost"
-      size="sm"
-      className="p-1"
-      onClick={() => scrollByAmount(200)}
-    >
-      <ChevronRight className="h-4 w-4" />
-    </Button>
-  </div>
-
-      {/* Konten tiap stage */}
-      {projectStages.map((stage) => (
-        <TabsContent key={stage.id} value={stage.id} className="mt-3">
-          <div className="grid h-[calc(100vh-300px)] grid-cols-12 gap-6">
-            <div className="col-span-4">
-              <EmployeeList
-                employees={getAvailableEmployees(selectedTaskId || "")}
-                selectedTaskId={selectedTaskId}
-                roleFilter={roleFilter}
-                onRoleFilterChange={setRoleFilter}
-                uniqueRoles={uniqueRoles}
-                onAssignEmployee={handleAssignEmployee}
-              />
+            {/* Container untuk scroll horizontal */}
+            <div
+              ref={scrollRef}
+              onMouseDown={handleMouseDown}
+              onMouseLeave={handleMouseLeave}
+              onMouseUp={handleMouseUp}
+              onMouseMove={handleMouseMove}
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              className="flex-1 overflow-x-auto scrollbar-hide"
+            >
+              <TabsList className={`${tabsListClass} items-center gap-2`}>
+                {projectStages.map(stage => (
+                  <TabsTrigger
+                    key={stage.id}
+                    value={stage.id}
+                    className="group relative flex-grow" // Added flex-grow
+                    onClick={() => setActiveTab(stage.id)}
+                  >
+                    {editingStage === stage.id ? (
+                      <Input
+                        value={editStageValue}
+                        onChange={(e) => setEditStageValue(e.target.value)}
+                        onBlur={() => handleFinishEditStage(stage.id)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            handleFinishEditStage(stage.id);
+                          } else if (e.key === 'Escape') {
+                            handleCancelEditStage();
+                          }
+                        }}
+                        className="h-8 w-32 px-2 text-center"
+                        autoFocus
+                      />
+                    ) : (
+                      <div className="flex items-center justify-center w-full">
+                        <span>{stage.label}</span>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-6 w-6 ml-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent>
+                            <DropdownMenuItem onClick={() => handleStartEditStage(stage.id)}>
+                              <Pencil className="mr-2 h-4 w-4" /> Rename
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onClick={() => setDeleteStageDialog(stage.id)}
+                              className="text-destructive focus:text-destructive"
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" /> Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    )}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
             </div>
 
-            {/* Right Side - Task List */}
-            <div className="col-span-8 px-1">
-              <div className="mb-4 w-full flex items-center justify-end">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowAddTaskDialog(true)}
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Task
-                </Button>
-              </div>
-
-              <TaskList
-                stage={stage.id}
-                tasks={projectData[stage.id] || []}
-                onTaskUpdate={handleUpdateTask}
-                onTaskSelection={handleSelectTask}
-                onTaskDelete={handleDeleteTask}
-                onTaskRename={handleRenameTask}
-                selectedTaskId={selectedTaskId}
-              />
-            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              className={`p-1 ${projectStages.length <= 4 ? 'invisible' : ''}`} // Hide arrows if not many stages
+              onClick={() => scrollByAmount(200)}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
           </div>
-        </TabsContent>
-      ))}
-    </Tabs>
+
+          {/* Konten tiap stage */}
+          {projectStages.map((stage) => (
+            <TabsContent key={stage.id} value={stage.id} className="mt-3">
+              <div className="grid h-[calc(100vh-300px)] grid-cols-12 gap-6">
+                <div className="col-span-4">
+                  <EmployeeList
+                    employees={getAvailableEmployees(selectedTaskId || "")}
+                    selectedTaskId={selectedTaskId}
+                    roleFilter={roleFilter}
+                    onRoleFilterChange={setRoleFilter}
+                    uniqueRoles={uniqueRoles}
+                    onAssignEmployee={handleAssignEmployee}
+                  />
+                </div>
+
+                {/* Right Side - Task List */}
+                <div className="col-span-8 px-1">
+                  <div className="mb-4 w-full flex items-center justify-end">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowAddTaskDialog(true)}
+                    >
+                      <Plus className="mr-2 h-4 w-4" />
+                      Add Task
+                    </Button>
+                  </div>
+
+                  <TaskList
+                    stage={stage.id}
+                    tasks={projectData[stage.id] || []}
+                    onTaskUpdate={handleUpdateTask}
+                    onTaskSelection={handleSelectTask}
+                    onTaskDelete={handleDeleteTask}
+                    onTaskRename={handleRenameTask}
+                    selectedTaskId={selectedTaskId}
+                  />
+                </div>
+              </div>
+            </TabsContent>
+          ))}
+        </Tabs>
 
       </div>
       {/* Add Stage Dialog */}
@@ -602,7 +627,7 @@ export default function AllocatorPage() {
       <AlertDialog open={!!deleteStageDialog} onOpenChange={() => setDeleteStageDialog(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Hapus &ldquo{projectStages.find(p => p.id === deleteStageDialog)?.label}&rdquo?</AlertDialogTitle>
+            <AlertDialogTitle>Hapus &ldquo;{projectStages.find(p => p.id === deleteStageDialog)?.label}&rdquo;?</AlertDialogTitle>
             <AlertDialogDescription>
               <p>Ini akan menghapus semua task, assigment, dan data untuk stage ini.</p>
               <p>Tindakan ini tidak dapat dibatalkan.</p>
