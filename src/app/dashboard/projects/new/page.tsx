@@ -35,8 +35,123 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  horizontalListSortingStrategy,
+  useSortable,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
+import { arrayMove } from '@dnd-kit/sortable'
 
 const uniqueRoles = ['all', 'System Analyst', 'Data Engineer', 'Software Engineer']
+
+// --- [START] Komponen DraggableTabsTrigger baru ---
+type DraggableTabsTriggerProps = {
+  stage: ProjectStage
+  editingStage: string | null
+  editStageValue: string
+  setEditStageValue: (value: string) => void
+  handleFinishEditStage: (stageId: string) => void
+  handleCancelEditStage: () => void
+  handleStartEditStage: (stageId: string) => void
+  setDeleteStageDialog: (stageId: string | null) => void
+  setActiveTab: (tabId: string) => void
+  activeTab: string | undefined
+}
+
+const DraggableTabsTrigger = ({
+  stage,
+  editingStage,
+  editStageValue,
+  setEditStageValue,
+  handleFinishEditStage,
+  handleCancelEditStage,
+  handleStartEditStage,
+  setDeleteStageDialog,
+  setActiveTab,
+  activeTab,
+}: DraggableTabsTriggerProps) => {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: stage.id,
+  })
+
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 10 : undefined,
+    opacity: isDragging ? 0.7 : 1,
+    minWidth: '150px',
+  }
+
+  return (
+    <TabsTrigger
+      ref={setNodeRef}
+      style={style}
+      value={stage.id}
+      className="group relative flex-grow touch-none"
+      {...attributes}
+      // Hapus listeners dari sini, karena sudah di-apply di bawah
+      onClick={() => setActiveTab(stage.id)}
+    >
+      {editingStage === stage.id ? (
+        <Input
+          value={editStageValue}
+          onChange={e => setEditStageValue(e.target.value)}
+          onBlur={() => handleFinishEditStage(stage.id)}
+          onKeyDown={e => {
+            if (e.key === 'Enter') {
+              handleFinishEditStage(stage.id)
+            } else if (e.key === 'Escape') {
+              handleCancelEditStage()
+            }
+          }}
+          onPointerDown={e => e.stopPropagation()}
+          className="h-8 w-32 px-2 text-center"
+          autoFocus
+        />
+      ) : (
+        <div className="flex items-center justify-center w-full">
+          <span className="flex-grow text-center" {...listeners}>
+            {stage.label}
+          </span>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <div
+                className="h-6 w-6 ml-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                onPointerDown={e => e.stopPropagation()}
+              >
+                <MoreHorizontal className="h-4 w-4" />
+              </div>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent onPointerDown={e => e.stopPropagation()}>
+              <DropdownMenuItem onClick={() => handleStartEditStage(stage.id)}>
+                <Pencil className="mr-2 h-4 w-4" /> Rename
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => setDeleteStageDialog(stage.id)}
+                className="text-destructive focus:text-destructive"
+              >
+                <Trash2 className="mr-2 h-4 w-4" /> Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      )}
+    </TabsTrigger>
+  )
+}
+// --- [END] Komponen DraggableTabsTrigger baru ---
 
 export default function AllocatorPage() {
   const [employees, setEmployees] = useState<Employee[]>(employeesData as Employee[])
@@ -56,6 +171,27 @@ export default function AllocatorPage() {
   const [editStageValue, setEditStageValue] = useState('')
 
   const draftId = useSearchParams().get('ts')
+
+  // --- [START] Drag and Drop Handlers ---
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
+  )
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+
+    if (active.id !== over?.id) {
+      setProjectStages(items => {
+        const oldIndex = items.findIndex(stage => stage.id === active.id)
+        const newIndex = items.findIndex(stage => stage.id === over?.id)
+        return arrayMove(items, oldIndex, newIndex)
+      })
+    }
+  }
+  // --- [END] Drag and Drop Handlers ---
 
   useEffect(() => {
     if (draftId) {
@@ -417,18 +553,14 @@ export default function AllocatorPage() {
             </Button>
           </div>
         </div>
-
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <div className="flex items-center gap-2 mb-4">
-            <Button
-              variant="ghost"
-              size="sm"
-              className={`p-1 ${projectStages.length <= 4 ? 'invisible' : ''}`} // Hide arrows if not many stages
+            <div
+              className={`p-1 ${projectStages.length <= 4 ? 'invisible' : ''}`}
               onClick={() => scrollByAmount(-200)}
             >
               <ChevronLeft className="h-4 w-4" />
-            </Button>
-
+            </div>
             {/* Container untuk scroll horizontal */}
             <div
               ref={scrollRef}
@@ -438,60 +570,32 @@ export default function AllocatorPage() {
               onMouseMove={handleMouseMove}
               onTouchStart={handleTouchStart}
               onTouchMove={handleTouchMove}
-              className="flex-1 overflow-x-auto scrollbar-hide"
+              className="flex-1 overflow-x-auto scrollbar-thin"
             >
               <TabsList className={`${tabsListClass} items-center gap-2`}>
-                {projectStages.map(stage => (
-                  <TabsTrigger
-                    key={stage.id}
-                    value={stage.id}
-                    className="group relative flex-grow" // Added flex-grow
-                    onClick={() => setActiveTab(stage.id)}
-                  >
-                    {editingStage === stage.id ? (
-                      <Input
-                        value={editStageValue}
-                        onChange={(e) => setEditStageValue(e.target.value)}
-                        onBlur={() => handleFinishEditStage(stage.id)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            handleFinishEditStage(stage.id);
-                          } else if (e.key === 'Escape') {
-                            handleCancelEditStage();
-                          }
-                        }}
-                        className="h-8 w-32 px-2 text-center"
-                        autoFocus
+                {/* --- [START] Integrasi DND Kit --- */}
+                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                  <SortableContext items={projectStages} strategy={horizontalListSortingStrategy}>
+                    {projectStages.map(stage => (
+                      <DraggableTabsTrigger
+                        key={stage.id}
+                        stage={stage}
+                        editingStage={editingStage}
+                        editStageValue={editStageValue}
+                        setEditStageValue={setEditStageValue}
+                        handleFinishEditStage={handleFinishEditStage}
+                        handleCancelEditStage={handleCancelEditStage}
+                        handleStartEditStage={handleStartEditStage}
+                        setDeleteStageDialog={setDeleteStageDialog}
+                        setActiveTab={setActiveTab}
+                        activeTab={activeTab}
                       />
-                    ) : (
-                      <div className="flex items-center justify-center w-full">
-                        <span>{stage.label}</span>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-6 w-6 ml-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent>
-                            <DropdownMenuItem onClick={() => handleStartEditStage(stage.id)}>
-                              <Pencil className="mr-2 h-4 w-4" /> Rename
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              onClick={() => setDeleteStageDialog(stage.id)}
-                              className="text-destructive focus:text-destructive"
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" /> Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    )}
-                  </TabsTrigger>
-                ))}
+                    ))}
+                  </SortableContext>
+                </DndContext>
+                {/* --- [END] Integrasi DND Kit --- */}
               </TabsList>
             </div>
-
             <Button
               variant="ghost"
               size="sm"
@@ -501,7 +605,6 @@ export default function AllocatorPage() {
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
-
           {/* Konten tiap stage */}
           {projectStages.map((stage) => (
             <TabsContent key={stage.id} value={stage.id} className="mt-3">
@@ -516,7 +619,6 @@ export default function AllocatorPage() {
                     onAssignEmployee={handleAssignEmployee}
                   />
                 </div>
-
                 {/* Right Side - Task List */}
                 <div className="col-span-8 px-1">
                   <div className="mb-4 w-full flex items-center justify-end">
@@ -529,7 +631,6 @@ export default function AllocatorPage() {
                       Add Task
                     </Button>
                   </div>
-
                   <TaskList
                     stage={stage.id}
                     tasks={projectData[stage.id] || []}
@@ -544,7 +645,6 @@ export default function AllocatorPage() {
             </TabsContent>
           ))}
         </Tabs>
-
       </div>
       {/* Add Stage Dialog */}
       <Dialog open={showAddStageDialog} onOpenChange={setShowAddStageDialog}>
@@ -581,7 +681,6 @@ export default function AllocatorPage() {
           </div>
         </DialogContent>
       </Dialog>
-
       {/* Add Task Dialog */}
       <Dialog open={showAddTaskDialog} onOpenChange={setShowAddTaskDialog}>
         <DialogContent>
@@ -622,16 +721,17 @@ export default function AllocatorPage() {
           </div>
         </DialogContent>
       </Dialog>
-
       {/* Delete Stage Confirmation Dialog */}
       <AlertDialog open={!!deleteStageDialog} onOpenChange={() => setDeleteStageDialog(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Hapus &ldquo;{projectStages.find(p => p.id === deleteStageDialog)?.label}&rdquo;?</AlertDialogTitle>
-            <AlertDialogDescription>
-              <p>Ini akan menghapus semua task, assigment, dan data untuk stage ini.</p>
-              <p>Tindakan ini tidak dapat dibatalkan.</p>
-            </AlertDialogDescription>
+              <AlertDialogDescription>
+                Ini akan menghapus semua task, assigment, dan data untuk stage ini.
+                <br />
+                <br />
+                Tindakan ini tidak dapat dibatalkan.
+              </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => setDeleteStageDialog(null)}>Batalkan</AlertDialogCancel>
@@ -644,7 +744,6 @@ export default function AllocatorPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
       <Toaster theme="light" position="bottom-center" />
     </div>
   )
