@@ -58,15 +58,15 @@ export function AppSidebar() {
         <SidebarMenu className="px-2 py-5 gap-3">
           {menuItems.map((item) => (
             <SidebarMenuItem key={item.title}>
-              <SidebarMenuButton
-                isActive={path === item.url.substring(1)}
-                className="w-full px-4 py-6"
-              >
-                <Link href={item.url} className="flex gap-2">
+              <Link href={item.url} className="w-full">
+                <SidebarMenuButton
+                  isActive={path === item.url.substring(1)}
+                  className="w-full px-4 py-6 flex gap-2"
+                >
                   <item.icon className="h-5 w-5 inline" />
                   {open && <span>{item.title}</span>}
-                </Link>
-              </SidebarMenuButton>
+                </SidebarMenuButton>
+              </Link>
             </SidebarMenuItem>
           ))}
         </SidebarMenu>

@@ -52,6 +52,7 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { arrayMove } from '@dnd-kit/sortable'
+import { v4 as uuidv4 } from 'uuid' // Import UUID
 
 const uniqueRoles = ['all', 'System Analyst', 'Data Engineer', 'Software Engineer']
 
@@ -269,7 +270,7 @@ export default function AllocatorPage() {
 
     return employees.filter(employee => {
       const isAssignedToSelectedTask = selectedTask.assignedEmployees.some(emp => emp.id === employee.id)
-      if (isAssignedToSelectedTask) return false
+      if (isAssignedToSelectedTask) return false // skip the current task
 
       const isConflicted = Object.values(projectData)
         .flat()
@@ -291,7 +292,8 @@ export default function AllocatorPage() {
   const handleAddStage = () => {
     if (!newStageName.trim()) return
 
-    const newStageId = Strings.toKebab(newStageName)
+    // Menggunakan UUID untuk ID unik
+    const newStageId = uuidv4()
     const newStage: ProjectStage = {
       id: newStageId,
       label: newStageName.trim(),
@@ -570,7 +572,11 @@ export default function AllocatorPage() {
               onMouseMove={handleMouseMove}
               onTouchStart={handleTouchStart}
               onTouchMove={handleTouchMove}
-              className="flex-1 overflow-x-auto scrollbar-thin"
+              className="flex-1 overflow-x-auto"
+              style={{
+                scrollbarWidth: "thin", // Firefox
+                scrollbarColor: "rgba(0,0,0,0.1) transparent", // Firefox
+              }}
             >
               <TabsList className={`${tabsListClass} items-center gap-2`}>
                 {/* --- [START] Integrasi DND Kit --- */}
@@ -726,12 +732,12 @@ export default function AllocatorPage() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Hapus &ldquo;{projectStages.find(p => p.id === deleteStageDialog)?.label}&rdquo;?</AlertDialogTitle>
-              <AlertDialogDescription>
-                Ini akan menghapus semua task, assigment, dan data untuk stage ini.
-                <br />
-                <br />
-                Tindakan ini tidak dapat dibatalkan.
-              </AlertDialogDescription>
+            <AlertDialogDescription>
+              Ini akan menghapus semua task, assigment, dan data untuk stage ini.
+              <br />
+              <br />
+              Tindakan ini tidak dapat dibatalkan.
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => setDeleteStageDialog(null)}>Batalkan</AlertDialogCancel>
