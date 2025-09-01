@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
   DropdownMenu,
+  DropdownMenuCheckboxItem, // <-- Ditambahkan
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
@@ -18,13 +19,12 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
-import { Search, Plus, MoreHorizontal, Edit, Trash2, Calendar, Users, Target, Clock, Copy } from "lucide-react"
+import { Search, Plus, MoreHorizontal, Edit, Trash2, Calendar, Users, Target, Clock, Copy, Filter } from "lucide-react" // <-- Filter Ditambahkan
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { ProjectRow } from "@/types/project"
 import rawProjects from "@/data/projects.json"
@@ -36,12 +36,17 @@ import ProjectTimeline from "@/components/ProjectTimeline"
 
 const projects: ProjectRow[] = rawProjects as ProjectRow[]
 
+// Opsi filter didefinisikan di sini
+export const PROJECT_CATEGORY_OPTIONS = ['Small', 'Medium', 'Big'] as const;
+export const PROJECT_PRIORITY_OPTIONS = ['Low', 'Medium', 'High', 'Critical'] as const;
+export const TEAM_OPTIONS = ['DMA', 'NCM', 'CRM', 'CM', 'FRM', 'RRM'] as const;
+
 // Helper function untuk warna kategori
 const getCategoryColor = (category: ProjectCategory) => {
   switch (category) {
     case 'Small':   return 'bg-blue-100 text-blue-800'
     case 'Medium':  return 'bg-green-100 text-green-800'
-    case 'Big':      return 'bg-yellow-100 text-yellow-800'
+    case 'Big':     return 'bg-yellow-100 text-yellow-800'
   }
 }
 
@@ -63,6 +68,11 @@ export default function ProjectsPage() {
   const [selectedProject, setSelectedProject] = useState<ProjectRow | null>(null)
   const [activeDialog, setActiveDialog] = useState<ActiveDialog>(null);
 
+  // State untuk filter <-- Ditambahkan
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [selectedPriorities, setSelectedPriorities] = useState<string[]>([]);
+  const [selectedTeams, setSelectedTeams] = useState<string[]>([]);
+
   // state sorting
   const [sortConfig, setSortConfig] = useState<{ key: keyof ProjectRow; direction: "asc" | "desc" } | null>(null);
 
@@ -75,15 +85,20 @@ export default function ProjectsPage() {
   };
 
   const filteredProjects = projects.filter((project) => {
-    if (!searchTerm) return true
-    const searchableFields = [
+    // Filter search term
+    const searchMatch = !searchTerm || [
       project.code,
       project.name,
       project.budgetCode,
-    ].map((field) => field.toLowerCase())
-    const lowerCaseSearchTerm = searchTerm.toLowerCase()
-    return searchableFields.some((field) => field.includes(lowerCaseSearchTerm))
-  })
+    ].some(field => field.toLowerCase().includes(searchTerm.toLowerCase()));
+
+    // Filter Kategori, Prioritas, dan Tim <-- Logika diperbarui
+    const categoryMatch = selectedCategories.length === 0 || selectedCategories.includes(project.category);
+    const priorityMatch = selectedPriorities.length === 0 || selectedPriorities.includes(project.priority);
+    const teamMatch = selectedTeams.length === 0 || selectedTeams.includes(project.team);
+
+    return searchMatch && categoryMatch && priorityMatch && teamMatch;
+  });
 
   // sorting diterapkan setelah filter
   const sortedProjects = [...filteredProjects].sort((a, b) => {
@@ -105,12 +120,20 @@ export default function ProjectsPage() {
       : String(valB).localeCompare(String(valA));
   });
 
-  const totalProjects = projects.length
-  const totalBudget = projects.reduce((sum, p) => sum + p.budget, 0)
-  const bigSizedRatio = projects.filter(p => p.category === 'Big').length / totalProjects
-  const criticalPriorityRatio = projects.filter(p => p.priority === 'Critical').length / totalProjects
+  // Handler untuk filter <-- Ditambahkan
+  const handleFilterChange = (setter: React.Dispatch<React.SetStateAction<string[]>>) => (value: string, checked: boolean) => {
+    setter(prev => checked ? [...prev, value] : prev.filter(item => item !== value));
+  };
+  
+  const handleCategoryChange = handleFilterChange(setSelectedCategories);
+  const handlePriorityChange = handleFilterChange(setSelectedPriorities);
+  const handleTeamChange = handleFilterChange(setSelectedTeams);
 
-  // Fungsi untuk menutup dialog apa pun dan membersihkan selectedProject
+
+  const totalBudget = projects.reduce((sum, p) => sum + p.budget, 0)
+  const bigSizedRatio = projects.filter(p => p.category === 'Big').length / projects.length
+  const criticalPriorityRatio = projects.filter(p => p.priority === 'Critical').length / projects.length
+
   const handleCloseDialog = () => {
     setActiveDialog(null);
     setSelectedProject(null);
@@ -190,9 +213,61 @@ export default function ProjectsPage() {
 
       {/* Table */}
       <Card className="py-4">
-        <CardHeader className="flex justify-between">
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-xl">Project Portfolio</CardTitle>
-          <div className="flex justify-end">
+          <div className="flex items-center gap-2"> {/* <-- Container untuk filter & search */}
+            {/* Filter Kategori */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="flex items-center gap-2">
+                  <Filter className="h-4 w-4" /> Category
+                  {selectedCategories.length > 0 && <Badge variant="secondary" className="rounded-full px-2">{selectedCategories.length}</Badge>}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {PROJECT_CATEGORY_OPTIONS.map(cat => (
+                  <DropdownMenuCheckboxItem key={cat} checked={selectedCategories.includes(cat)} onCheckedChange={(checked) => handleCategoryChange(cat, !!checked)}>
+                    {cat}
+                  </DropdownMenuCheckboxItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Filter Prioritas */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="flex items-center gap-2">
+                  <Filter className="h-4 w-4" /> Priority
+                  {selectedPriorities.length > 0 && <Badge variant="secondary" className="rounded-full px-2">{selectedPriorities.length}</Badge>}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {PROJECT_PRIORITY_OPTIONS.map(pri => (
+                  <DropdownMenuCheckboxItem key={pri} checked={selectedPriorities.includes(pri)} onCheckedChange={(checked) => handlePriorityChange(pri, !!checked)}>
+                    {pri}
+                  </DropdownMenuCheckboxItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+            
+            {/* Filter Tim */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="flex items-center gap-2">
+                  <Filter className="h-4 w-4" /> Team
+                  {selectedTeams.length > 0 && <Badge variant="secondary" className="rounded-full px-2">{selectedTeams.length}</Badge>}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {TEAM_OPTIONS.map(team => (
+                  <DropdownMenuCheckboxItem key={team} checked={selectedTeams.includes(team)} onCheckedChange={(checked) => handleTeamChange(team, !!checked)}>
+                    {team}
+                  </DropdownMenuCheckboxItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Search Input */}
             <div className="relative">
               <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
@@ -370,7 +445,7 @@ export default function ProjectsPage() {
                 <div>
                   <Label className="text-sm font-medium">Assigned Team</Label>
                   <p className="text-sm mt-1">
-                      {['DMA', 'NCM', 'CRM', 'CM', 'FRM', 'RRM'].at(Number(selectedProject.id) % 6)}
+                    {['DMA', 'NCM', 'CRM', 'CM', 'FRM', 'RRM'].at(Number(selectedProject.id) % 6)}
                   </p>
                 </div>
                 <div className="space-y-2">
@@ -390,7 +465,7 @@ export default function ProjectsPage() {
           )}
         </DialogContent>
       </Dialog>
-      
+     
       {/* Timeline Dialog */}
       <Dialog open={activeDialog === 'timeline'} onOpenChange={(open) => !open && handleCloseDialog()}>
         <DialogContent className="sm:max-w-7xl">

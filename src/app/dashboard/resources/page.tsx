@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/table"
 import {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
@@ -44,7 +45,8 @@ import {
   Copy,
   ArrowUp,
   ArrowDown,
-} from "lucide-react" // <-- ArrowUp dan ArrowDown diimpor
+  Filter,
+} from "lucide-react"
 import { initials } from "@/lib/strings"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { toast } from "sonner"
@@ -152,17 +154,18 @@ export default function ResourcesPage() {
   const [employeeToDelete, setEmployeeToDelete] = useState<EmployeeRow | null>(
     null
   )
-  // State baru untuk sorting
   const [sortKey, setSortKey] = useState<SortKey>("name")
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
 
-  // Fungsi untuk menangani klik pada header tabel untuk sorting
+  // State baru untuk filter
+  const [selectedRoles, setSelectedRoles] = useState<string[]>([])
+  const [selectedLevels, setSelectedLevels] = useState<string[]>([])
+  const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]) // <-- Ditambahkan
+
   const handleSort = (key: SortKey) => {
-    // Jika kolom yang sama diklik, balik arah sort
     if (sortKey === key) {
       setSortDirection(sortDirection === "asc" ? "desc" : "asc")
     } else {
-      // Jika kolom baru diklik, set kolom tersebut dan default arah ke asc
       setSortKey(key)
       setSortDirection("asc")
     }
@@ -170,35 +173,36 @@ export default function ResourcesPage() {
 
   const matchWithSearch = (employee: EmployeeRow) => {
     if (!searchTerm) return true
-
     const searchableFields = [
       employee.name,
       employee.email,
       employee.code,
       employee.team,
     ].map((field) => field.toLowerCase())
-
     const lwcSearch = searchTerm.toLowerCase()
     return searchableFields.some((field) => field.includes(lwcSearch))
   }
 
-  // Logika untuk filter dan sorting
+  // Logika untuk filter dan sorting diperbarui
   const filteredAndSortedEmployees = employees
-    .filter(matchWithSearch)
+    .filter((employee) => {
+      const searchMatch = matchWithSearch(employee)
+      const roleMatch =
+        selectedRoles.length === 0 || selectedRoles.includes(employee.role)
+      const levelMatch =
+        selectedLevels.length === 0 || selectedLevels.includes(employee.level)
+      const statusMatch = // <-- Ditambahkan
+        selectedStatuses.length === 0 ||
+        selectedStatuses.includes(employee.status)
+      return searchMatch && roleMatch && levelMatch && statusMatch // <-- Ditambahkan
+    })
     .sort((a, b) => {
       const valA = a[sortKey]
       const valB = b[sortKey]
-
-      // Handle perbandingan string, bisa juga ditambahkan untuk number jika ada
       const strA = String(valA).toLowerCase()
       const strB = String(valB).toLowerCase()
-
-      if (strA < strB) {
-        return sortDirection === "asc" ? -1 : 1
-      }
-      if (strA > strB) {
-        return sortDirection === "asc" ? 1 : -1
-      }
+      if (strA < strB) return sortDirection === "asc" ? -1 : 1
+      if (strA > strB) return sortDirection === "asc" ? 1 : -1
       return 0
     })
 
@@ -206,20 +210,36 @@ export default function ResourcesPage() {
     const employee = createEmployee(data)
     setEmployees([...employees, employee])
     setIsAddDialogOpen(false)
-
     toast(`${employee.name} has been added to the team.`)
   }
 
   const handleDeleteEmployee = (employee: EmployeeRow) => {
-    /* delete from DB */
-
     setEmployees(employees.filter((emp) => emp.id !== employee.id))
     setEmployeeToDelete(null)
-
     toast.success(`${employee.name} has been removed.`)
   }
 
-  // Komponen helper untuk header yang bisa disort
+  // Handler untuk mengubah filter role
+  const handleRoleFilterChange = (role: string, checked: boolean) => {
+    setSelectedRoles((prev) =>
+      checked ? [...prev, role] : prev.filter((r) => r !== role)
+    )
+  }
+
+  // Handler untuk mengubah filter level
+  const handleLevelFilterChange = (level: string, checked: boolean) => {
+    setSelectedLevels((prev) =>
+      checked ? [...prev, level] : prev.filter((l) => l !== level)
+    )
+  }
+
+  // Handler untuk mengubah filter status <-- Ditambahkan
+  const handleStatusFilterChange = (status: string, checked: boolean) => {
+    setSelectedStatuses((prev) =>
+      checked ? [...prev, status] : prev.filter((s) => s !== status)
+    )
+  }
+
   const SortableTableHeader = ({
     sortKeyName,
     children,
@@ -254,8 +274,6 @@ export default function ResourcesPage() {
             Manage your team members and their assignments
           </p>
         </div>
-
-        {/* Add Resource Dialog */}
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogTrigger asChild>
             <Button>
@@ -270,7 +288,6 @@ export default function ResourcesPage() {
                 Add a member to your domain.
               </DialogDescription>
             </DialogHeader>
-
             <AddEmployeeForm
               onSubmit={handleAddEmployee}
               onCancel={() => setIsAddDialogOpen(false)}
@@ -342,9 +359,103 @@ export default function ResourcesPage() {
       {/* Table */}
       <Card className="py-4">
         {/* Search and Filters */}
-        <CardHeader className="flex justify-between">
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-xl">Team Members</CardTitle>
-          <div className="flex justify-end">
+          {/* <-- Container untuk filter dan search --> */}
+          <div className="flex items-center gap-2">
+            {/* Filter Roles */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="flex items-center gap-2">
+                  <Filter className="h-4 w-4" />
+                  Role
+                  {selectedRoles.length > 0 && (
+                    <Badge variant="secondary" className="rounded-full px-2">
+                      {selectedRoles.length}
+                    </Badge>
+                  )}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>Filter by Role</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {["Data Engineer", "Software Engineer", "System Analyst"].map(
+                  (role) => (
+                    <DropdownMenuCheckboxItem
+                      key={role}
+                      checked={selectedRoles.includes(role)}
+                      onCheckedChange={(checked) =>
+                        handleRoleFilterChange(role, !!checked)
+                      }
+                    >
+                      {role}
+                    </DropdownMenuCheckboxItem>
+                  )
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Filter Level */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="flex items-center gap-2">
+                  <Filter className="h-4 w-4" />
+                  Level
+                  {selectedLevels.length > 0 && (
+                    <Badge variant="secondary" className="rounded-full px-2">
+                      {selectedLevels.length}
+                    </Badge>
+                  )}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>Filter by Level</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {["Junior", "Middle", "Senior"].map((level) => (
+                  <DropdownMenuCheckboxItem
+                    key={level}
+                    checked={selectedLevels.includes(level)}
+                    onCheckedChange={(checked) =>
+                      handleLevelFilterChange(level, !!checked)
+                    }
+                  >
+                    {level}
+                  </DropdownMenuCheckboxItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Filter Status -- Ditambahkan */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="flex items-center gap-2">
+                  <Filter className="h-4 w-4" />
+                  Status
+                  {selectedStatuses.length > 0 && (
+                    <Badge variant="secondary" className="rounded-full px-2">
+                      {selectedStatuses.length}
+                    </Badge>
+                  )}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>Filter by Status</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {["Contract", "Permanent"].map((status) => (
+                  <DropdownMenuCheckboxItem
+                    key={status}
+                    checked={selectedStatuses.includes(status)}
+                    onCheckedChange={(checked) =>
+                      handleStatusFilterChange(status, !!checked)
+                    }
+                  >
+                    {status}
+                  </DropdownMenuCheckboxItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Search Input */}
             <div className="relative">
               <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
@@ -363,7 +474,6 @@ export default function ResourcesPage() {
             <Table>
               <TableHeader className="sticky top-0 z-10 bg-background shadow-sm">
                 <TableRow className="hover:bg-white">
-                  {/* <-- Header Tabel diganti dengan komponen yang bisa disort --> */}
                   <SortableTableHeader sortKeyName="name">
                     Resource
                   </SortableTableHeader>
@@ -385,7 +495,6 @@ export default function ResourcesPage() {
                   <TableHead className="text-center">Actions</TableHead>
                 </TableRow>
               </TableHeader>
-
               <TableBody>
                 {filteredAndSortedEmployees.map((employee, index) => (
                   <TableRow key={index}>
@@ -414,7 +523,6 @@ export default function ResourcesPage() {
                         className="inline h-4 w-4 ml-1 text-muted-foreground cursor-pointer opacity-0 hover:opacity-100 transition-opacity"
                         onClick={() => {
                           navigator.clipboard.writeText(employee.code)
-                          // toast.success(`${employee.code} copied to clipboard`)
                         }}
                       />
                     </TableCell>
@@ -436,8 +544,6 @@ export default function ResourcesPage() {
                         {employee.status}
                       </Badge>
                     </TableCell>
-
-                    {/* Action */}
                     <TableCell className="text-center">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -532,20 +638,6 @@ export default function ResourcesPage() {
                     )}
                   </span>
                 </div>
-
-                {/* Task Progress */}
-                {/* <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span>Task Progress</span>
-                    <span>
-                      13/20
-                    </span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div className="bg-blue-600 h-2 rounded-full w-[65%]" />
-                  </div>
-                </div> */}
-
                 {selectedEmployee.status === "Contract" && (
                   <>
                     <Separator className="my-4" />
