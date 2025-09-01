@@ -63,18 +63,47 @@ export default function ProjectsPage() {
   const [selectedProject, setSelectedProject] = useState<ProjectRow | null>(null)
   const [activeDialog, setActiveDialog] = useState<ActiveDialog>(null);
 
+  // state sorting
+  const [sortConfig, setSortConfig] = useState<{ key: keyof ProjectRow; direction: "asc" | "desc" } | null>(null);
+
+  const handleSort = (key: keyof ProjectRow) => {
+    let direction: "asc" | "desc" = "asc";
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === "asc") {
+      direction = "desc";
+    }
+    setSortConfig({ key, direction });
+  };
+
   const filteredProjects = projects.filter((project) => {
     if (!searchTerm) return true
-
     const searchableFields = [
       project.code,
       project.name,
       project.budgetCode,
     ].map((field) => field.toLowerCase())
-
     const lowerCaseSearchTerm = searchTerm.toLowerCase()
     return searchableFields.some((field) => field.includes(lowerCaseSearchTerm))
   })
+
+  // sorting diterapkan setelah filter
+  const sortedProjects = [...filteredProjects].sort((a, b) => {
+    if (!sortConfig) return 0;
+    const { key, direction } = sortConfig;
+    const valA = a[key];
+    const valB = b[key];
+
+    if (typeof valA === "number" && typeof valB === "number") {
+      return direction === "asc" ? valA - valB : valB - valA;
+    }
+
+    if (valA instanceof Date && valB instanceof Date) {
+      return direction === "asc" ? valA.getTime() - valB.getTime() : valB.getTime() - valA.getTime();
+    }
+
+    return direction === "asc"
+      ? String(valA).localeCompare(String(valB))
+      : String(valB).localeCompare(String(valA));
+  });
 
   const totalProjects = projects.length
   const totalBudget = projects.reduce((sum, p) => sum + p.budget, 0)
@@ -182,22 +211,33 @@ export default function ProjectsPage() {
             <Table>
               <TableHeader className="sticky top-0 z-10 bg-background shadow-sm">
                 <TableRow className="hover:bg-white">
-                  <TableHead>Project Code</TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Team</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead>Priority</TableHead>
-                  <TableHead>Crew</TableHead>
-                  <TableHead>Budget Code</TableHead>
-                  <TableHead>Budget</TableHead>
-                  <TableHead>Start Date</TableHead>
-                  <TableHead>End Date</TableHead>
+                  {[
+                    { key: "code", label: "Project Code" },
+                    { key: "name", label: "Name" },
+                    { key: "team", label: "Team" },
+                    { key: "category", label: "Category" },
+                    { key: "priority", label: "Priority" },
+                    { key: "crew", label: "Crew" },
+                    { key: "budgetCode", label: "Budget Code" },
+                    { key: "budget", label: "Budget" },
+                    { key: "startDate", label: "Start Date" },
+                    { key: "endDate", label: "End Date" },
+                  ].map(({ key, label }) => (
+                    <TableHead
+                      key={key}
+                      onClick={() => handleSort(key as keyof ProjectRow)}
+                      className="cursor-pointer select-none"
+                    >
+                      {label}{" "}
+                      {sortConfig?.key === key && (sortConfig.direction === "asc" ? "▲" : "▼")}
+                    </TableHead>
+                  ))}
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
 
               <TableBody>
-                {filteredProjects.map((project) => (
+                {sortedProjects.map((project) => (
                   <TableRow key={project.id}>
                     <TableCell className="font-mono">
                       <span>{project.code}</span>
@@ -261,7 +301,6 @@ export default function ProjectsPage() {
                             <Edit className="mr-2 h-4 w-4" />
                             View Details
                           </DropdownMenuItem>
-                          {/* Perubahan: Tombol untuk membuka timeline */}
                           <DropdownMenuItem onClick={() => {
                             setSelectedProject(project);
                             setActiveDialog('timeline');
@@ -352,13 +391,13 @@ export default function ProjectsPage() {
         </DialogContent>
       </Dialog>
       
-      {/* Perubahan: Dialog untuk Project Timeline */}
+      {/* Timeline Dialog */}
       <Dialog open={activeDialog === 'timeline'} onOpenChange={(open) => !open && handleCloseDialog()}>
         <DialogContent className="sm:max-w-7xl">
           <DialogHeader>
-            <DialogTitle>Project Timeline</DialogTitle>
+            <DialogTitle>Timeline : {selectedProject?.name}</DialogTitle>
             <DialogDescription>
-              Visualisasi timeline untuk project: {selectedProject?.name}
+              Visualisasi timeline
             </DialogDescription>
           </DialogHeader>
           <div className="py-4 overflow-x-auto">

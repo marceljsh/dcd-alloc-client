@@ -226,7 +226,7 @@ function ProjectTable({ filteredProjects }: { filteredProjects: typeof allProjec
 }
 
 export default function DashboardPage() {
-  const [selectedPeriod, setSelectedPeriod] = useState("All");
+  const [selectedPeriods, setSelectedPeriods] = useState<string[]>([]);
   const [selectedRoles, setSelectedRoles] = useState<{ value: string; label: string }[]>([]);
   const [selectedProjects, setSelectedProjects] = useState<{ value: string; label: string }[]>([]);
 
@@ -282,7 +282,19 @@ export default function DashboardPage() {
   
 
   const processedTrend = useMemo(() => {
-    let data = selectedPeriod === "All" ? productivityTrendAll : generateDaysInMonth(selectedPeriod, 2025);
+    let data;
+    if (selectedPeriods.length === 0) {
+    // All
+    data = productivityTrendAll;
+  } else if (selectedPeriods.length === 1) {
+    // Satu bulan → tampilkan daily detail
+    data = generateDaysInMonth(selectedPeriods[0], 2025);
+  } else {
+    // Banyak bulan → filter dari productivityTrendAll
+    data = productivityTrendAll.filter((d) =>
+      selectedPeriods.includes(d.month)
+    );
+  }
   
     // Get the roles that are currently selected
     const rolesToFilter = selectedRoles.length > 0 ? selectedRoles.map(r => r.value) : Object.keys(data[0] || {}).filter(key => key !== 'month' && key !== 'dayLabel' && key !== 'date');
@@ -299,10 +311,15 @@ export default function DashboardPage() {
       : rolesToDisplay;
   
     // Filter out the roles that are not in the final list
-    const filteredData = data.map(entry => {
+    const filteredData = data.map((entry) => {
       const newEntry: any = { ...entry };
-      Object.keys(newEntry).forEach(key => {
-        if (key !== 'month' && key !== 'dayLabel' && key !== 'date' && !finalRoles.includes(key)) {
+      Object.keys(newEntry).forEach((key) => {
+        if (
+          key !== "month" &&
+          key !== "dayLabel" &&
+          key !== "date" &&
+          !finalRoles.includes(key)
+        ) {
           delete newEntry[key];
         }
       });
@@ -310,7 +327,7 @@ export default function DashboardPage() {
     });
   
     return filteredData;
-  }, [selectedPeriod, selectedRoles, selectedProjects]);
+  }, [selectedPeriods, selectedRoles, selectedProjects]);
   
 
   const getAreaKeys = useMemo(() => {
@@ -417,23 +434,38 @@ export default function DashboardPage() {
             <DropdownMenuTrigger asChild>
               <Button variant="outline" className="gap-1 bg-foreground text-background">
                 <Filter className="h-4 w-4" />
-                Period ({selectedPeriod})
+                Period ({selectedPeriods.length > 0 ? selectedPeriods.join(", ") : "All"})
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-56">
               <DropdownMenuLabel>Filter by Period</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuRadioGroup
-                value={selectedPeriod}
-                onValueChange={(val) => setSelectedPeriod(val)}
+              <DropdownMenuCheckboxItem
+                checked={selectedPeriods.length === 0}
+                onSelect={(e) => e.preventDefault()}
+                onCheckedChange={() => setSelectedPeriods([])}
               >
-                <DropdownMenuRadioItem value="All">All Periods</DropdownMenuRadioItem>
-                {productivityTrendAll.map((d) => (
-                  <DropdownMenuRadioItem key={d.month} value={d.month}>
+                All Periods
+              </DropdownMenuCheckboxItem>
+              {productivityTrendAll.map((d) => {
+                const isChecked = selectedPeriods.includes(d.month);
+                return (
+                  <DropdownMenuCheckboxItem
+                    key={d.month}
+                    checked={isChecked}
+                    onSelect={(e) => e.preventDefault()} // biar nggak langsung close
+                    onCheckedChange={(checked) =>
+                      setSelectedPeriods(
+                        checked
+                          ? [...selectedPeriods, d.month]
+                          : selectedPeriods.filter((m) => m !== d.month)
+                      )
+                    }
+                  >
                     {d.month}
-                  </DropdownMenuRadioItem>
-                ))}
-              </DropdownMenuRadioGroup>
+                  </DropdownMenuCheckboxItem>
+                );
+              })}
             </DropdownMenuContent>
           </DropdownMenu>
 
@@ -579,14 +611,28 @@ export default function DashboardPage() {
               data={processedTrend}
               margin={{ top: 10, right: 20, left: 0, bottom: 10 }}
             >
-              <CartesianGrid strokeDasharray="3 3" />
+              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
               <XAxis
-                dataKey={selectedPeriod === "All" ? "month" : "dayLabel"}
-                tick={{ fontSize: 12 }}
+                dataKey={
+                  selectedPeriods.length === 0
+                    ? "month"
+                    : selectedPeriods.length === 1
+                    ? "dayLabel"
+                    : "month"
+                }
+                tick={{ fontSize: 12, fill: "#374151" }}
+                tickFormatter={(value: string) => {
+                  if (selectedPeriods.length === 1) {
+                    // daily → ambil 2 digit tanggal
+                    return value.padStart(2, "0")
+                  }
+                  // monthly → ambil 3 huruf
+                  return value.substring(0, 3)
+                }}
               />
-              <YAxis />
-              <Tooltip formatter={(value) => `${value}%`} />
-              <Legend />
+              <YAxis tick={{ fontSize: 12, fill: "#374151" }}/>
+              <Tooltip formatter={(value) => `${value}%`} contentStyle={{ fontSize: 12 }} />
+              <Legend  />
 
               {getAreaKeys.includes("Software Engineer") && (
                 <Area

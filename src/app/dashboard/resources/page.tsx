@@ -42,7 +42,9 @@ import {
   Calendar,
   MapPin,
   Copy,
-} from "lucide-react"
+  ArrowUp,
+  ArrowDown,
+} from "lucide-react" // <-- ArrowUp dan ArrowDown diimpor
 import { initials } from "@/lib/strings"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { toast } from "sonner"
@@ -59,15 +61,28 @@ import {
 } from "@/components/ui/alert-dialog"
 import { EmploymentStatus, Role } from "@/types/common"
 import rawEmployees from "@/data/employees.json"
-import { ContractEmployee, EmployeeRow, PermanentEmployee } from "@/types/employee"
-import { AddEmployeeFormValues, AddEmployeeForm } from "@/components/employee/AddEmployeeForm"
+import {
+  ContractEmployee,
+  EmployeeRow,
+  PermanentEmployee,
+} from "@/types/employee"
+import {
+  AddEmployeeFormValues,
+  AddEmployeeForm,
+} from "@/components/employee/AddEmployeeForm"
 import { Separator } from "@/components/ui/separator"
+
+// Tipe untuk kunci yang bisa diurutkan, agar lebih aman
+type SortKey = keyof EmployeeRow
 
 const getRoleColor = (role: Role) => {
   switch (role) {
-    case "System Analyst":    return "bg-blue-100 text-blue-800"
-    case "Data Engineer":     return "bg-green-100 text-green-800"
-    case "Software Engineer": return "bg-purple-100 text-purple-800"
+    case "System Analyst":
+      return "bg-blue-100 text-blue-800"
+    case "Data Engineer":
+      return "bg-green-100 text-green-800"
+    case "Software Engineer":
+      return "bg-purple-100 text-purple-800"
   }
 }
 
@@ -137,6 +152,21 @@ export default function ResourcesPage() {
   const [employeeToDelete, setEmployeeToDelete] = useState<EmployeeRow | null>(
     null
   )
+  // State baru untuk sorting
+  const [sortKey, setSortKey] = useState<SortKey>("name")
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
+
+  // Fungsi untuk menangani klik pada header tabel untuk sorting
+  const handleSort = (key: SortKey) => {
+    // Jika kolom yang sama diklik, balik arah sort
+    if (sortKey === key) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc")
+    } else {
+      // Jika kolom baru diklik, set kolom tersebut dan default arah ke asc
+      setSortKey(key)
+      setSortDirection("asc")
+    }
+  }
 
   const matchWithSearch = (employee: EmployeeRow) => {
     if (!searchTerm) return true
@@ -152,9 +182,25 @@ export default function ResourcesPage() {
     return searchableFields.some((field) => field.includes(lwcSearch))
   }
 
-  const filteredEmployees = employees
+  // Logika untuk filter dan sorting
+  const filteredAndSortedEmployees = employees
     .filter(matchWithSearch)
-    .sort((a, b) => a.name.localeCompare(b.name))
+    .sort((a, b) => {
+      const valA = a[sortKey]
+      const valB = b[sortKey]
+
+      // Handle perbandingan string, bisa juga ditambahkan untuk number jika ada
+      const strA = String(valA).toLowerCase()
+      const strB = String(valB).toLowerCase()
+
+      if (strA < strB) {
+        return sortDirection === "asc" ? -1 : 1
+      }
+      if (strA > strB) {
+        return sortDirection === "asc" ? 1 : -1
+      }
+      return 0
+    })
 
   const handleAddEmployee = (data: AddEmployeeFormValues) => {
     const employee = createEmployee(data)
@@ -172,6 +218,31 @@ export default function ResourcesPage() {
 
     toast.success(`${employee.name} has been removed.`)
   }
+
+  // Komponen helper untuk header yang bisa disort
+  const SortableTableHeader = ({
+    sortKeyName,
+    children,
+  }: {
+    sortKeyName: SortKey
+    children: React.ReactNode
+  }) => (
+    <TableHead>
+      <Button
+        variant="ghost"
+        onClick={() => handleSort(sortKeyName)}
+        className="px-2"
+      >
+        {children}
+        {sortKey === sortKeyName &&
+          (sortDirection === "asc" ? (
+            <ArrowUp className="ml-2 h-4 w-4" />
+          ) : (
+            <ArrowDown className="ml-2 h-4 w-4" />
+          ))}
+      </Button>
+    </TableHead>
+  )
 
   return (
     <div className="space-y-6 mx-10">
@@ -292,18 +363,31 @@ export default function ResourcesPage() {
             <Table>
               <TableHeader className="sticky top-0 z-10 bg-background shadow-sm">
                 <TableRow className="hover:bg-white">
-                  <TableHead>Resource</TableHead>
-                  <TableHead>NIP</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Level</TableHead>
-                  <TableHead>Team</TableHead>
-                  <TableHead>Status</TableHead>
+                  {/* <-- Header Tabel diganti dengan komponen yang bisa disort --> */}
+                  <SortableTableHeader sortKeyName="name">
+                    Resource
+                  </SortableTableHeader>
+                  <SortableTableHeader sortKeyName="code">
+                    NIP
+                  </SortableTableHeader>
+                  <SortableTableHeader sortKeyName="role">
+                    Role
+                  </SortableTableHeader>
+                  <SortableTableHeader sortKeyName="level">
+                    Level
+                  </SortableTableHeader>
+                  <SortableTableHeader sortKeyName="team">
+                    Team
+                  </SortableTableHeader>
+                  <SortableTableHeader sortKeyName="status">
+                    Status
+                  </SortableTableHeader>
                   <TableHead className="text-center">Actions</TableHead>
                 </TableRow>
               </TableHeader>
 
               <TableBody>
-                {filteredEmployees.map((employee, index) => (
+                {filteredAndSortedEmployees.map((employee, index) => (
                   <TableRow key={index}>
                     <TableCell className="font-medium">
                       <div className="flex items-center space-x-3">
