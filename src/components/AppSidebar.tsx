@@ -1,6 +1,6 @@
 "use client"
 
-import { Box, FolderOpen, LayoutDashboard, Users } from "lucide-react"
+import { Box, FileBoxIcon, FolderOpen, LayoutDashboard, Users } from "lucide-react"
 import { Sidebar,
   SidebarContent,
   SidebarHeader,
@@ -34,6 +34,11 @@ const menuItems = [
     title: 'Timeline',
     url: '/dashboard/gantt',
     icon: Box,
+  },
+  {
+    title: 'Archive',
+    url: '/dashboard/archive',
+    icon: FileBoxIcon,
   },
 ]
 

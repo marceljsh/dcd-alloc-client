@@ -1,8 +1,5 @@
 "use client"
 
-// -----------------------------------------------------------------------------
-// Imports
-// -----------------------------------------------------------------------------
 import { useMemo, useState } from "react"
 import {
   ColumnDef,
@@ -46,10 +43,8 @@ import { toast } from "sonner"
 import { Toaster } from "@/components/ui/sonner"
 import { AddProjectForm } from "@/components/project/AddProjectForm"
 import ProjectTimeline from "@/components/ProjectTimeline"
+import { useRouter } from "next/navigation" 
 
-// -----------------------------------------------------------------------------
-// Data & Constants
-// -----------------------------------------------------------------------------
 const projectsData: ProjectRow[] = rawProjects as ProjectRow[]
 
 export const PROJECT_CATEGORY_OPTIONS = ['Small', 'Medium', 'Big'] as const;
@@ -76,22 +71,46 @@ const getPriorityColor = (priority: ProjectPriority) => {
   }
 }
 
+const formatRupiah = (number) => {
+  if (number >= 1_000_000_000) {
+    return `Rp ${(number / 1_000_000_000).toFixed(1).replace(/\.0$/, '')} Bilion`;
+  }
+  if (number >= 1_000_000) {
+    return `Rp ${(number / 1_000_000).toFixed(1).replace(/\.0$/, '')} Milion`;
+  }
+  return `Rp ${number.toLocaleString('id-ID')}`;
+};
+
 type ActiveDialog = 'add' | 'detail' | 'timeline' | null;
 
 export default function ProjectsPage() {
+
+  const router = useRouter();
   // --- STATE MANAGEMENT ---
   const [activeDialog, setActiveDialog] = useState<ActiveDialog>(null);
   const [selectedProject, setSelectedProject] = useState<ProjectRow | null>(null);
-  
+
   // State untuk UI checkbox filter
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [selectedPriorities, setSelectedPriorities] = useState<string[]>([]);
   const [selectedTeams, setSelectedTeams] = useState<string[]>([]);
 
   // State untuk logic Tanstack Table
+  const [projects, setProjects] = useState<ProjectRow[]>(() => rawProjects as ProjectRow[])
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [globalFilter, setGlobalFilter] = useState('');
+
+  const handleArchive = (project: ProjectRow) => {
+  const stored = JSON.parse(localStorage.getItem("archivedProjects") || "[]")
+  localStorage.setItem("archivedProjects", JSON.stringify([...stored, project]))
+
+  // Hapus project dari list aktif
+  setProjects(prev => prev.filter(p => p.code !== project.code))
+
+  toast.success(`Project "${project.name}" has been archived.`)
+  router.push("/dashboard/archive")
+}
 
   // --- COLUMN DEFINITIONS ---
   const columns = useMemo<ColumnDef<ProjectRow>[]>(() => [
@@ -121,17 +140,22 @@ export default function ProjectsPage() {
               <DropdownMenuItem onClick={() => openDialog('detail')}><Edit className="mr-2 h-4 w-4" /> View Details</DropdownMenuItem>
               <DropdownMenuItem onClick={() => openDialog('timeline')}><Calendar className="mr-2 h-4 w-4" /> View Timeline</DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-red-400"><Trash2 className="mr-2 h-4 w-4 text-red-400" /> Archive</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+              <DropdownMenuItem
+                className="text-red-400"
+                onClick={() => handleArchive(project)}  
+              >
+                <Trash2 className="mr-2 h-4 w-4 text-red-400" /> Archive
+              </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
         );
       }
     }
-  ], []);
+  ], [handleArchive]);
 
   // --- TABLE INSTANCE ---
   const table = useReactTable({
-    data: projectsData,
+    data: projects,
     columns,
     state: { sorting, columnFilters, globalFilter },
     onSortingChange: setSorting,
@@ -147,7 +171,6 @@ export default function ProjectsPage() {
       }
     }
   });
-  
   // --- EVENT HANDLERS ---
   const handleFilterChange = (
     columnId: string,
@@ -172,12 +195,12 @@ export default function ProjectsPage() {
   };
   
   // --- MEMOIZED CALCULATIONS ---
-  const stats = useMemo(() => ({
-    totalProjects: projectsData.length,
-    totalBudget: projectsData.reduce((sum, p) => sum + p.budget, 0),
-    bigSizedRatio: projectsData.filter(p => p.category === 'Big').length / projectsData.length,
-    criticalPriorityRatio: projectsData.filter(p => p.priority === 'Critical').length / projectsData.length,
-  }), []);
+const stats = useMemo(() => ({
+  totalProjects: projects.length,
+  totalBudget: projects.reduce((sum, p) => sum + p.budget, 0),
+  bigSizedRatio: projects.length ? projects.filter(p => p.category === 'Big').length / projects.length : 0,
+  criticalPriorityRatio: projects.length ? projects.filter(p => p.priority === 'Critical').length / projects.length : 0,
+}), [projects]);
 
   // --- RENDER ---
   return (
@@ -255,7 +278,16 @@ const StatCards = ({ stats }: { stats: any }) => (
         <Target className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent><div className="text-2xl font-bold">{stats.totalProjects}</div><p className="text-xs text-muted-foreground">Things to Do</p></CardContent></Card>
-    <Card className="py-4 gap-0"><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Total Budget</CardTitle><Users className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">${stats.totalBudget.toLocaleString()}</div><p className="text-xs text-muted-foreground">Ready to Spend</p></CardContent></Card>
+        <Card className="py-4 gap-0">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Budget</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{formatRupiah(stats.totalBudget)}</div>
+            <p className="text-xs text-muted-foreground">Ready to Spend</p>
+          </CardContent>
+        </Card>
     <Card className="py-4 gap-0"><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Big Sized Projects</CardTitle><Clock className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{Math.round(stats.bigSizedRatio * 100)}%</div><p className="text-xs text-muted-foreground">of All Projects</p></CardContent></Card>
     <Card className="py-4 gap-0"><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Critical Projects</CardTitle><Target className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{Math.round(stats.criticalPriorityRatio * 100)}%</div><p className="text-xs text-muted-foreground">of All Projects</p></CardContent></Card>
   </div>
