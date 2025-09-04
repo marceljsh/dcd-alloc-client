@@ -29,8 +29,8 @@ function EmployeeItem({ employee, selectedTaskId, onAssignEmployee }: EmployeeIt
 
     return (
       <Card
-        className={`cursor-pointer p-3 transition-all ${
-          selectedTaskId ? 'hover:bg-accent border-primary/20 shadow-sm hover:scale-105' : 'hover:bg-accent/50 cursor-default'
+        className={`cursor-pointer p-3 transition-all scale-95 ${
+          selectedTaskId ? 'hover:bg-accent border-primary/20 shadow-sm hover:scale-100' : 'hover:bg-accent/50 cursor-default'
         }`}
         onClick={handleClick}
       >
@@ -50,9 +50,9 @@ function EmployeeItem({ employee, selectedTaskId, onAssignEmployee }: EmployeeIt
   }
 
   export function EmployeeList({ employees, selectedTaskId, roleFilter, onRoleFilterChange, uniqueRoles, onAssignEmployee }: EmployeeListProps) {
-    
+
   return (
-    <div className="space-y-3 h-[500px] flex flex-col">
+    <div className="space-y-3 h-[67vh] flex flex-col">
       <div className="flex items-center justify-between">
         <h3>Available Resources</h3>
         {selectedTaskId && (
@@ -88,7 +88,7 @@ function EmployeeItem({ employee, selectedTaskId, onAssignEmployee }: EmployeeIt
       </div>
 
       {/* Employee List → satu scroll */}
-      <div className="flex-1 overflow-y-auto pr-1 space-y-2">
+      <div className="flex-1 overflow-x-hidden overflow-y-auto pr-1 space-y-2">
         {employees.length > 0 ? (
           employees.map(employee => (
             <EmployeeItem

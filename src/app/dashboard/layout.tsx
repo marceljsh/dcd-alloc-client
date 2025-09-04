@@ -18,8 +18,8 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       <SidebarProvider>
         <AppSidebar />
         {/* <SidebarInset> */}
-        <div id="wrapped-dashboard-child" className="flex flex-1 flex-col gap-4 p-4 overflow-hidden">
-          <header className="flex h-16 shrink-0 items-center gap-2 px-4">
+        <div id="wrapped-dashboard-child" className="flex flex-1 flex-col gap-4 overflow-hidden bg-background">
+          <header className="flex h-16 shrink-0 items-center gap-2 px-4 border-b">
             <Breadcrumb>
               <BreadcrumbList>
                 <BreadcrumbItem className="hidden md:block">
@@ -32,7 +32,8 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
               </BreadcrumbList>
             </Breadcrumb>
           </header>
-          {children}
+
+          <main>{children}</main>
         </div>
       </SidebarProvider>
     </div>
