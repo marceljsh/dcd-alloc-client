@@ -21,15 +21,138 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { datesOverlap } from '@/lib/dates'
 import { Employee } from '@/types/employee'
 import { ProjectData, ProjectDraft, ProjectStage, Task } from '@/types/project'
-import { Edit2, Plus, X } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { Plus, ChevronLeft, ChevronRight, MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
+import { useEffect, useState, useRef } from 'react'
 import { toast } from 'sonner'
 import employeesData from '@/data/employees.json'
 import { updateRecordKey } from '@/lib/containers'
 import * as Strings from '@/lib/strings'
 import { useSearchParams } from 'next/navigation'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  horizontalListSortingStrategy,
+  useSortable,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
+import { arrayMove } from '@dnd-kit/sortable'
+import { v4 as uuidv4 } from 'uuid' // Import UUID
 
 const uniqueRoles = ['all', 'System Analyst', 'Data Engineer', 'Software Engineer']
+
+// --- [START] Komponen DraggableTabsTrigger baru ---
+type DraggableTabsTriggerProps = {
+  stage: ProjectStage
+  editingStage: string | null
+  editStageValue: string
+  setEditStageValue: (value: string) => void
+  handleFinishEditStage: (stageId: string) => void
+  handleCancelEditStage: () => void
+  handleStartEditStage: (stageId: string) => void
+  setDeleteStageDialog: (stageId: string | null) => void
+  setActiveTab: (tabId: string) => void
+  activeTab: string | undefined
+}
+
+const DraggableTabsTrigger = ({
+  stage,
+  editingStage,
+  editStageValue,
+  setEditStageValue,
+  handleFinishEditStage,
+  handleCancelEditStage,
+  handleStartEditStage,
+  setDeleteStageDialog,
+  setActiveTab,
+  activeTab,
+}: DraggableTabsTriggerProps) => {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: stage.id,
+  })
+
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 10 : undefined,
+    opacity: isDragging ? 0.7 : 1,
+    minWidth: '150px',
+  }
+
+  return (
+    <TabsTrigger
+      ref={setNodeRef}
+      style={style}
+      value={stage.id}
+      className="group relative flex-grow touch-none"
+      {...attributes}
+      // Hapus listeners dari sini, karena sudah di-apply di bawah
+      onClick={() => setActiveTab(stage.id)}
+    >
+      {editingStage === stage.id ? (
+        <Input
+          value={editStageValue}
+          onChange={e => setEditStageValue(e.target.value)}
+          onBlur={() => handleFinishEditStage(stage.id)}
+          onKeyDown={e => {
+            if (e.key === 'Enter') {
+              handleFinishEditStage(stage.id)
+            } else if (e.key === 'Escape') {
+              handleCancelEditStage()
+            }
+          }}
+          onPointerDown={e => e.stopPropagation()}
+          className="h-8 w-32 px-2 text-center"
+          autoFocus
+        />
+      ) : (
+        <div className="flex items-center justify-center w-full">
+          <span className="flex-grow text-center" {...listeners}>
+            {stage.label}
+          </span>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <div
+                className="h-6 w-6 ml-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                onPointerDown={e => e.stopPropagation()}
+              >
+                <MoreHorizontal className="h-4 w-4" />
+              </div>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent onPointerDown={e => e.stopPropagation()}>
+              <DropdownMenuItem onClick={() => handleStartEditStage(stage.id)}>
+                <Pencil className="mr-2 h-4 w-4" /> Rename
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => setDeleteStageDialog(stage.id)}
+                className="text-destructive focus:text-destructive"
+              >
+                <Trash2 className="mr-2 h-4 w-4" /> Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      )}
+    </TabsTrigger>
+  )
+}
+// --- [END] Komponen DraggableTabsTrigger baru ---
 
 export default function AllocatorPage() {
   const [employees, setEmployees] = useState<Employee[]>(employeesData as Employee[])
@@ -50,6 +173,27 @@ export default function AllocatorPage() {
 
   const draftId = useSearchParams().get('ts')
 
+  // --- [START] Drag and Drop Handlers ---
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
+  )
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+
+    if (active.id !== over?.id) {
+      setProjectStages(items => {
+        const oldIndex = items.findIndex(stage => stage.id === active.id)
+        const newIndex = items.findIndex(stage => stage.id === over?.id)
+        return arrayMove(items, oldIndex, newIndex)
+      })
+    }
+  }
+  // --- [END] Drag and Drop Handlers ---
+
   useEffect(() => {
     if (draftId) {
       const rawDraft = sessionStorage.getItem(`project-${draftId}`)
@@ -67,6 +211,49 @@ export default function AllocatorPage() {
     }
   }, [])
 
+  const scrollRef = useRef<HTMLDivElement | null>(null)
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null)
+  const [isDragging, setIsDragging] = useState(false)
+  const [startX, setStartX] = useState(0)
+  const [scrollLeft, setScrollLeft] = useState(0)
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (!scrollRef.current) return
+    setIsDragging(true)
+    setStartX(e.pageX - scrollRef.current.offsetLeft)
+    setScrollLeft(scrollRef.current.scrollLeft)
+  }
+  const handleMouseLeave = () => setIsDragging(false)
+  const handleMouseUp = () => setIsDragging(false)
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging || !scrollRef.current) return
+    e.preventDefault()
+    const x = e.pageX - scrollRef.current.offsetLeft
+    const walk = (x - startX) * 1.5
+    scrollRef.current.scrollLeft = scrollLeft - walk
+  }
+
+  const [touchStartX, setTouchStartX] = useState(0)
+  const [touchScrollLeft, setTouchScrollLeft] = useState(0)
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (!scrollRef.current) return
+    setTouchStartX(e.touches[0].pageX - scrollRef.current.offsetLeft)
+    setTouchScrollLeft(scrollRef.current.scrollLeft)
+  }
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!scrollRef.current) return
+    const x = e.touches[0].pageX - scrollRef.current.offsetLeft
+    const walk = (x - touchStartX) * 1.5
+    scrollRef.current.scrollLeft = touchScrollLeft - walk
+  }
+
+  const scrollByAmount = (amount: number) => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollBy({ left: amount, behavior: 'smooth' })
+    }
+  }
+
   const getAvailableEmployees = (taskId: string): Employee[] => {
     if (!selectedTaskId || selectedTaskId !== taskId) {
       return employees.filter(employee => roleFilter === 'all' || employee.role === roleFilter)
@@ -83,7 +270,7 @@ export default function AllocatorPage() {
 
     return employees.filter(employee => {
       const isAssignedToSelectedTask = selectedTask.assignedEmployees.some(emp => emp.id === employee.id)
-      if (isAssignedToSelectedTask) return false
+      if (isAssignedToSelectedTask) return false // skip the current task
 
       const isConflicted = Object.values(projectData)
         .flat()
@@ -93,7 +280,6 @@ export default function AllocatorPage() {
           const isAssigned = task.assignedEmployees.some(emp => emp.id === employee.id)
           if (!isAssigned || !task.startDate || !task.endDate) return false
 
-          // TODO: jangen skip jika sudah di-assign ke task lain. seharusnya bisa overlap.
           return datesOverlap(selectedTask.startDate, selectedTask.endDate, task.startDate, task.endDate)
         })
 
@@ -106,7 +292,8 @@ export default function AllocatorPage() {
   const handleAddStage = () => {
     if (!newStageName.trim()) return
 
-    const newStageId = Strings.toKebab(newStageName)
+    // Menggunakan UUID untuk ID unik
+    const newStageId = uuidv4()
     const newStage: ProjectStage = {
       id: newStageId,
       label: newStageName.trim(),
@@ -137,6 +324,8 @@ export default function AllocatorPage() {
       const remainingStages = projectStages.filter(stage => stage.id !== stageId)
       if (remainingStages.length > 0) {
         setActiveTab(remainingStages[0].id)
+      } else {
+        setActiveTab(undefined)
       }
     }
 
@@ -227,8 +416,11 @@ export default function AllocatorPage() {
   }
 
   const handleSelectTask = (taskId: string | null) => {
-    setSelectedTaskId(taskId)
-    setRoleFilter('all')
+    setRoleFilter("all")
+
+    setSelectedTaskId(prev =>
+      prev === taskId ? null : taskId
+    )
   }
 
   const handleUpdateTask = (taskId: string, updates: Partial<Task>) => {
@@ -311,6 +503,8 @@ export default function AllocatorPage() {
       }
     })
 
+    const data = JSON.stringify(rawData, null, 2)
+
     toast.promise(
       new Promise((resolve, reject) => {
         setTimeout(() => {
@@ -345,9 +539,11 @@ export default function AllocatorPage() {
     )
   }
 
+  const tabsListClass = projectStages.length <= 4 ? "flex w-full justify-around" : "flex w-max"; // Modified this line
+
   return (
-    <div className="bg-background min-h-fit mx-10">
-      <div>
+    <div className="bg-background min-h-screen p-6">
+      <div className="mx-auto max-w-7xl">
         <div className="mb-6">
           <div className="flex items-center justify-between">
             <Button variant="outline" size="sm" onClick={() => setShowAddStageDialog(true)}>
@@ -359,67 +555,69 @@ export default function AllocatorPage() {
             </Button>
           </div>
         </div>
-
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <div className="mb-4 flex items-center gap-2">
-            <TabsList className="flex-1">
-              {/* if no stages exist */}
-              {projectStages.length === 0 && <span className="text-muted-foreground">No stages added yet</span>}
-
-              {projectStages.map(stage => (
-                <div key={stage.id} className="group relative flex-1">
-                  <TabsTrigger value={stage.id} className="flex w-full items-center gap-2 text-center">
-                    {editingStage === stage.id ? (
-                      <Input
-                        autoFocus
-                        className="h-6 min-w-0 px-1 text-sm"
-                        value={editStageValue}
-                        onBlur={() => handleFinishEditStage(stage.id)}
-                        onChange={(e) => setEditStageValue(e.target.value)}
-                        onClick={(e) => e.stopPropagation()}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            handleFinishEditStage(stage.id)
-                          } else if (e.key === 'Escape') {
-                            handleCancelEditStage()
-                          }
-                        }}
+          <div className="flex items-center gap-2 mb-4">
+            <div
+              className={`p-1 ${projectStages.length <= 4 ? 'invisible' : ''}`}
+              onClick={() => scrollByAmount(-200)}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </div>
+            {/* Container untuk scroll horizontal */}
+            <div
+              ref={scrollRef}
+              onMouseDown={handleMouseDown}
+              onMouseLeave={handleMouseLeave}
+              onMouseUp={handleMouseUp}
+              onMouseMove={handleMouseMove}
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              className="flex-1 overflow-x-auto"
+              style={{
+                scrollbarWidth: "thin", // Firefox
+                scrollbarColor: "rgba(0,0,0,0.1) transparent", // Firefox
+              }}
+            >
+              <TabsList className={`${tabsListClass} items-center gap-2`}>
+                {/* --- [START] Integrasi DND Kit --- */}
+                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                  <SortableContext items={projectStages} strategy={horizontalListSortingStrategy}>
+                    {projectStages.map(stage => (
+                      <DraggableTabsTrigger
+                        key={stage.id}
+                        stage={stage}
+                        editingStage={editingStage}
+                        editStageValue={editStageValue}
+                        setEditStageValue={setEditStageValue}
+                        handleFinishEditStage={handleFinishEditStage}
+                        handleCancelEditStage={handleCancelEditStage}
+                        handleStartEditStage={handleStartEditStage}
+                        setDeleteStageDialog={setDeleteStageDialog}
+                        setActiveTab={setActiveTab}
+                        activeTab={activeTab}
                       />
-                    ) : (
-                      <>
-                        <span className="truncate">{stage.label}</span>
-                        <div
-                          className="opacity-0 transition-opacity group-hover:opacity-100"
-                          onClick={e => {
-                            e.stopPropagation()
-                            handleStartEditStage(stage.id)
-                          }}
-                        >
-                          <Edit2 />
-                        </div>
-                      </>
-                    )}
-                  </TabsTrigger>
-                  {projectStages.length > 1 && (
-                    <button
-                      className="bg-destructive text-destructive-foreground absolute -top-1 -right-1 z-10 rounded-full p-0.5 opacity-0 transition-opacity group-hover:opacity-100"
-                      onClick={() => setDeleteStageDialog(stage.id)}
-                    >
-                      <X className="h-3 w-3 text-white" />
-                    </button>
-                  )}
-                </div>
-              ))}
-            </TabsList>
+                    ))}
+                  </SortableContext>
+                </DndContext>
+                {/* --- [END] Integrasi DND Kit --- */}
+              </TabsList>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              className={`p-1 ${projectStages.length <= 4 ? 'invisible' : ''}`} // Hide arrows if not many stages
+              onClick={() => scrollByAmount(200)}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
           </div>
-
-          {projectStages.map(stage => (
-            <TabsContent key={stage.id} value={stage.id} className="mt-6">
+          {/* Konten tiap stage */}
+          {projectStages.map((stage) => (
+            <TabsContent key={stage.id} value={stage.id} className="mt-3">
               <div className="grid h-[calc(100vh-300px)] grid-cols-12 gap-6">
-                {/* Left Side - Employee List */}
-                <div className="col-span-4 overflow-y-auto pr-2">
+                <div className="col-span-4">
                   <EmployeeList
-                    employees={getAvailableEmployees(selectedTaskId || '')}
+                    employees={getAvailableEmployees(selectedTaskId || "")}
                     selectedTaskId={selectedTaskId}
                     roleFilter={roleFilter}
                     onRoleFilterChange={setRoleFilter}
@@ -427,16 +625,18 @@ export default function AllocatorPage() {
                     onAssignEmployee={handleAssignEmployee}
                   />
                 </div>
-
                 {/* Right Side - Task List */}
                 <div className="col-span-8 px-1">
                   <div className="mb-4 w-full flex items-center justify-end">
-                    <Button variant="outline" size="sm" onClick={() => setShowAddTaskDialog(true)}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowAddTaskDialog(true)}
+                    >
                       <Plus className="mr-2 h-4 w-4" />
                       Add Task
                     </Button>
                   </div>
-
                   <TaskList
                     stage={stage.id}
                     tasks={projectData[stage.id] || []}
@@ -452,14 +652,13 @@ export default function AllocatorPage() {
           ))}
         </Tabs>
       </div>
-
       {/* Add Stage Dialog */}
       <Dialog open={showAddStageDialog} onOpenChange={setShowAddStageDialog}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Add New Stage</DialogTitle>
           </DialogHeader>
-          <div className="mt-2 space-y-4">
+          <div className="mt-2 space-y-2">
             <div>
               <Label htmlFor="stage-name">Stage Name</Label>
               <Input
@@ -488,7 +687,6 @@ export default function AllocatorPage() {
           </div>
         </DialogContent>
       </Dialog>
-
       {/* Add Task Dialog */}
       <Dialog open={showAddTaskDialog} onOpenChange={setShowAddTaskDialog}>
         <DialogContent>
@@ -529,15 +727,16 @@ export default function AllocatorPage() {
           </div>
         </DialogContent>
       </Dialog>
-
       {/* Delete Stage Confirmation Dialog */}
       <AlertDialog open={!!deleteStageDialog} onOpenChange={() => setDeleteStageDialog(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Hapus &ldquo{projectStages.find(p => p.id === deleteStageDialog)?.label}&rdquo?</AlertDialogTitle>
+            <AlertDialogTitle>Hapus &ldquo;{projectStages.find(p => p.id === deleteStageDialog)?.label}&rdquo;?</AlertDialogTitle>
             <AlertDialogDescription>
-              <p>Ini akan menghapus semua task, assigment, dan data untuk stage ini.</p>
-              <p>Tindakan ini tidak dapat dibatalkan.</p>
+              Ini akan menghapus semua task, assigment, dan data untuk stage ini.
+              <br />
+              <br />
+              Tindakan ini tidak dapat dibatalkan.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -551,7 +750,6 @@ export default function AllocatorPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
       <Toaster theme="light" position="bottom-center" />
     </div>
   )
