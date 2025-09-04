@@ -46,9 +46,6 @@ export const PROJECT_CATEGORY_OPTIONS = ["Small", "Medium", "Big"] as const
 export const PROJECT_PRIORITY_OPTIONS = ["Low", "Medium", "High", "Critical"] as const
 export const TEAM_OPTIONS = ["DMA", "NCM", "CRM", "CM", "FRM", "RRM"] as const
 
-// -----------------------------------------------------------------------------
-// Helper Functions
-// -----------------------------------------------------------------------------
 const getCategoryColor = (category: ProjectCategory) => {
   switch (category) {
     case "Small":

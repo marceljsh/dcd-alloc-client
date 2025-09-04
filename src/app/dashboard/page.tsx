@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useMemo } from "react"
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   BarChart,
@@ -30,14 +31,13 @@ import {
   ArrowDown,
   ArrowUp,
   Filter,
-  TrendingUp,
-  TrendingDown,
   AlertTriangle,
   DollarSign,
   Users,
   Target,
 } from "lucide-react"
 
+// --- DATASET ---
 const allProjects = [
   {
     project: "Project Alpha",
@@ -63,7 +63,7 @@ const allProjects = [
     project: "Project Gamma",
     req: 15,
     alloc: 14,
-    util: 63.3,
+    util: 93.3,
     category: "Medium",
     role: "Data Engineer",
     budget: 175000,
@@ -302,22 +302,8 @@ const productivityTrendAll = [
   { month: "Dec", "Software Engineer": 85, "Data Engineer": 65, "System Analyst": 90 },
 ]
 
-interface CategoryColorMap {
-  [key: string]: string
-}
-
-type Category = "Small" | "Medium" | "Big"
-
-const getCategoryColor = (category: Category | string): string => {
-  const colorMap: CategoryColorMap = {
-    Small: "bg-blue-100 text-blue-800",
-    Medium: "bg-green-100 text-green-800",
-    Big: "bg-yellow-100 text-yellow-800",
-  }
-  return colorMap[category] || "bg-gray-100 text-gray-800"
-}
-
-const generateDaysInMonth = (monthName: string, year: number) => {
+// --- HELPER FUNCTIONS ---
+const generateDaysInMonth = (monthName, year) => {
   const monthIndex = new Date(`${monthName} 1, ${year}`).getMonth()
   const daysInMonth = new Date(year, monthIndex + 1, 0).getDate()
 
@@ -326,22 +312,21 @@ const generateDaysInMonth = (monthName: string, year: number) => {
     return {
       date: `${year}-${String(monthIndex + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`,
       dayLabel: `${day}`,
-      "Software Engineer": Math.floor(Math.random() * 100), // contoh dummy
+      "Software Engineer": Math.floor(Math.random() * 100),
       "Data Engineer": Math.floor(Math.random() * 100),
       "System Analyst": Math.floor(Math.random() * 100),
     }
   })
 }
 
-function ProjectTable({ filteredProjects }: { filteredProjects: typeof allProjects }) {
+// --- SUB-COMPONENTS ---
+function ProjectTable({ filteredProjects }) {
   const [currentPage, setCurrentPage] = useState(1)
-  const [sortConfig, setSortConfig] = useState<{ key: keyof (typeof allProjects)[0]; direction: "asc" | "desc" }>({
-    key: "project",
-    direction: "asc",
-  })
+  const [sortConfig, setSortConfig] = useState({ key: "project", direction: "asc" })
 
   const itemsPerPage = 7
-  const handleSort = (key: keyof (typeof allProjects)[0]) => {
+
+  const handleSort = (key) => {
     setSortConfig((prev) => ({
       key,
       direction: prev.key === key && prev.direction === "asc" ? "desc" : "asc",
@@ -367,12 +352,13 @@ function ProjectTable({ filteredProjects }: { filteredProjects: typeof allProjec
   const startIndex = (currentPage - 1) * itemsPerPage
   const currentData = filteredAndSortedProjects.slice(startIndex, startIndex + itemsPerPage)
 
-  const getSortIcon = (key: keyof (typeof allProjects)[0]) => {
+  const getSortIcon = (key) => {
     if (sortConfig.key !== key) return null
-    if (sortConfig.direction === "asc") {
-      return <ArrowDown className="w-3 h-3 ml-1 inline-block" />
-    }
-    return <ArrowUp className="w-3 h-3 ml-1 inline-block" />
+    return sortConfig.direction === "asc" ? (
+      <ArrowDown className="w-3 h-3 ml-1 inline-block" />
+    ) : (
+      <ArrowUp className="w-3 h-3 ml-1 inline-block" />
+    )
   }
 
   return (
@@ -410,10 +396,12 @@ function ProjectTable({ filteredProjects }: { filteredProjects: typeof allProjec
                 <td className="p-2">{row.project}</td>
                 <td className="p-2">{row.req}</td>
                 <td className="p-2">{row.alloc}</td>
-                <td className={`p-2 ${row.util > 100 ? "text-red-600" : "text-green-600"}`}>{row.util.toFixed(1)}%</td>
+                <td className={`p-2 font-semibold ${row.util > 100 ? "text-red-600" : "text-green-600"}`}>
+                  {row.util.toFixed(1)}%
+                </td>
                 <td className="p-2">{row.category}</td>
                 <td className="p-2">${row.budget.toLocaleString()}</td>
-                <td className={`p-2 ${row.actual > row.budget ? "text-red-600" : "text-green-600"}`}>
+                <td className={`p-2 font-semibold ${row.actual > row.budget ? "text-red-600" : "text-green-600"}`}>
                   ${row.actual.toLocaleString()}
                 </td>
               </tr>
@@ -422,33 +410,26 @@ function ProjectTable({ filteredProjects }: { filteredProjects: typeof allProjec
         </table>
       </div>
 
-      {/* Pagination */}
-      <div className="flex justify-between items-center mt-1">
-        <button
+      <div className="flex justify-between items-center mt-4">
+        <Button className="mb-2"
+          variant="outline"
+          size="sm"
           onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
           disabled={currentPage === 1}
-          className="px-2 py-1 border rounded disabled:opacity-50 text-xs"
         >
           Previous
-        </button>
-        <div className="flex gap-2 mb-2">
-          {Array.from({ length: totalPages }, (_, i) => (
-            <button
-              key={i}
-              onClick={() => setCurrentPage(i + 1)}
-              className={`px-2 py-1 border rounded text-xs ${currentPage === i + 1 ? "bg-primary text-white" : ""}`}
-            >
-              {i + 1}
-            </button>
-          ))}
-        </div>
-        <button
+        </Button>
+        <span className="text-sm text-gray-600">
+          Page {currentPage} of {totalPages}
+        </span>
+        <Button
+          variant="outline"
+          size="sm"
           onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
           disabled={currentPage === totalPages}
-          className="px-3 py-1 border rounded disabled:opacity-50 text-xs"
         >
           Next
-        </button>
+        </Button>
       </div>
     </>
   )
@@ -456,12 +437,12 @@ function ProjectTable({ filteredProjects }: { filteredProjects: typeof allProjec
 
 const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884D8"]
 
+// --- MAIN PAGE COMPONENT ---
 export default function DashboardPage() {
-  const [selectedPeriods, setSelectedPeriods] = useState<string[]>([])
-  const [selectedRoles, setSelectedRoles] = useState<{ value: string; label: string }[]>([])
-  const [selectedProjects, setSelectedProjects] = useState<{ value: string; label: string }[]>([])
+  const [selectedPeriods, setSelectedPeriods] = useState([])
+  const [selectedRoles, setSelectedRoles] = useState([])
+  const [selectedProjects, setSelectedProjects] = useState([])
 
-  // Base filtering by role and project
   const projectsFilteredByRoleAndProject = useMemo(() => {
     let data = allProjects
     if (selectedRoles.length > 0) {
@@ -475,31 +456,25 @@ export default function DashboardPage() {
     return data
   }, [selectedRoles, selectedProjects])
 
-  // Apply period-based adjustments on top of base filters
   const filteredProjects = useMemo(() => {
     if (selectedPeriods.length !== 1) {
       return projectsFilteredByRoleAndProject
     }
-
     const selectedMonth = selectedPeriods[0]
     const monthData = productivityTrendAll.find((d) => d.month === selectedMonth)
-
     if (!monthData) {
       return projectsFilteredByRoleAndProject
     }
-
-    const productivityFactors: { [key: string]: number } = {
+    const productivityFactors = {
       "Software Engineer": (monthData["Software Engineer"] || 100) / 100,
       "Data Engineer": (monthData["Data Engineer"] || 100) / 100,
       "System Analyst": (monthData["System Analyst"] || 100) / 100,
     }
-
     return projectsFilteredByRoleAndProject.map((p) => {
       const factor = productivityFactors[p.role] ?? 1
       const newAlloc = p.alloc * factor
       const newUtil = p.req > 0 ? (newAlloc / p.req) * 100 : 0
       const newActual = p.actual * factor
-
       return {
         ...p,
         alloc: Number.parseFloat(newAlloc.toFixed(1)),
@@ -509,37 +484,22 @@ export default function DashboardPage() {
     })
   }, [projectsFilteredByRoleAndProject, selectedPeriods])
 
-  const filteredRoleUtilization = useMemo(() => {
-    if (selectedRoles.length === 0 && selectedProjects.length === 0 && selectedPeriods.length === 0) {
-      return roleUtilizationAll
-    }
-    if (filteredProjects.length === 0) {
-      return []
-    }
-
-    const aggregatedData = filteredProjects.reduce(
-      (acc, project) => {
-        const role = project.role
-        if (!acc[role]) {
-          acc[role] = { role, totalReq: 0, totalAlloc: 0 }
-        }
-        acc[role].totalReq += project.req
-        acc[role].totalAlloc += project.alloc
-        return acc
-      },
-      {} as Record<string, { role: string; totalReq: number; totalAlloc: number }>,
-    )
-
-    return Object.values(aggregatedData).map((data) => {
-      const totalUtilization = data.totalReq > 0 ? (data.totalAlloc / data.totalReq) * 100 : 0
-      return {
-        role: data.role,
-        Allocated: Math.min(100, totalUtilization),
-        Idle: Math.max(0, 100 - totalUtilization),
-        Overload: Math.max(0, totalUtilization - 100),
-      }
-    })
-  }, [filteredProjects, selectedRoles, selectedProjects, selectedPeriods])
+  // **FIXED**: Moved this logic from ProjectTable to DashboardPage
+  const utilizationChartData = useMemo(() => {
+    if (filteredProjects.length === 0) return [];
+    const rolesInView = [...new Set(filteredProjects.map(p => p.role))];
+    return rolesInView.map(role => {
+        const roleProjects = filteredProjects.filter(p => p.role === role);
+        const totalReq = roleProjects.reduce((s, p) => s + p.req, 0);
+        const totalAlloc = roleProjects.reduce((s, p) => s + p.alloc, 0);
+        const utilization = totalReq > 0 ? (totalAlloc / totalReq) * 100 : 0;
+        return { 
+            role, 
+            Allocated: Math.min(100, utilization), 
+            Overload: Math.max(0, utilization - 100) 
+        };
+    });
+  }, [filteredProjects]);
 
   const processedTrend = useMemo(() => {
     let data
@@ -550,25 +510,17 @@ export default function DashboardPage() {
     } else {
       data = productivityTrendAll.filter((d) => selectedPeriods.includes(d.month))
     }
-
     const rolesToDisplay =
       selectedRoles.length > 0
         ? selectedRoles.map((r) => r.value)
         : ["Software Engineer", "Data Engineer", "System Analyst"]
-
     const rolesFromProjects =
       selectedProjects.length > 0
-        ? Array.from(
-            new Set(
-              allProjects.filter((p) => selectedProjects.map((sp) => sp.value).includes(p.project)).map((p) => p.role),
-            ),
-          )
+        ? Array.from(new Set(allProjects.filter((p) => selectedProjects.map((sp) => sp.value).includes(p.project)).map((p) => p.role)))
         : []
-
     const finalRoles = rolesFromProjects.length > 0 ? rolesFromProjects : rolesToDisplay
-
-    const filteredData = data.map((entry) => {
-      const newEntry: any = { ...entry }
+    return data.map((entry) => {
+      const newEntry = { ...entry }
       Object.keys(newEntry).forEach((key) => {
         if (key !== "month" && key !== "dayLabel" && key !== "date" && !finalRoles.includes(key)) {
           delete newEntry[key]
@@ -576,136 +528,109 @@ export default function DashboardPage() {
       })
       return newEntry
     })
-
-    return filteredData
   }, [selectedPeriods, selectedRoles, selectedProjects])
 
   const getAreaKeys = useMemo(() => {
-    const roles =
-      selectedRoles.length > 0
-        ? selectedRoles.map((r) => r.value)
-        : ["Software Engineer", "Data Engineer", "System Analyst"]
-    const projectRoles = selectedProjects.length > 0 ? Array.from(new Set(filteredProjects.map((p) => p.role))) : roles
-    return projectRoles
+    if (selectedProjects.length > 0) {
+        return Array.from(new Set(filteredProjects.map((p) => p.role)))
+    }
+    if (selectedRoles.length > 0) {
+        return selectedRoles.map((r) => r.value)
+    }
+    return ["Software Engineer", "Data Engineer", "System Analyst"];
   }, [selectedRoles, selectedProjects, filteredProjects])
 
   const summary = useMemo(() => {
     const totalProjects = filteredProjects.length
-    const totalResources = filteredProjects.reduce((sum, p) => sum + p.alloc, 0).toFixed(1)
-
-    const roles = Array.from(new Set(filteredProjects.map((p) => p.role)))
-    const utilizationByRole = roles.map((role) => {
-      const roleProjects = filteredProjects.filter((p) => p.role === role)
-      const avgUtil = roleProjects.reduce((sum, p) => sum + p.util, 0) / (roleProjects.length || 1)
-      return { role, util: avgUtil }
-    })
-
-    const avgUtil = filteredProjects.reduce((sum, p) => sum + p.util, 0) / (filteredProjects.length || 1)
-
+    const totalResources = filteredProjects.reduce((sum, p) => sum + p.alloc, 0)
+    const avgUtil = filteredProjects.reduce((sum, p) => sum + p.util, 0) / (totalProjects || 1)
     const criticalProjects = filteredProjects.filter((p) => p.util > 100).sort((a, b) => b.util - a.util)
-
-    const projectCategories = filteredProjects.reduce(
-      (acc, p) => {
-        acc[p.category] = (acc[p.category] || 0) + 1
-        return acc
-      },
-      {} as Record<string, number>,
-    )
-
-    const overBudgetProjects = filteredProjects
-      .filter((p) => p.actual > p.budget)
-      .sort((a, b) => b.actual - b.budget - (a.actual - a.budget))
+    const overBudgetProjects = filteredProjects.filter((p) => p.actual > p.budget).sort((a, b) => (b.actual - b.budget) - (a.actual - a.budget))
+    const projectCategories = filteredProjects.reduce((acc, p) => {
+        acc[p.category] = (acc[p.category] || 0) + 1;
+        return acc;
+    }, {});
 
     return [
       {
         title: "Total Resources (FTE)",
-        value: totalResources,
-        desc: roles.map((role) => ({
-          label: role,
-          value: filteredProjects
-            .filter((p) => p.role === role)
-            .reduce((sum, p) => sum + p.alloc, 0)
-            .toFixed(1),
-        })),
+        value: totalResources.toFixed(1),
+        icon: Users,
+        color: "text-blue-500",
+        desc: [...new Set(filteredProjects.map(p => p.role))].map(role => ({
+            label: role,
+            value: filteredProjects.filter(p => p.role === role).reduce((s, p) => s + p.alloc, 0).toFixed(1)
+        }))
       },
       {
-        title: "Utilization %",
+        title: "Avg. Utilization %",
         value: `${(avgUtil || 0).toFixed(0)}%`,
-        color: avgUtil > 100 ? "text-red-600" : "text-green-600",
-        desc: utilizationByRole.map((r) => ({
-          label: r.role,
-          value: `${(r.util || 0).toFixed(0)}%`,
-          color: r.util > 100 ? "text-red-600" : r.util < 80 ? "text-yellow-600" : "text-green-600",
-        })),
+        icon: Target,
+        color: avgUtil > 100 ? "text-red-500" : "text-green-500",
+        desc: [...new Set(filteredProjects.map(p => p.role))].map(role => {
+            const roleProjects = filteredProjects.filter(p => p.role === role);
+            const rAvgUtil = roleProjects.reduce((s, p) => s + p.util, 0) / (roleProjects.length || 1);
+            return {
+                label: role,
+                value: `${rAvgUtil.toFixed(0)}%`,
+                color: rAvgUtil > 100 ? "text-red-500" : rAvgUtil < 80 ? "text-yellow-500" : "text-green-500"
+            }
+        })
       },
       {
         title: "Critical Projects",
         value: criticalProjects.length,
-        color: "text-red-600",
-        desc: criticalProjects.slice(0, 3).map((p) => ({
-          label: p.project,
-          value: `${p.util.toFixed(1)}%`,
-          color: "text-red-600",
-        })),
+        icon: AlertTriangle,
+        color: "text-red-500",
+        desc: criticalProjects.slice(0, 3).map(p => ({
+            label: p.project,
+            value: `${p.util.toFixed(1)}%`,
+            color: "text-red-500"
+        }))
       },
       {
         title: "Over-budget Projects",
         value: overBudgetProjects.length,
-        color: overBudgetProjects.length > 0 ? "text-red-600" : "",
-        desc: overBudgetProjects.slice(0, 3).map((p) => ({
-          label: p.project,
-          value: `+ $${(p.actual - p.budget).toLocaleString()}`,
-          color: "text-red-600",
-        })),
+        icon: DollarSign,
+        color: "text-orange-500",
+        desc: overBudgetProjects.slice(0, 3).map(p => ({
+            label: p.project,
+            value: `+ $${(p.actual - p.budget).toLocaleString()}`,
+            color: "text-red-500"
+        }))
       },
       {
         title: "Project Category",
         value: `${totalProjects} Projects`,
+        icon: Filter,
+        color: "text-purple-500",
         desc: [
-          { label: "Big", value: projectCategories["Big"] || 0 },
-          { label: "Medium", value: projectCategories["Medium"] || 0 },
-          { label: "Small", value: projectCategories["Small"] || 0 },
-        ],
-      },
+            { label: "Big", value: projectCategories["Big"] || 0 },
+            { label: "Medium", value: projectCategories["Medium"] || 0 },
+            { label: "Small", value: projectCategories["Small"] || 0 },
+        ]
+      }
     ]
   }, [filteredProjects])
 
   const enhancedMetrics = useMemo(() => {
-    const totalBudget = filteredProjects.reduce((sum, p) => sum + p.budget, 0)
-    const totalActual = filteredProjects.reduce((sum, p) => sum + p.actual, 0)
-    const budgetVariance = ((totalActual - totalBudget) / totalBudget) * 100
-
-    const categoryDistribution = filteredProjects.reduce(
-      (acc, p) => {
-        acc[p.category] = (acc[p.category] || 0) + 1
-        return acc
-      },
-      {} as Record<string, number>,
-    )
-
-    const roleDistribution = filteredProjects.reduce(
-      (acc, p) => {
-        acc[p.role] = (acc[p.role] || 0) + p.alloc
-        return acc
-      },
-      {} as Record<string, number>,
-    )
+    const categoryDistribution = filteredProjects.reduce((acc, p) => {
+        acc[p.category] = (acc[p.category] || 0) + 1;
+        return acc;
+    }, {});
+    const roleDistribution = filteredProjects.reduce((acc, p) => {
+        acc[p.role] = (acc[p.role] || 0) + p.alloc;
+        return acc;
+    }, {});
 
     return {
-      totalBudget,
-      totalActual,
-      budgetVariance,
       categoryDistribution: Object.entries(categoryDistribution).map(([name, value]) => ({ name, value })),
-      roleDistribution: Object.entries(roleDistribution).map(([name, value]) => ({
-        name,
-        value: Number.parseFloat(value.toFixed(1)),
-      })),
+      roleDistribution: Object.entries(roleDistribution).map(([name, value]) => ({ name, value: Number(value.toFixed(1)) })),
     }
   }, [filteredProjects])
 
   return (
     <div className="p-4 space-y-6 bg-gray-50 min-h-screen">
-      {/* Header Section */}
       <div className="flex items-center justify-between flex-wrap gap-4 bg-white p-4 rounded-lg shadow-sm">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Resource Allocation Dashboard</h1>
@@ -714,7 +639,7 @@ export default function DashboardPage() {
         <div className="flex gap-2 flex-wrap">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="gap-1 bg-foreground text-background">
+              <Button variant="outline" className="gap-1">
                 <Filter className="h-4 w-4" />
                 Period ({selectedPeriods.length > 0 ? selectedPeriods.join(", ") : "All"})
               </Button>
@@ -722,36 +647,26 @@ export default function DashboardPage() {
             <DropdownMenuContent className="w-56">
               <DropdownMenuLabel>Filter by Period</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuCheckboxItem
-                checked={selectedPeriods.length === 0}
-                onSelect={(e) => e.preventDefault()}
-                onCheckedChange={() => setSelectedPeriods([])}
-              >
+              <DropdownMenuCheckboxItem checked={selectedPeriods.length === 0} onCheckedChange={() => setSelectedPeriods([])}>
                 All Periods
               </DropdownMenuCheckboxItem>
-              {productivityTrendAll.map((d) => {
-                const isChecked = selectedPeriods.includes(d.month)
-                return (
-                  <DropdownMenuCheckboxItem
-                    key={d.month}
-                    checked={isChecked}
-                    onSelect={(e) => e.preventDefault()}
-                    onCheckedChange={(checked) =>
-                      setSelectedPeriods(
-                        checked ? [...selectedPeriods, d.month] : selectedPeriods.filter((m) => m !== d.month),
-                      )
-                    }
-                  >
-                    {d.month}
-                  </DropdownMenuCheckboxItem>
-                )
-              })}
+              {productivityTrendAll.map((d) => (
+                <DropdownMenuCheckboxItem
+                  key={d.month}
+                  checked={selectedPeriods.includes(d.month)}
+                  onCheckedChange={(checked) => setSelectedPeriods(
+                    checked ? [...selectedPeriods, d.month] : selectedPeriods.filter((m) => m !== d.month)
+                  )}
+                >
+                  {d.month}
+                </DropdownMenuCheckboxItem>
+              ))}
             </DropdownMenuContent>
           </DropdownMenu>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="gap-1 bg-foreground text-background">
+              <Button variant="outline" className="gap-1">
                 <Filter className="h-4 w-4" />
                 Role ({selectedRoles.length || "All"})
               </Button>
@@ -759,30 +674,26 @@ export default function DashboardPage() {
             <DropdownMenuContent className="w-56">
               <DropdownMenuLabel>Filter by Role</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              {roleUtilizationAll.map((r) => {
-                const roleObj = { value: r.role, label: r.role }
-                const isChecked = selectedRoles.some((role) => role.value === r.role)
-                return (
-                  <DropdownMenuCheckboxItem
-                    key={r.role}
-                    checked={isChecked}
-                    onSelect={(e) => e.preventDefault()}
-                    onCheckedChange={(checked) =>
-                      setSelectedRoles(
-                        checked ? [...selectedRoles, roleObj] : selectedRoles.filter((role) => role.value !== r.role),
-                      )
-                    }
-                  >
-                    {r.role}
-                  </DropdownMenuCheckboxItem>
-                )
-              })}
+               <DropdownMenuCheckboxItem checked={selectedRoles.length === 0} onCheckedChange={() => setSelectedRoles([])}>
+                All Roles
+              </DropdownMenuCheckboxItem>
+              {roleUtilizationAll.map((r) => (
+                <DropdownMenuCheckboxItem
+                  key={r.role}
+                  checked={selectedRoles.some((role) => role.value === r.role)}
+                  onCheckedChange={(checked) => setSelectedRoles(
+                    checked ? [...selectedRoles, { value: r.role, label: r.role }] : selectedRoles.filter((role) => role.value !== r.role)
+                  )}
+                >
+                  {r.role}
+                </DropdownMenuCheckboxItem>
+              ))}
             </DropdownMenuContent>
           </DropdownMenu>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="gap-1 bg-foreground text-background">
+              <Button variant="outline" className="gap-1">
                 <Filter className="h-4 w-4" />
                 Project ({selectedProjects.length || "All"})
               </Button>
@@ -790,55 +701,41 @@ export default function DashboardPage() {
             <DropdownMenuContent className="w-56">
               <DropdownMenuLabel>Filter by Project</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              {allProjects.map((p) => {
-                const projectObj = { value: p.project, label: p.project }
-                const isChecked = selectedProjects.some((proj) => proj.value === p.project)
-                return (
-                  <DropdownMenuCheckboxItem
-                    key={p.project}
-                    checked={isChecked}
-                    onSelect={(e) => e.preventDefault()}
-                    onCheckedChange={(checked) =>
-                      setSelectedProjects(
-                        checked
-                          ? [...selectedProjects, projectObj]
-                          : selectedProjects.filter((proj) => proj.value !== p.project),
-                      )
-                    }
-                  >
-                    {p.project}
-                  </DropdownMenuCheckboxItem>
-                )
-              })}
+              <DropdownMenuCheckboxItem checked={selectedProjects.length === 0} onCheckedChange={() => setSelectedProjects([])}>
+                All Projects
+              </DropdownMenuCheckboxItem>
+              {allProjects.map((p) => (
+                <DropdownMenuCheckboxItem
+                  key={p.project}
+                  checked={selectedProjects.some((proj) => proj.value === p.project)}
+                  onCheckedChange={(checked) => setSelectedProjects(
+                    checked ? [...selectedProjects, { value: p.project, label: p.project }] : selectedProjects.filter((proj) => proj.value !== p.project)
+                  )}
+                >
+                  {p.project}
+                </DropdownMenuCheckboxItem>
+              ))}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
       </div>
 
-      {/* Key Metrics Cards - Enhanced Layout */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
         {summary.map((item, i) => (
-          <Card key={i} className="shadow-sm hover:shadow-md transition-shadow border-l-4 border-l-blue-500">
-            <CardHeader className="pb-2 mt-3">
+          <Card key={i} className={`shadow-sm hover:shadow-md transition-shadow border-l-4 ${item.color.replace('text-', 'border-')}`}>
+            <CardHeader className="pb-1 mt-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-sm font-medium text-gray-600">{item.title}</CardTitle>
-                {i === 0 && <Users className="h-5 w-5 text-blue-500" />}
-                {i === 1 && <Target className="h-5 w-5 text-green-500" />}
-                {i === 2 && <AlertTriangle className="h-5 w-5 text-red-500" />}
-                {i === 3 && <DollarSign className="h-5 w-5 text-orange-500" />}
+                <item.icon className={`h-5 w-5 ${item.color}`} />
               </div>
             </CardHeader>
             <CardContent>
-              <p className={`text-2xl font-bold mb-3 ${item.color || "text-gray-900"}`}>{item.value}</p>
-              <ul className="text-xs space-y-1 mb-3">
+              <p className={`text-2xl font-bold mb-2 ${item.color}`}>{item.value}</p>
+              <ul className="text-xs space-y-1 mb-2">
                 {item.desc.map((d, idx) => (
                   <li key={idx} className="flex justify-between items-center">
                     <span className="text-gray-600">{d.label}</span>
-                    <span
-                      className={`font-semibold ${typeof (d as any).color === "string" ? (d as any).color : "text-gray-900"}`}
-                    >
-                      {d.value}
-                    </span>
+                    <span className={`font-semibold ${d.color || "text-gray-900"}`}>{d.value}</span>
                   </li>
                 ))}
               </ul>
@@ -846,53 +743,35 @@ export default function DashboardPage() {
           </Card>
         ))}
       </div>
-
-      {/* Charts Grid - Enhanced Layout */}
+      
       <div className="grid grid-cols-1 xl:grid-cols-5 gap-6">
-        {/* Project Category Distribution Chart */}
         <Card className="shadow-sm xl:col-span-1">
-          <CardHeader className="mt-3">
+          <CardHeader>
             <CardTitle className="text-lg font-semibold">Project Distribution</CardTitle>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={200}>
               <PieChart>
-                <Pie
-                  data={enhancedMetrics.categoryDistribution}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={30}
-                  outerRadius={60}
-                  paddingAngle={5}
-                  dataKey="value"
-                >
+                <Pie data={enhancedMetrics.categoryDistribution} cx="50%" cy="50%" innerRadius={40} outerRadius={70} paddingAngle={5} dataKey="value">
                   {enhancedMetrics.categoryDistribution.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
                 <Tooltip />
-                <Legend />
+                <Legend iconSize={10} />
               </PieChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
 
-        {/* Resource Allocation by Role Chart */}
         <Card className="shadow-sm xl:col-span-2">
-          <CardHeader className="mt-3">
-            <CardTitle className="text-lg font-semibold">Resource Allocation</CardTitle>
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold">Resource Allocation (FTE)</CardTitle>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={200}>
               <PieChart>
-                <Pie
-                  data={enhancedMetrics.roleDistribution}
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={80}
-                  dataKey="value"
-                  label={({ name, value }) => `${name}: ${value}`}
-                >
+                <Pie data={enhancedMetrics.roleDistribution} cx="50%" cy="50%" outerRadius={80} dataKey="value" label={({ name, value }) => `${name}: ${value}`}>
                   {enhancedMetrics.roleDistribution.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
@@ -903,38 +782,28 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Resource Utilization by Role */}
-        <Card className="shadow-sm xl:col-span-2">
-          <CardHeader className="mt-3">
-            <CardTitle className="text-lg font-semibold">Resource Utilization by Role</CardTitle>
+        {/* **FIXED**: Added xl:col-span-2 for proper grid layout */}
+        <Card className="shadow-sm border-gray-200 xl:col-span-2">
+          <CardHeader>
+            <CardTitle className="text-lg">Resource Utilization by Role</CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={250}>
-              <BarChart
-                data={filteredRoleUtilization}
-                layout="horizontal"
-                margin={{ top: 5, right: 30, left: 80, bottom: 5 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis type="number" domain={[0, 150]} tickFormatter={(value) => `${value}%`} />
-                <YAxis dataKey="role" type="category" width={120} tick={{ fontSize: 12 }} />
-                <Tooltip
-                  formatter={(value: number, name: string) => [`${value.toFixed(1)}%`, name]}
-                  labelStyle={{ color: "#000" }}
-                />
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={utilizationChartData} layout="vertical" margin={{ left: 10, right: 30 }}>
+                <CartesianGrid strokeDasharray="3 2" />
+                <XAxis type="number" unit="%" />
+                <YAxis dataKey="role" type="category" width={100} tick={{ fontSize: 12 }} />
+                <Tooltip formatter={(value) => `${Number(value).toFixed(1)}%`} />
                 <Legend />
-                <Bar dataKey="Allocated" stackId="a" fill="#22c55e" name="Allocated" />
-                <Bar dataKey="Idle" stackId="a" fill="#eab308" name="Idle" />
-                <Bar dataKey="Overload" stackId="a" fill="#ef4444" name="Overload" />
+                <Bar dataKey="Allocated" stackId="a" fill="#34d399" />
+                <Bar dataKey="Overload" stackId="a" fill="#f87171" />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
       </div>
 
-      {/* Main Content Grid */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        {/* Project Table */}
         <Card className="shadow-sm">
           <CardHeader className="mt-3">
             <CardTitle className="text-lg font-semibold">Project Allocation Overview</CardTitle>
@@ -944,7 +813,6 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Productivity Trend */}
         <Card className="shadow-sm">
           <CardHeader className="mt-3">
             <CardTitle className="text-lg font-semibold">Productivity Trend</CardTitle>
@@ -953,23 +821,12 @@ export default function DashboardPage() {
             <ResponsiveContainer width="100%" height={320}>
               <AreaChart data={processedTrend} margin={{ top: 10, right: 20, left: 0, bottom: 10 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                <XAxis
-                  dataKey={selectedPeriods.length === 1 ? "dayLabel" : "month"}
-                  tick={{ fontSize: 12, fill: "#374151" }}
-                  tickFormatter={(value: string) => value.substring(0, 3)}
-                />
-                <YAxis tick={{ fontSize: 12, fill: "#374151" }} />
-                <Tooltip formatter={(value) => `${value}%`} contentStyle={{ fontSize: 12 }} />
+                <XAxis dataKey={selectedPeriods.length === 1 ? "dayLabel" : "month"} tick={{ fontSize: 12, fill: "#374151" }} />
+                <YAxis tick={{ fontSize: 12, fill: "#374151" }} unit="%" />
+                <Tooltip formatter={(value) => `${value}%`} />
                 <Legend />
-
                 {getAreaKeys.includes("Software Engineer") && (
-                  <Area
-                    type="monotone"
-                    dataKey="Software Engineer"
-                    stroke="#6366f1"
-                    fill="#6366f1"
-                    fillOpacity={0.25}
-                  />
+                  <Area type="monotone" dataKey="Software Engineer" stroke="#6366f1" fill="#6366f1" fillOpacity={0.25} />
                 )}
                 {getAreaKeys.includes("Data Engineer") && (
                   <Area type="monotone" dataKey="Data Engineer" stroke="#f43f5e" fill="#f43f5e" fillOpacity={0.25} />
@@ -983,18 +840,35 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      {/* Budget Analysis - Full Width */}
       <Card className="shadow-sm">
         <CardHeader className="mt-3">
           <CardTitle className="text-lg font-semibold">Budget vs Actual Cost Analysis</CardTitle>
         </CardHeader>
         <CardContent>
-          <ResponsiveContainer width="100%" height={400}>
-            <BarChart data={filteredProjects} margin={{ top: 5, right: 30, left: 20, bottom: 120 }}>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={filteredProjects} margin={{ top: 5, right: 30, left: 20, bottom: 10 }}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="project" angle={-45} textAnchor="end" interval={0} tick={{ fontSize: 10 }} height={100} />
-              <YAxis tickFormatter={(value) => `$${Number(value) / 1000}k`} tick={{ fontSize: 12 }} />
-              <Tooltip formatter={(value) => `$${Number(value).toLocaleString()}`} />
+              <XAxis dataKey="project" textAnchor="end" interval={0} tick={{ fontSize: 10 }} height={30} tickFormatter={(value: string) => value.replace("Project ", "")} />
+              <YAxis
+                tickFormatter={(value) =>
+                  new Intl.NumberFormat("id-ID", {
+                    style: "currency",
+                    currency: "IDR",
+                    maximumFractionDigits: 0,
+                  }).format(value)
+                }
+                tick={{ fontSize: 12 }}
+              />
+
+              <Tooltip
+                formatter={(value: number) =>
+                  new Intl.NumberFormat("id-ID", {
+                    style: "currency",
+                    currency: "IDR",
+                    maximumFractionDigits: 0,
+                  }).format(value)
+                }
+              />
               <Legend />
               <Bar dataKey="budget" fill="#8884d8" name="Budget" />
               <Bar dataKey="actual" fill="#82ca9d" name="Actual Cost" />
