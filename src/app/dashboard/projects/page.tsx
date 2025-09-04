@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -17,11 +18,8 @@ import {
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Search, Plus, MoreHorizontal, Edit, Trash2, Calendar, Users, Target, Clock, Copy } from "lucide-react"
@@ -31,7 +29,6 @@ import rawProjects from "@/data/projects.json"
 import { ProjectCategory, ProjectPriority } from "@/types/common"
 import { toast } from "sonner"
 import { Toaster } from "@/components/ui/sonner"
-import { AddProjectForm } from "@/components/project/AddProjectForm"
 
 const projects: ProjectRow[] = rawProjects as ProjectRow[]
 
@@ -53,9 +50,9 @@ const getPriorityColor = (priority: ProjectPriority) => {
 }
 
 export default function ProjectsPage() {
+  const router = useRouter()
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedProject, setSelectedProject] = useState<ProjectRow | null>(null)
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
 
   const filteredProjects = projects.filter((project) => {
     if (!searchTerm) return true
@@ -79,6 +76,10 @@ export default function ProjectsPage() {
   const bigSizedRatio = projects.filter(p => p.category === 'Big').length / totalProjects
   const criticalPriorityRatio = projects.filter(p => p.priority === 'Critical').length / totalProjects
 
+  const handleAddProject = () => {
+    router.push('/dashboard/projects/create')
+  }
+
   return (
     <div className="space-y-6 mx-10">
       {/* Header */}
@@ -87,22 +88,10 @@ export default function ProjectsPage() {
           <h1 className="text-3xl font-bold">Projects</h1>
           <p className="text-muted-foreground">Manage your projects and track their progress</p>
         </div>
-        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Project
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-              <DialogTitle>Add New Project</DialogTitle>
-              <DialogDescription>Create a new project to track progress and manage resources.</DialogDescription>
-            </DialogHeader>
-
-            <AddProjectForm onCancel={() => setIsAddDialogOpen(false)} />
-          </DialogContent>
-        </Dialog>
+        <Button onClick={handleAddProject}>
+          <Plus className="h-4 w-4 mr-2" />
+          Add Project
+        </Button>
       </div>
 
       {/* Stats Cards */}

@@ -1,7 +1,14 @@
-"use client"
+"use client";
 
-import { Box, FolderOpen, LayoutDashboard, Users } from "lucide-react"
-import { Sidebar,
+import {
+  Box,
+  FolderOpen,
+  LayoutDashboard,
+  PencilRuler,
+  Users,
+} from "lucide-react";
+import {
+  Sidebar,
   SidebarContent,
   SidebarHeader,
   SidebarMenu,
@@ -9,44 +16,54 @@ import { Sidebar,
   SidebarMenuItem,
   SidebarTrigger,
   useSidebar,
-} from "@/components/ui/sidebar"
-import { usePathname } from "next/navigation"
-import Image from "next/image"
-import Link from "next/link"
+} from "@/components/ui/sidebar";
+import { usePathname } from "next/navigation";
+import Image from "next/image";
+import Link from "next/link";
 
 const menuItems = [
   {
-    title: 'Dashboard',
-    url: '/dashboard',
+    title: "Dashboard",
+    url: "/dashboard",
     icon: LayoutDashboard,
   },
   {
-    title: 'Resources',
-    url: '/dashboard/resources',
+    title: "Resources",
+    url: "/dashboard/resources",
     icon: Users,
   },
   {
-    title: 'Projects',
-    url: '/dashboard/projects',
+    title: "Projects",
+    url: "/dashboard/projects",
     icon: FolderOpen,
   },
   {
-    title: 'Timeline',
-    url: '/dashboard/gantt',
+    title: "Timeline",
+    url: "/dashboard/gantt",
     icon: Box,
   },
-]
+];
 
 export function AppSidebar() {
-  const path = usePathname().substring(1)
-  const { open } = useSidebar()
+  const path = usePathname().substring(1);
+  const { open } = useSidebar();
 
   return (
-    <Sidebar collapsible="icon" className="border-r border-border bg-background" variant="inset">
+    <Sidebar
+      collapsible="icon"
+      className="border-r border-border bg-background"
+      variant="inset"
+    >
       <SidebarHeader className="border-b border-border h-14">
         <div className="flex items-baseline justify-between">
           <div className="group-data-[collapsible=icon]:hidden px-2">
-            <Image src="/bmri.svg" alt="BMRI Logo" width={0} height={0} className="h-8 w-auto" />
+            <Image
+              src="/bmri.svg"
+              alt="BMRI Logo"
+              width={0}
+              height={0}
+              className="h-8 w-auto"
+            />
           </div>
           <div className="px-1">
             <SidebarTrigger />
@@ -58,19 +75,19 @@ export function AppSidebar() {
         <SidebarMenu className="px-2 py-5 gap-3">
           {menuItems.map((item) => (
             <SidebarMenuItem key={item.title}>
-              <SidebarMenuButton
-                isActive={path === item.url.substring(1)}
-                className="w-full px-4 py-6"
-              >
-                <Link href={item.url} className="flex gap-2">
+              <Link href={item.url} className="flex gap-2">
+                <SidebarMenuButton
+                  isActive={path === item.url.substring(1)}
+                  className="w-full px-4 py-6"
+                >
                   <item.icon className="h-5 w-5 inline" />
                   {open && <span>{item.title}</span>}
-                </Link>
-              </SidebarMenuButton>
+                </SidebarMenuButton>
+              </Link>
             </SidebarMenuItem>
           ))}
         </SidebarMenu>
       </SidebarContent>
     </Sidebar>
-  )
+  );
 }
