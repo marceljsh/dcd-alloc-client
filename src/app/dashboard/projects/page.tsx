@@ -84,16 +84,14 @@ type ActiveDialog = "add" | "detail" | "timeline" | null
 
 export default function ProjectsPage() {
   const router = useRouter()
-  // --- STATE MANAGEMENT ---
+
   const [activeDialog, setActiveDialog] = useState<ActiveDialog>(null)
   const [selectedProject, setSelectedProject] = useState<ProjectRow | null>(null)
 
-  // State untuk UI checkbox filter
   const [selectedCategories, setSelectedCategories] = useState<string[]>([])
   const [selectedPriorities, setSelectedPriorities] = useState<string[]>([])
   const [selectedTeams, setSelectedTeams] = useState<string[]>([])
 
-  // State untuk logic Tanstack Table
   const [projects, setProjects] = useState<ProjectRow[]>(() => rawProjects as ProjectRow[])
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
@@ -103,14 +101,12 @@ export default function ProjectsPage() {
     const stored = JSON.parse(localStorage.getItem("archivedProjects") || "[]")
     localStorage.setItem("archivedProjects", JSON.stringify([...stored, project]))
 
-    // Hapus project dari list aktif
     setProjects((prev) => prev.filter((p) => p.code !== project.code))
 
     toast.success(`Project "${project.name}" has been archived.`)
     router.push("/dashboard/archive")
   }
 
-  // --- COLUMN DEFINITIONS ---
   const columns = useMemo<ColumnDef<ProjectRow>[]>(
     () => [
       {
@@ -211,7 +207,6 @@ export default function ProjectsPage() {
     [],
   )
 
-  // --- TABLE INSTANCE ---
   const table = useReactTable({
     data: projects,
     columns,
@@ -248,7 +243,6 @@ export default function ProjectsPage() {
     setSelectedProject(null)
   }
 
-  // --- MEMOIZED CALCULATIONS ---
   const stats = useMemo(
     () => ({
       totalProjects: projects.length,
@@ -307,10 +301,6 @@ export default function ProjectsPage() {
     </div>
   )
 }
-
-// -----------------------------------------------------------------------------
-// Internal Components for better structure
-// -----------------------------------------------------------------------------
 
 const PageHeader = ({ onAddProject }: { onAddProject: () => void }) => (
   <div className="flex items-center justify-between">
@@ -462,7 +452,6 @@ const ProjectsDataTable = ({ table, columns }: { table: any; columns: any[] }) =
   </ScrollArea>
 )
 
-// --- DIALOG COMPONENTS ---
 const AddProjectDialog = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => (
   <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
     <DialogContent className="sm:max-w-[425px]">

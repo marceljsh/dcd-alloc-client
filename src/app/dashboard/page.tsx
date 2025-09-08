@@ -302,7 +302,6 @@ const productivityTrendAll = [
   { month: "Dec", "Software Engineer": 85, "Data Engineer": 65, "System Analyst": 90 },
 ]
 
-// --- HELPER FUNCTIONS ---
 const generateDaysInMonth = (monthName, year) => {
   const monthIndex = new Date(`${monthName} 1, ${year}`).getMonth()
   const daysInMonth = new Date(year, monthIndex + 1, 0).getDate()
@@ -319,7 +318,6 @@ const generateDaysInMonth = (monthName, year) => {
   })
 }
 
-// --- SUB-COMPONENTS ---
 function ProjectTable({ filteredProjects }) {
   const [currentPage, setCurrentPage] = useState(1)
   const [sortConfig, setSortConfig] = useState({ key: "project", direction: "asc" })
@@ -630,7 +628,7 @@ export default function DashboardPage() {
   }, [filteredProjects])
 
   return (
-    <div className="p-4 space-y-6 bg-gray-50 min-h-screen">
+    <div className="p-2 space-y-2 bg-gray-50 min-h-screen">
       <div className="flex items-center justify-between flex-wrap gap-4 bg-white p-4 rounded-lg shadow-sm">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Resource Allocation Dashboard</h1>
@@ -720,9 +718,9 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-2">
         {summary.map((item, i) => (
-          <Card key={i} className={`shadow-sm hover:shadow-md transition-shadow border-l-4 ${item.color.replace('text-', 'border-')}`}>
+          <Card key={i} className="shadow-sm hover:shadow-md transition-shadow">
             <CardHeader className="pb-1 mt-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-sm font-medium text-gray-600">{item.title}</CardTitle>
@@ -746,7 +744,7 @@ export default function DashboardPage() {
       
       <div className="grid grid-cols-1 xl:grid-cols-5 gap-6">
         <Card className="shadow-sm xl:col-span-1">
-          <CardHeader>
+          <CardHeader className="mt-3">
             <CardTitle className="text-lg font-semibold">Project Distribution</CardTitle>
           </CardHeader>
           <CardContent>
@@ -765,7 +763,7 @@ export default function DashboardPage() {
         </Card>
 
         <Card className="shadow-sm xl:col-span-2">
-          <CardHeader>
+          <CardHeader className="mt-3">
             <CardTitle className="text-lg font-semibold">Resource Allocation (FTE)</CardTitle>
           </CardHeader>
           <CardContent>
@@ -784,7 +782,7 @@ export default function DashboardPage() {
 
         {/* **FIXED**: Added xl:col-span-2 for proper grid layout */}
         <Card className="shadow-sm border-gray-200 xl:col-span-2">
-          <CardHeader>
+          <CardHeader className="mt-3">
             <CardTitle className="text-lg">Resource Utilization by Role</CardTitle>
           </CardHeader>
           <CardContent>
