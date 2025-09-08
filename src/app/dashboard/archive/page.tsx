@@ -138,7 +138,7 @@ export default function ArchivePage() {
       <PageHeader />
       <Card className="py-4">
         <CardHeader className="flex items-center justify-between">
-          <CardTitle className="text-xl">Archived Projects</CardTitle>
+          <CardTitle className="text-xl">History Projects</CardTitle>
           <div className="flex gap-2 items-center">
             {/* --- Category Filter --- */}
             <DropdownMenu>
@@ -223,8 +223,8 @@ export default function ArchivePage() {
 const PageHeader = () => (
   <div className="flex items-center justify-between">
     <div>
-      <h1 className="text-3xl font-bold">Archive</h1>
-      <p className="text-muted-foreground">View and manage archived projects</p>
+      <h1 className="text-3xl font-bold">History</h1>
+      <p className="text-muted-foreground">View and manage last projects</p>
     </div>
   </div>
 )

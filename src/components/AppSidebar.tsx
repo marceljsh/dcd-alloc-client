@@ -36,7 +36,7 @@ const menuItems = [
     icon: Box,
   },
   {
-    title: 'Archive',
+    title: 'Archive/History',
     url: '/dashboard/archive',
     icon: FileBoxIcon,
   },
