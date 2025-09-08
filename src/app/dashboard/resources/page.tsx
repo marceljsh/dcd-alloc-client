@@ -1,8 +1,5 @@
 "use client"
 
-// -----------------------------------------------------------------------------
-// Imports
-// -----------------------------------------------------------------------------
 import { useMemo, useState } from "react"
 import {
   ColumnDef,
@@ -19,14 +16,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -36,30 +26,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
-import {
-  Search,
-  Plus,
-  MoreHorizontal,
-  Edit,
-  Trash2,
-  Mail,
-  Phone,
-  Calendar,
-  MapPin,
-  Copy,
-  Filter,
-  TableIcon,
-  Grid3X3,
-} from "lucide-react"
+import { Search, Plus, MoreHorizontal, Edit, Trash2, Mail, Phone, Calendar, MapPin, Filter, Table2, Grid3X3 } from "lucide-react"
 import { initials } from "@/lib/strings"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { toast } from "sonner"
@@ -76,15 +45,8 @@ import {
 } from "@/components/ui/alert-dialog"
 import { EMPLOYMENT_STATUS_OPTIONS, EmploymentStatus, Role, ROLE_LEVEL_OPTIONS, ROLE_OPTIONS } from "@/types/common"
 import rawEmployees from "@/data/employees.json"
-import {
-  ContractEmployee,
-  EmployeeRow,
-  PermanentEmployee,
-} from "@/types/employee"
-import {
-  AddEmployeeFormValues,
-  AddEmployeeForm,
-} from "@/components/employee/AddEmployeeForm"
+import { ContractEmployee, EmployeeRow, PermanentEmployee } from "@/types/employee"
+import { AddEmployeeFormValues, AddEmployeeForm } from "@/components/employee/AddEmployeeForm"
 import { Separator } from "@/components/ui/separator"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import EmployeeHeatmap from "@/components/employee/EmployeeHeatmap"
@@ -136,7 +98,6 @@ const initialEmployees: EmployeeRow[] = rawEmployees.map(
 )
 
 export default function ResourcesPage() {
-  // --- STATE MANAGEMENT ---
   const [employees, setEmployees] = useState<EmployeeRow[]>(initialEmployees)
   const [selectedEmployee, setSelectedEmployee] = useState<EmployeeRow | null>(null)
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
@@ -156,7 +117,7 @@ export default function ResourcesPage() {
       accessorKey: 'name',
       header: 'Resource',
       cell: ({ row }) => {
-        const employee = row.original;
+        const employee = row.original
         return (
           <div className="flex items-center space-x-3">
             <Avatar>
@@ -180,7 +141,7 @@ export default function ResourcesPage() {
     {
       id: 'actions',
       cell: ({ row }) => {
-        const employee = row.original;
+        const employee = row.original
         return (
           <div className="text-center">
             <DropdownMenu>
@@ -194,12 +155,11 @@ export default function ResourcesPage() {
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
-        );
+        )
       }
     }
-  ], []);
+  ], [])
 
-  // --- TABLE INSTANCE ---
   const table = useReactTable({
     data: employees,
     columns,
@@ -212,24 +172,23 @@ export default function ResourcesPage() {
     getFilteredRowModel: getFilteredRowModel(),
     filterFns: {
       arrIncludesSome: (row, columnId, value) => {
-        if (!value || value.length === 0) return true;
-        return value.includes(row.getValue(columnId));
+        if (!value || value.length === 0) return true
+        return value.includes(row.getValue(columnId))
       }
     },
-  });
+  })
 
-  // --- EVENT HANDLERS ---
   const handleAddEmployee = (data: AddEmployeeFormValues) => {
-    const employee = createEmployee(data);
-    setEmployees(prev => [...prev, employee]);
-    setIsAddDialogOpen(false);
-    toast(`${employee.name} has been added to the team.`);
+    const employee = createEmployee(data)
+    setEmployees(prev => [...prev, employee])
+    setIsAddDialogOpen(false)
+    toast(`${employee.name} has been added to the team.`)
   }
 
   const handleDeleteEmployee = (employee: EmployeeRow) => {
-    setEmployees(prev => prev.filter((emp) => emp.id !== employee.id));
-    setEmployeeToDelete(null);
-    toast.success(`${employee.name} has been removed.`);
+    setEmployees(prev => prev.filter((emp) => emp.id !== employee.id))
+    setEmployeeToDelete(null)
+    toast.success(`${employee.name} has been removed.`)
   }
 
   const handleFilterChange = (
@@ -239,15 +198,15 @@ export default function ResourcesPage() {
   ) => (value: string, checked: boolean) => {
     const newSelection = checked
       ? [...currentSelection, value]
-      : currentSelection.filter(item => item !== value);
+      : currentSelection.filter(item => item !== value)
 
-    setter(newSelection);
-    table.getColumn(columnId)?.setFilterValue(newSelection.length > 0 ? newSelection : undefined);
-  };
+    setter(newSelection)
+    table.getColumn(columnId)?.setFilterValue(newSelection.length > 0 ? newSelection : undefined)
+  }
 
-  const handleRoleFilterChange = handleFilterChange('role', selectedRoles, setSelectedRoles);
-  const handleLevelFilterChange = handleFilterChange('level', selectedLevels, setSelectedLevels);
-  const handleStatusFilterChange = handleFilterChange('status', selectedStatuses, setSelectedStatuses);
+  const handleRoleFilterChange = handleFilterChange('role', selectedRoles, setSelectedRoles)
+  const handleLevelFilterChange = handleFilterChange('level', selectedLevels, setSelectedLevels)
+  const handleStatusFilterChange = handleFilterChange('status', selectedStatuses, setSelectedStatuses)
 
   return (
     <div className="space-y-6 mx-10">
@@ -334,7 +293,7 @@ export default function ResourcesPage() {
             <CardTitle className="text-xl">Team Members</CardTitle>
             <ToggleGroup type="single" value={viewMode} onValueChange={(val) => val && setViewMode(val as ViewMode)}>
               <ToggleGroupItem value="table" aria-label="Table view">
-                <TableIcon className="h-4 w-4" />
+                <Table2 className="h-4 w-4" />
               </ToggleGroupItem>
               <ToggleGroupItem value="heatmap" aria-label="Heatmap view">
                 <Grid3X3 className="h-4 w-4" />
