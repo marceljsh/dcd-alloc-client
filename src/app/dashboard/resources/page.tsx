@@ -151,7 +151,6 @@ export default function ResourcesPage() {
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [globalFilter, setGlobalFilter] = useState('')
 
-  // --- COLUMN DEFINITIONS ---
   const columns = useMemo<ColumnDef<EmployeeRow>[]>(() => [
     {
       accessorKey: 'name',
@@ -293,33 +292,36 @@ export default function ResourcesPage() {
             <p className="text-xs text-muted-foreground">Members</p>
           </CardContent>
         </Card>
-
         <Card className="py-4 gap-0">
           <CardHeader>
             <CardTitle className="text-sm font-medium">Software Engineer</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{employees.filter((emp) => emp.role === "Software Engineer").length}</p>
+            <p className="text-2xl font-bold">
+              {employees.filter((emp) => emp.role === "Software Engineer").length}
+            </p>
             <p className="text-xs text-muted-foreground">Skilled Coders</p>
           </CardContent>
         </Card>
-
         <Card className="py-4 gap-0">
           <CardHeader>
             <CardTitle className="text-sm font-medium">Data Engineer</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{employees.filter((emp) => emp.role === "Data Engineer").length}</p>
+            <p className="text-2xl font-bold">
+              {employees.filter((emp) => emp.role === "Data Engineer").length}
+            </p>
             <p className="text-xs text-muted-foreground">Keen Minds</p>
           </CardContent>
         </Card>
-
         <Card className="py-4 gap-0">
           <CardHeader>
             <CardTitle className="text-sm font-medium">System Analyst</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{employees.filter((emp) => emp.role === "System Analyst").length}</p>
+            <p className="text-2xl font-bold">
+              {employees.filter((emp) => emp.role === "System Analyst").length}
+            </p>
             <p className="text-xs text-muted-foreground">People</p>
           </CardContent>
         </Card>

@@ -1,8 +1,5 @@
 "use client"
 
-// -----------------------------------------------------------------------------
-// Imports
-// -----------------------------------------------------------------------------
 import { useMemo, useState } from "react"
 import {
   ColumnDef,
@@ -12,6 +9,7 @@ import {
   getSortedRowModel,
   useReactTable,
   SortingState,
+  ColumnFiltersState,
 } from "@tanstack/react-table"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -19,23 +17,25 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Search, Trash2, RotateCcw, Users } from "lucide-react"
+import { Search, Trash2, RotateCcw, Users, Filter } from "lucide-react"
+
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu"
 
 import { ProjectRow } from "@/types/project"
 import rawProjects from "@/data/projects.json"
 import { ProjectCategory, ProjectPriority } from "@/types/common"
 
-// -----------------------------------------------------------------------------
-// Data (contoh: filter hanya project yang diarchive)
-// -----------------------------------------------------------------------------
 const allProjects: ProjectRow[] = rawProjects as ProjectRow[]
+const initialArchived = allProjects.filter((p) => p.priority === "Critical")
 
-// Dummy rule: project dianggap archived kalau priority = "Critical"
-const initialArchived = allProjects.filter(p => p.priority === "Critical")
-
-// -----------------------------------------------------------------------------
-// Helper Functions
-// -----------------------------------------------------------------------------
+// Utils
 const getCategoryColor = (category: ProjectCategory) => {
   switch (category) {
     case "Small": return "bg-blue-100 text-blue-800"
@@ -53,22 +53,25 @@ const getPriorityColor = (priority: ProjectPriority) => {
   }
 }
 
-// -----------------------------------------------------------------------------
-// Main Page
-// -----------------------------------------------------------------------------
 export default function ArchivePage() {
-  const [sorting, setSorting] = useState<SortingState>([])
-  const [globalFilter, setGlobalFilter] = useState("")
   const [archived, setArchived] = useState<ProjectRow[]>(initialArchived)
 
-  // Handlers
+  // Filter states
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([])
+  const [selectedPriorities, setSelectedPriorities] = useState<string[]>([])
+  const [selectedTeams, setSelectedTeams] = useState<string[]>([])
+
+  const [projects] = useState<ProjectRow[]>(() => rawProjects as ProjectRow[])
+  const [sorting, setSorting] = useState<SortingState>([])
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
+  const [globalFilter, setGlobalFilter] = useState("")
+
   const handleRestore = (project: ProjectRow) => {
-    setArchived(prev => prev.filter(p => p.code !== project.code))
-    // NOTE: di sini bisa ditambahkan logika untuk kirim ke "active projects"
+    setArchived((prev) => prev.filter((p) => p.code !== project.code))
   }
 
   const handleDelete = (project: ProjectRow) => {
-    setArchived(prev => prev.filter(p => p.code !== project.code))
+    setArchived((prev) => prev.filter((p) => p.code !== project.code))
   }
 
   const columns = useMemo<ColumnDef<ProjectRow>[]>(() => [
@@ -78,9 +81,9 @@ export default function ArchivePage() {
     { accessorKey: "category", header: "Category", cell: ({ row }) => <Badge variant="outline" className={getCategoryColor(row.getValue("category"))}>{row.getValue("category")}</Badge> },
     { accessorKey: "priority", header: "Priority", cell: ({ row }) => <Badge variant="outline" className={getPriorityColor(row.getValue("priority"))}>{row.getValue("priority")}</Badge> },
     { accessorKey: "crew", header: "Crew", cell: ({ row }) => <div className="flex items-center space-x-1"><Users className="h-4 w-4 text-muted-foreground" /><span>{row.getValue("crew")}</span></div> },
-    { accessorKey: "budget", header: "Budget", cell: ({ row }) => `$${(row.getValue("budget") as number).toLocaleString()}` },
-    { accessorKey: 'startDate', header: 'Start Date', cell: ({ row }) => new Date(row.getValue('startDate')).toLocaleDateString('id-ID') },
-    { accessorKey: 'endDate', header: 'End Date', cell: ({ row }) => new Date(row.getValue('endDate')).toLocaleDateString('id-ID') },
+    { accessorKey: "budget", header: "Budget", cell: ({ row }) => `Rp${(row.getValue("budget") as number).toLocaleString("id-ID")}` },
+    { accessorKey: "startDate", header: "Start Date", cell: ({ row }) => new Date(row.getValue("startDate")).toLocaleDateString("id-ID") },
+    { accessorKey: "endDate", header: "End Date", cell: ({ row }) => new Date(row.getValue("endDate")).toLocaleDateString("id-ID") },
     {
       id: "actions",
       header: "Actions",
@@ -103,13 +106,32 @@ export default function ArchivePage() {
   const table = useReactTable({
     data: archived,
     columns,
-    state: { sorting, globalFilter },
+    state: { sorting, columnFilters, globalFilter },
     onSortingChange: setSorting,
+    onColumnFiltersChange: setColumnFilters,
     onGlobalFilterChange: setGlobalFilter,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
+    filterFns: {
+      arrIncludesSome: (row, columnId, value) => {
+        if (!value || value.length === 0) return true
+        return value.includes(row.getValue(columnId))
+      },
+    },
   })
+
+  const handleFilterChange =
+    (columnId: string, currentSelection: string[], setter: React.Dispatch<React.SetStateAction<string[]>>) =>
+    (value: string, checked: boolean) => {
+      const newSelection = checked ? [...currentSelection, value] : currentSelection.filter((item) => item !== value)
+      setter(newSelection)
+      table.getColumn(columnId)?.setFilterValue(newSelection.length > 0 ? newSelection : undefined)
+    }
+
+  const handleCategoryChange = handleFilterChange("category", selectedCategories, setSelectedCategories)
+  const handlePriorityChange = handleFilterChange("priority", selectedPriorities, setSelectedPriorities)
+  const handleTeamChange = handleFilterChange("team", selectedTeams, setSelectedTeams)
 
   return (
     <div className="space-y-6 mx-10">
@@ -117,14 +139,77 @@ export default function ArchivePage() {
       <Card className="py-4">
         <CardHeader className="flex items-center justify-between">
           <CardTitle className="text-xl">Archived Projects</CardTitle>
-          <div className="relative">
-            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search archived projects..."
-              value={globalFilter}
-              onChange={(e) => setGlobalFilter(e.target.value)}
-              className="pl-8"
-            />
+          <div className="flex gap-2 items-center">
+            {/* --- Category Filter --- */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="flex items-center gap-2">
+                  <Filter className="h-4 w-4" /> Category
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-40">
+                {["Small", "Medium", "Big"].map((cat) => (
+                  <DropdownMenuCheckboxItem
+                    key={cat}
+                    checked={selectedCategories.includes(cat)}
+                    onCheckedChange={(checked) => handleCategoryChange(cat, checked)}
+                  >
+                    {cat}
+                  </DropdownMenuCheckboxItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* --- Priority Filter --- */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="flex items-center gap-2">
+                  <Filter className="h-4 w-4" /> Priority
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-40">
+                {["Low", "Medium", "High", "Critical"].map((prio) => (
+                  <DropdownMenuCheckboxItem
+                    key={prio}
+                    checked={selectedPriorities.includes(prio)}
+                    onCheckedChange={(checked) => handlePriorityChange(prio, checked)}
+                  >
+                    {prio}
+                  </DropdownMenuCheckboxItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* --- Team Filter --- */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="flex items-center gap-2">
+                  <Filter className="h-4 w-4" /> Team
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-40">
+                {[...new Set(allProjects.map((p) => p.team))].map((team) => (
+                  <DropdownMenuCheckboxItem
+                    key={team}
+                    checked={selectedTeams.includes(team)}
+                    onCheckedChange={(checked) => handleTeamChange(team, checked)}
+                  >
+                    {team}
+                  </DropdownMenuCheckboxItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* --- Search --- */}
+            <div className="relative">
+              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search archived projects..."
+                value={globalFilter}
+                onChange={(e) => setGlobalFilter(e.target.value)}
+                className="pl-8"
+              />
+            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -135,9 +220,6 @@ export default function ArchivePage() {
   )
 }
 
-// -----------------------------------------------------------------------------
-// Internal Components
-// -----------------------------------------------------------------------------
 const PageHeader = () => (
   <div className="flex items-center justify-between">
     <div>
@@ -147,7 +229,7 @@ const PageHeader = () => (
   </div>
 )
 
-const ProjectsDataTable = ({ table, columns }: { table: any, columns: any[] }) => (
+const ProjectsDataTable = ({ table, columns }: { table: any; columns: any[] }) => (
   <ScrollArea className="h-[500px]">
     <Table>
       <TableHeader className="sticky top-0 z-10 bg-background shadow-sm">
