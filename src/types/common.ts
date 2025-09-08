@@ -15,6 +15,12 @@ export type ProjectCategory = typeof PROJECT_CATEGORY_OPTIONS[number];
 export type ProjectPriority = typeof PROJECT_PRIORITY_OPTIONS[number];
 export type Team = typeof TEAM_OPTIONS[number];
 
+export interface DateRange {
+  label: string;
+  start: Date;
+  end: Date;
+}
+
 export interface TaskAssignmentRow {
   taskId: string;
   employeeId: string;

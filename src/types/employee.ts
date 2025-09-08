@@ -29,6 +29,12 @@ export interface ContractEmployee extends EmployeeBase {
 
 export type EmployeeRow = PermanentEmployee | ContractEmployee;
 
+export type EmployeeUtilization = EmployeeRow & {
+  utilization: number;
+  currentProjects: string[];
+  hoursThisWeek: number;
+}
+
 export function createEmployeeRow({ status, ...data }: any): EmployeeRow {
   switch (status) {
     case 'Permanent': return { ...data } as PermanentEmployee;
