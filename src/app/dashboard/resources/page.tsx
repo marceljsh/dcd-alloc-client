@@ -43,7 +43,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { EMPLOYMENT_STATUS_OPTIONS, EmploymentStatus, Role, ROLE_LEVEL_OPTIONS, ROLE_OPTIONS } from "@/types/common"
+import { employeeLevels, EmployeeRole, employeeRoles, EmploymentStatus, employmentStatuses } from "@/types/common"
 import rawEmployees from "@/data/employees.json"
 import { ContractEmployee, EmployeeRow, PermanentEmployee } from "@/types/employee"
 import { AddEmployeeFormValues, AddEmployeeForm } from "@/components/employee/AddEmployeeForm"
@@ -196,7 +196,7 @@ export default function ResourcesPage() {
             {/* Role Filter */}
             <FilterDropdown
               label="Role"
-              options={ROLE_OPTIONS}
+              options={employeeRoles}
               selected={selectedRoles}
               onChange={handleRoleFilterChange}
             />
@@ -204,7 +204,7 @@ export default function ResourcesPage() {
             {/* Level Filter */}
             <FilterDropdown
               label="Level"
-              options={ROLE_LEVEL_OPTIONS}
+              options={employeeLevels}
               selected={selectedLevels}
               onChange={handleLevelFilterChange}
             />
@@ -212,7 +212,7 @@ export default function ResourcesPage() {
             {/* Status Filter */}
             <FilterDropdown
               label="Status"
-              options={EMPLOYMENT_STATUS_OPTIONS}
+              options={employmentStatuses}
               selected={selectedStatuses}
               onChange={handleStatusFilterChange}
             />
@@ -305,7 +305,7 @@ export default function ResourcesPage() {
   )
 }
 
-const getRoleColor = (role: Role): string => {
+const getRoleColor = (role: EmployeeRole): string => {
   switch (role) {
     case "System Analyst":      return "bg-blue-100 text-blue-800"
     case "Data Engineer":       return "bg-green-100 text-green-800"
@@ -432,7 +432,7 @@ const IdentityCell = ({ employee }: { employee: EmployeeRow }) => (
   </div>
 )
 
-const RoleBadge = ({ role }: { role: Role }) => (
+const RoleBadge = ({ role }: { role: EmployeeRole }) => (
   <Badge variant="outline" className={getRoleColor(role)}>
     {role}
   </Badge>
@@ -514,7 +514,7 @@ const DeleteEmployeeDialog = ({ employee, isOpen, onOpenChange, onDelete }: {
 const EmployeeDetailDialog = ({ employee, onClose, getRoleColor, initials }: {
   employee: EmployeeRow | null
   onClose: () => void
-  getRoleColor: (role: Role) => string
+  getRoleColor: (role: EmployeeRole) => string
   initials: (name: string) => string
 }) => (
   <Dialog open={!!employee} onOpenChange={onClose}>
