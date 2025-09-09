@@ -18,7 +18,7 @@ const menuItems = [
   { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
   { title: 'Resources', url: '/dashboard/resources', icon: Users },
   { title: 'Projects', url: '/dashboard/projects', icon: FolderOpen },
-  { title: 'Timeline', url: '/dashboard/gantt', icon: ChartGantt },
+  { title: 'Timeline', url: '/dashboard/timeline', icon: ChartGantt },
   { title: 'History', url: '/dashboard/history', icon: FolderCheck },
 ];
 
