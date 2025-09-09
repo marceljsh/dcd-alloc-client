@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
@@ -27,7 +27,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
-import { ArrowDown, ArrowUp, Filter, AlertTriangle, DollarSign, Users, Target } from "lucide-react"
+import { ArrowDown, ArrowUp, Filter, AlertTriangle, DollarSign, Users, Target, Layers } from "lucide-react"
 
 // --- DATASET ---
 const allProjects = [
@@ -37,6 +37,7 @@ const allProjects = [
     alloc: 10.5,
     util: 87.5,
     priority: "Medium",
+    category: "Medium",
     role: "System Analyst",
     budget: 150000,
     actual: 145000,
@@ -47,6 +48,7 @@ const allProjects = [
     alloc: 9,
     util: 105.9,
     priority: "High",
+    category: "Small",
     role: "Software Engineer",
     budget: 200000,
     actual: 210000,
@@ -57,6 +59,7 @@ const allProjects = [
     alloc: 14,
     util: 93.3,
     priority: "Medium",
+    category: "Medium",
     role: "Data Engineer",
     budget: 175000,
     actual: 160000,
@@ -67,6 +70,7 @@ const allProjects = [
     alloc: 5,
     util: 83.3,
     priority: "Low",
+    category: "Small",
     role: "System Analyst",
     budget: 75000,
     actual: 72000,
@@ -77,6 +81,7 @@ const allProjects = [
     alloc: 10,
     util: 100,
     priority: "Low",
+    category: "Small",
     role: "Software Engineer",
     budget: 100000,
     actual: 100000,
@@ -87,6 +92,7 @@ const allProjects = [
     alloc: 22.5,
     util: 90.0,
     priority: "Critical",
+    category: "Big",
     role: "Software Engineer",
     budget: 300000,
     actual: 290000,
@@ -97,6 +103,7 @@ const allProjects = [
     alloc: 7.5,
     util: 107.1,
     priority: "Low",
+    category: "Small",
     role: "System Analyst",
     budget: 80000,
     actual: 85000,
@@ -107,6 +114,7 @@ const allProjects = [
     alloc: 16.2,
     util: 90.0,
     priority: "High",
+    category: "Medium",
     role: "Software Engineer",
     budget: 220000,
     actual: 210000,
@@ -117,6 +125,7 @@ const allProjects = [
     alloc: 11.5,
     util: 100.0,
     priority: "Medium",
+    category: "Medium",
     role: "Data Engineer",
     budget: 130000,
     actual: 130000,
@@ -127,6 +136,7 @@ const allProjects = [
     alloc: 3.5,
     util: 77.8,
     priority: "Low",
+    category: "Small",
     role: "System Analyst",
     budget: 50000,
     actual: 48000,
@@ -137,6 +147,7 @@ const allProjects = [
     alloc: 9.5,
     util: 105.6,
     priority: "Medium",
+    category: "Small",
     role: "Software Engineer",
     budget: 110000,
     actual: 115000,
@@ -147,6 +158,7 @@ const allProjects = [
     alloc: 28,
     util: 93.3,
     priority: "Critical",
+    category: "Big",
     role: "System Analyst",
     budget: 350000,
     actual: 340000,
@@ -157,6 +169,7 @@ const allProjects = [
     alloc: 5,
     util: 90.9,
     priority: "Low",
+    category: "Small",
     role: "Data Engineer",
     budget: 60000,
     actual: 58000,
@@ -167,6 +180,7 @@ const allProjects = [
     alloc: 17.5,
     util: 102.9,
     priority: "High",
+    category: "Medium",
     role: "Software Engineer",
     budget: 210000,
     actual: 215000,
@@ -177,6 +191,7 @@ const allProjects = [
     alloc: 18,
     util: 90.0,
     priority: "Critical",
+    category: "Medium",
     role: "Data Engineer",
     budget: 250000,
     actual: 240000,
@@ -187,6 +202,7 @@ const allProjects = [
     alloc: 6,
     util: 75.0,
     priority: "Low",
+    category: "Small",
     role: "System Analyst",
     budget: 90000,
     actual: 85000,
@@ -197,6 +213,7 @@ const allProjects = [
     alloc: 12.5,
     util: 96.2,
     priority: "Medium",
+    category: "Medium",
     role: "Software Engineer",
     budget: 160000,
     actual: 158000,
@@ -207,6 +224,7 @@ const allProjects = [
     alloc: 20,
     util: 90.9,
     priority: "High",
+    category: "Big",
     role: "Data Engineer",
     budget: 280000,
     actual: 275000,
@@ -217,6 +235,7 @@ const allProjects = [
     alloc: 7,
     util: 107.7,
     priority: "Low",
+    category: "Small",
     role: "System Analyst",
     budget: 70000,
     actual: 75000,
@@ -227,6 +246,7 @@ const allProjects = [
     alloc: 13,
     util: 92.9,
     priority: "Medium",
+    category: "Medium",
     role: "Data Engineer",
     budget: 180000,
     actual: 178000,
@@ -237,6 +257,7 @@ const allProjects = [
     alloc: 19.5,
     util: 102.6,
     priority: "High",
+    category: "Medium",
     role: "Software Engineer",
     budget: 240000,
     actual: 245000,
@@ -247,6 +268,7 @@ const allProjects = [
     alloc: 15,
     util: 93.8,
     priority: "Medium",
+    category: "Medium",
     role: "System Analyst",
     budget: 200000,
     actual: 195000,
@@ -257,6 +279,7 @@ const allProjects = [
     alloc: 10,
     util: 95.2,
     priority: "Medium",
+    category: "Medium",
     role: "Data Engineer",
     budget: 120000,
     actual: 118000,
@@ -267,11 +290,13 @@ const allProjects = [
     alloc: 25,
     util: 89.3,
     priority: "Critical",
+    category: "Big",
     role: "Software Engineer",
     budget: 320000,
     actual: 310000,
   },
 ]
+
 
 const roleUtilizationAll = [
   { role: "System Analyst", Allocated: 92, Idle: 8, Overload: 0 },
@@ -534,83 +559,96 @@ const utilizationChartData = useMemo(() => {
   }, [selectedRoles, selectedProjects, filteredProjects])
 
   const summary = useMemo(() => {
-    const totalProjects = filteredProjects.length
-    const totalResources = filteredProjects.reduce((sum, p) => sum + p.alloc, 0)
-    const avgUtil = filteredProjects.reduce((sum, p) => sum + p.util, 0) / (totalProjects || 1)
-    const criticalProjects = filteredProjects.filter((p) => p.util > 100).sort((a, b) => b.util - a.util)
-    const overBudgetProjects = filteredProjects
-      .filter((p) => p.actual > p.budget)
-      .sort((a, b) => b.actual - b.budget - (a.actual - a.budget))
-    const projectPriorities = filteredProjects.reduce((acc, p) => {
-      acc[p.priority] = (acc[p.priority] || 0) + 1
-      return acc
-    }, {})
+  const totalProjects = filteredProjects.length
+  const totalResources = filteredProjects.reduce((sum, p) => sum + p.alloc, 0)
+  const avgUtil =
+    filteredProjects.reduce((sum, p) => sum + p.util, 0) / (totalProjects || 1)
 
-    return [
-      {
-        title: "Total Resources (FTE)",
-        value: totalResources.toFixed(1),
-        icon: Users,
-        color: "text-blue-500",
-        desc: [...new Set(filteredProjects.map((p) => p.role))].map((role) => ({
+  const overBudgetProjects = filteredProjects
+    .filter((p) => p.actual > p.budget)
+    .sort((a, b) => b.actual - b.budget - (a.actual - a.budget))
+
+  const projectCategories = filteredProjects.reduce((acc, p) => {
+    acc[p.category] = (acc[p.category] || 0) + 1
+    return acc
+  }, {})
+
+  return [
+    {
+      title: "Total Resources (FTE)",
+      value: totalResources.toFixed(1),
+      icon: Users,
+      color: "text-blue-500",
+      desc: [...new Set(filteredProjects.map((p) => p.role))].map((role) => ({
+        label: role,
+        value: filteredProjects
+          .filter((p) => p.role === role)
+          .reduce((s, p) => s + p.alloc, 0)
+          .toFixed(1),
+      })),
+    },
+    {
+      title: "Avg. Utilization %",
+      value: `${(avgUtil || 0).toFixed(0)}%`,
+      icon: Target,
+      color: avgUtil > 100 ? "text-red-500" : "text-green-500",
+      desc: [...new Set(filteredProjects.map((p) => p.role))].map((role) => {
+        const roleProjects = filteredProjects.filter((p) => p.role === role)
+        const rAvgUtil =
+          roleProjects.reduce((s, p) => s + p.util, 0) /
+          (roleProjects.length || 1)
+        return {
           label: role,
-          value: filteredProjects
-            .filter((p) => p.role === role)
-            .reduce((s, p) => s + p.alloc, 0)
-            .toFixed(1),
-        })),
-      },
-      {
-        title: "Avg. Utilization %",
-        value: `${(avgUtil || 0).toFixed(0)}%`,
-        icon: Target,
-        color: avgUtil > 100 ? "text-red-500" : "text-green-500",
-        desc: [...new Set(filteredProjects.map((p) => p.role))].map((role) => {
-          const roleProjects = filteredProjects.filter((p) => p.role === role)
-          const rAvgUtil = roleProjects.reduce((s, p) => s + p.util, 0) / (roleProjects.length || 1)
-          return {
-            label: role,
-            value: `${rAvgUtil.toFixed(0)}%`,
-            color: rAvgUtil > 100 ? "text-red-500" : rAvgUtil < 80 ? "text-yellow-500" : "text-green-500",
-          }
-        }),
-      },
-      {
-        title: "Critical Projects",
-        value: criticalProjects.length,
-        icon: AlertTriangle,
-        color: "text-red-500",
-        desc: criticalProjects.slice(0, 3).map((p) => ({
+          value: `${rAvgUtil.toFixed(0)}%`,
+          color:
+            rAvgUtil > 100
+              ? "text-red-500"
+              : rAvgUtil < 80
+              ? "text-yellow-500"
+              : "text-green-500",
+        }
+      }),
+    },
+    {
+      title: "Critical Projects",
+      value: filteredProjects.filter((p) => p.util > 100).length,
+      icon: AlertTriangle,
+      color: "text-red-500",
+      desc: filteredProjects
+        .filter((p) => p.util > 100)
+        .sort((a, b) => b.util - a.util)
+        .slice(0, 3)
+        .map((p) => ({
           label: p.project,
           value: `${p.util.toFixed(1)}%`,
           color: "text-red-500",
         })),
-      },
-      {
-        title: "Over-budget Projects",
-        value: overBudgetProjects.length,
-        icon: DollarSign,
-        color: "text-orange-500",
-        desc: overBudgetProjects.slice(0, 3).map((p) => ({
-          label: p.project,
-          value: `+ $${(p.actual - p.budget).toLocaleString()}`,
-          color: "text-red-500",
-        })),
-      },
-      {
-        title: "Project Size",
-        value: `${totalProjects} Projects`,
-        icon: Filter,
-        color: "text-purple-500",
-        desc: [
-          { label: "Critical", value: projectPriorities["Critical"] || 0 },
-          { label: "High", value: projectPriorities["High"] || 0 },
-          { label: "Medium", value: projectPriorities["Medium"] || 0 },
-          { label: "Low", value: projectPriorities["Low"] || 0 },
-        ],
-      },
-    ]
-  }, [filteredProjects])
+    },
+    {
+      title: "Over-budget Projects",
+      value: overBudgetProjects.length,
+      icon: DollarSign,
+      color: "text-orange-500",
+      desc: overBudgetProjects.slice(0, 3).map((p) => ({
+        label: p.project,
+        value: `+ $${(p.actual - p.budget).toLocaleString()}`,
+        color: "text-red-500",
+      })),
+    },
+    {
+      title: "Project Category",
+      value: `${totalProjects} Projects`,
+      icon: Layers, // pakai icon biar lebih relevan
+      color: "text-purple-500",
+      desc: [
+        { label: "Small", value: projectCategories["Small"] || 0 },
+        { label: "Medium", value: projectCategories["Medium"] || 0 },
+        { label: "Big", value: projectCategories["Big"] || 0 },
+      ],
+    },
+  ]
+}, [filteredProjects])
+
 
   const enhancedMetrics = useMemo(() => {
     const priorityDistribution = filteredProjects.reduce((acc, p) => {
