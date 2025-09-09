@@ -3,40 +3,22 @@
 import { z } from "zod"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
-
-import {
-  TEAM_OPTIONS,
-  Team,
-  PROJECT_CATEGORY_OPTIONS,
-  ProjectCategory,
-  PROJECT_PRIORITY_OPTIONS,
-  ProjectPriority,
-} from "@/types/common"
-
-import {
-  Form,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-  FormControl,
-} from "@/components/ui/form"
-
+import { teams, Team, projectCategories, ProjectCategory, projectPriorities, ProjectPriority } from "@/types/common"
+import { Form, FormField, FormItem, FormLabel, FormMessage, FormControl } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select"
 import { DatePicker } from "@/components/DatePicker"
-import { Separator } from "@/components/ui/separator"
-import { DnDPills } from "../DnDPills"
+import { DnDPills } from "@/components/DnDPills"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 
 const schema = z
   .object({
     name: z.string().min(1, 'Project name is required'),
-    team: z.enum(TEAM_OPTIONS, 'Team is required'),
-    category: z.enum(PROJECT_CATEGORY_OPTIONS, 'Category is required'),
-    priority: z.enum(PROJECT_PRIORITY_OPTIONS, 'Priority is required'),
+    team: z.enum(teams, 'Team is required'),
+    category: z.enum(projectCategories, 'Category is required'),
+    priority: z.enum(projectPriorities, 'Priority is required'),
     budget: z.number().min(1, 'Budget is required'),
     startDate: z.string()
               .min(1, 'Start date is required')
@@ -48,19 +30,12 @@ const schema = z
   })
   .refine(
     (data) => Date.parse(data.endDate) > Date.parse(data.startDate),
-    {
-      message: 'End date must be after start date',
-      path: ['endDate'],
-    }
+    { message: 'End date must be after start date', path: ['endDate'] }
   )
 
 export type AddProjectFormValues = z.infer<typeof schema>
 
-interface AddProjectFormProps {
-  onCancel: () => void
-}
-
-export function AddProjectForm({ onCancel }: AddProjectFormProps) {
+export function AddProjectForm({ onCancel }: { onCancel: () => void }) {
   const [inputStage, setInputStage] = useState<string>('')
   const form = useForm<AddProjectFormValues>({
     resolver: zodResolver(schema),
@@ -123,7 +98,7 @@ export function AddProjectForm({ onCancel }: AddProjectFormProps) {
                     <SelectValue placeholder="Select a team" />
                   </SelectTrigger>
                   <SelectContent>
-                    {TEAM_OPTIONS.map((team) => (
+                    {teams.map((team) => (
                       <SelectItem key={team} value={team}>{team}</SelectItem>
                     ))}
                   </SelectContent>
@@ -150,7 +125,7 @@ export function AddProjectForm({ onCancel }: AddProjectFormProps) {
                     <SelectValue placeholder="Select a category" />
                   </SelectTrigger>
                   <SelectContent>
-                    {PROJECT_CATEGORY_OPTIONS.map((cat) => (
+                    {projectCategories.map((cat) => (
                       <SelectItem key={cat} value={cat}>{cat}</SelectItem>
                     ))}
                   </SelectContent>
@@ -177,7 +152,7 @@ export function AddProjectForm({ onCancel }: AddProjectFormProps) {
                     <SelectValue placeholder="Select a priority" />
                   </SelectTrigger>
                   <SelectContent>
-                    {PROJECT_PRIORITY_OPTIONS.map((priority) => (
+                    {projectPriorities.map((priority) => (
                       <SelectItem key={priority} value={priority}>{priority}</SelectItem>
                     ))}
                   </SelectContent>
@@ -292,6 +267,10 @@ export function AddProjectForm({ onCancel }: AddProjectFormProps) {
                   <DnDPills
                     pills={field.value}
                     onChange={(newOrder) => field.onChange(newOrder)}
+                    onDelete={(name) => field.onChange(field.value.filter((stage) => stage !== name))}
+                    onRename={(oldName, newName) => field.onChange(
+                      field.value.map((stage) => stage === oldName ? newName : stage)
+                    )}
                   />
                 )}
               </div>
@@ -306,7 +285,6 @@ export function AddProjectForm({ onCancel }: AddProjectFormProps) {
           </Button>
 
           <Button type="button" variant="outline" className="bg-gray-100 text-gray-700 hover:bg-gray-200"
-            // onClick={onSaveDraft} // handler save draft
           >
             Save Draft
           </Button>
