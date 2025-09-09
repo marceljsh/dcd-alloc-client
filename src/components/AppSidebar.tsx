@@ -1,6 +1,6 @@
 "use client"
 
-import { ChartGantt, Folder, FolderCheck, FolderOpen, LayoutDashboard, Users } from "lucide-react"
+import { ChartGantt, FolderCheck, FolderOpen, LayoutDashboard, Users } from "lucide-react"
 import { Sidebar,
   SidebarContent,
   SidebarHeader,
