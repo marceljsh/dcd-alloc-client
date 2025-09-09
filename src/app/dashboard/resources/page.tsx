@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { ComponentType, ReactNode, useMemo, useState } from "react"
 import {
   ColumnDef,
   flexRender,
@@ -53,50 +53,6 @@ import EmployeeHeatmap from "@/components/employee/EmployeeHeatmap"
 
 type ViewMode = 'table' | 'heatmap'
 
-const getRoleColor = (role: Role) => {
-  switch (role) {
-    case "System Analyst":      return "bg-blue-100 text-blue-800"
-    case "Data Engineer":       return "bg-green-100 text-green-800"
-    case "Software Engineer":   return "bg-purple-100 text-purple-800"
-  }
-}
-
-const getStatusColor = (status: EmploymentStatus) => {
-  switch (status) {
-    case "Permanent": return "bg-green-100 text-green-800"
-    case "Contract":  return "bg-yellow-100 text-yellow-800"
-  }
-}
-
-const createEmployee = ({ status, ...data }: AddEmployeeFormValues): EmployeeRow => {
-  const now = new Date().toISOString()
-  const base = {
-    id: Math.floor(Math.random() * 1000000),
-    createdAt: now,
-    updatedAt: now,
-    status,
-  }
-
-  switch (status) {
-    case "Permanent":
-      return { ...base, ...data, code: `ORG-${Math.floor(Math.random() * 1000000)}` } as PermanentEmployee
-    case "Contract":
-      return { ...base, ...data, status: "Contract", code: `CR-${Math.floor(Math.random() * 10000000)}` } as ContractEmployee
-    default:
-      throw new Error("Invalid employee status")
-  }
-}
-
-const initialEmployees: EmployeeRow[] = rawEmployees.map(
-  ({ status, ...data }: any) => {
-    switch (status) {
-      case "Permanent": return { status, ...data } as PermanentEmployee
-      case "Contract": return { status, ...data } as ContractEmployee
-      default: throw new Error("Invalid employee status")
-    }
-  }
-)
-
 export default function ResourcesPage() {
   const [employees, setEmployees] = useState<EmployeeRow[]>(initialEmployees)
   const [selectedEmployee, setSelectedEmployee] = useState<EmployeeRow | null>(null)
@@ -113,50 +69,22 @@ export default function ResourcesPage() {
   const [globalFilter, setGlobalFilter] = useState('')
 
   const columns = useMemo<ColumnDef<EmployeeRow>[]>(() => [
-    {
-      accessorKey: 'name',
-      header: 'Resource',
-      cell: ({ row }) => {
-        const employee = row.original
-        return (
-          <div className="flex items-center space-x-3">
-            <Avatar>
-              <AvatarFallback className={`font-mono text-background ${getRoleColor(employee.role)}`}>
-                {initials(employee.name)}
-              </AvatarFallback>
-            </Avatar>
-            <div>
-              <div className="font-medium">{employee.name}</div>
-              <div className="font-normal text-sm text-muted-foreground">{employee.email}</div>
-            </div>
-          </div>
-        )
-      }
-    },
-    { accessorKey: 'code', header: 'NIP', cell: ({ row }) => <div className="font-mono">{row.getValue('code')}</div> },
-    { accessorKey: 'role', header: 'Role', cell: ({ row }) => <Badge variant="outline" className={getRoleColor(row.getValue('role'))}>{row.getValue('role')}</Badge>, filterFn: 'arrIncludesSome' },
+    { accessorKey: 'name', header: 'Resource', cell: ({ row }) => <IdentityCell employee={row.original} /> },
+    { accessorKey: 'code', header: 'NIP', cell: ({ row }) => <div className="font-mono">{row.original.code}</div> },
+    { accessorKey: 'role', header: 'Role', cell: ({ row }) => <RoleBadge role={row.original.role} />, filterFn: 'arrIncludesSome' },
     { accessorKey: 'level', header: 'Level', filterFn: 'arrIncludesSome' },
     { accessorKey: 'team', header: 'Team' },
-    { accessorKey: 'status', header: 'Status', cell: ({ row }) => <Badge variant="outline" className={getStatusColor(row.getValue('status'))}>{row.getValue('status')}</Badge>, filterFn: 'arrIncludesSome' },
+    { accessorKey: 'status', header: 'Status', cell: ({ row }) => <StatusBadge status={row.original.status} />, filterFn: 'arrIncludesSome' },
     {
       id: 'actions',
-      cell: ({ row }) => {
-        const employee = row.original
-        return (
-          <div className="text-center">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild><Button variant="ghost" className="h-8 w-8 p-0"><span className="sr-only">Open menu</span><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
-              <DropdownMenuContent align="center">
-                <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                <DropdownMenuItem onClick={() => setSelectedEmployee(employee)}><Edit className="mr-2 h-4 w-4" /> View Details</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => toast.success(`Sent email to ${employee.email}`)}><Mail className="mr-2 h-4 w-4" /> Send Email</DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem className="text-red-400" onClick={() => setEmployeeToDelete(employee)}><Trash2 className="mr-2 h-4 w-4 text-red-400" /> Remove</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        )
-      }
+      cell: ({ row }) => (
+        <ActionMenu
+          employee={row.original}
+          onViewDetails={setSelectedEmployee}
+          onSendEmail={(employee) => toast.success(`Sent email to ${employee.email}`)}
+          onRemove={setEmployeeToDelete}
+        />
+      )
     }
   ], [])
 
@@ -217,73 +145,36 @@ export default function ResourcesPage() {
           <p className="text-muted-foreground">Manage your team members and their assignments</p>
         </div>
 
-        {/* Add Employee Button */}
-        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Resource
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-              <DialogTitle>Add New Resource</DialogTitle>
-              <DialogDescription>Add a member to your domain.</DialogDescription>
-            </DialogHeader>
-            <AddEmployeeForm onSubmit={handleAddEmployee} onCancel={() => setIsAddDialogOpen(false)} />
-          </DialogContent>
-        </Dialog>
+        <AddEmployeeDialog isOpen={isAddDialogOpen} onOpenChange={setIsAddDialogOpen} onAdd={handleAddEmployee} />
       </div>
 
       {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-4">
-        <Card className="py-4 gap-0">
-          <CardHeader>
-            <CardTitle className="text-sm font-medium">Contract Resources</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p>
-              <span className="text-2xl font-bold">
-                {employees.filter((emp) => emp.status === "Contract").length}
-              </span>
-              {` / ${employees.length}`}
-            </p>
-            <p className="text-xs text-muted-foreground">Members</p>
-          </CardContent>
-        </Card>
-        <Card className="py-4 gap-0">
-          <CardHeader>
-            <CardTitle className="text-sm font-medium">Software Engineer</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">
-              {employees.filter((emp) => emp.role === "Software Engineer").length}
-            </p>
-            <p className="text-xs text-muted-foreground">Skilled Coders</p>
-          </CardContent>
-        </Card>
-        <Card className="py-4 gap-0">
-          <CardHeader>
-            <CardTitle className="text-sm font-medium">Data Engineer</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">
-              {employees.filter((emp) => emp.role === "Data Engineer").length}
-            </p>
-            <p className="text-xs text-muted-foreground">Keen Minds</p>
-          </CardContent>
-        </Card>
-        <Card className="py-4 gap-0">
-          <CardHeader>
-            <CardTitle className="text-sm font-medium">System Analyst</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">
-              {employees.filter((emp) => emp.role === "System Analyst").length}
-            </p>
-            <p className="text-xs text-muted-foreground">People</p>
-          </CardContent>
-        </Card>
+        <StatCard
+          title="Contract Resources"
+          value={
+            <>
+            {employees.filter((emp) => emp.status === "Contract").length}
+            <span className="text-base font-normal">{` / ${employees.length}`}</span>
+            </>
+          }
+          description="Members"
+        />
+        <StatCard
+          title="Software Engineer"
+          value={employees.filter((emp) => emp.role === 'Software Engineer').length}
+          description="Skilled Coders"
+        />
+        <StatCard
+          title="Data Engineer"
+          value={employees.filter((emp) => emp.role === 'Data Engineer').length}
+          description="Keen Minds"
+        />
+        <StatCard
+          title="System Analyst"
+          value={employees.filter((emp) => emp.role === 'System Analyst').length}
+          description="People"
+        />
       </div>
 
       {/* Table */}
@@ -303,85 +194,28 @@ export default function ResourcesPage() {
 
           <div className="flex items-center gap-2">
             {/* Role Filter */}
-            <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="flex items-center gap-2">
-                    <Filter className="h-4 w-4" /> Role
-                    {selectedRoles.length > 0 && (
-                      <Badge variant="secondary" className="rounded-full px-2">
-                        {selectedRoles.length}
-                      </Badge>
-                    )}
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                    <DropdownMenuLabel>Filter by Role</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    {ROLE_OPTIONS.map((role) => (
-                      <DropdownMenuCheckboxItem
-                        key={role}
-                        checked={selectedRoles.includes(role)}
-                        onCheckedChange={(checked) => handleRoleFilterChange(role, !!checked)}
-                      >
-                        {role}
-                      </DropdownMenuCheckboxItem>
-                    ))}
-                </DropdownMenuContent>
-            </DropdownMenu>
+            <FilterDropdown
+              label="Role"
+              options={ROLE_OPTIONS}
+              selected={selectedRoles}
+              onChange={handleRoleFilterChange}
+            />
 
             {/* Level Filter */}
-            <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="flex items-center gap-2">
-                    <Filter className="h-4 w-4" /> Level
-                    {selectedLevels.length > 0 && (
-                      <Badge variant="secondary" className="rounded-full px-2">
-                        {selectedLevels.length}
-                      </Badge>
-                    )}
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                    <DropdownMenuLabel>Filter by Level</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    {ROLE_LEVEL_OPTIONS.map((level) => (
-                      <DropdownMenuCheckboxItem
-                        key={level}
-                        checked={selectedLevels.includes(level)}
-                        onCheckedChange={(checked) => handleLevelFilterChange(level, !!checked)}
-                      >
-                        {level}
-                      </DropdownMenuCheckboxItem>
-                    ))}
-                </DropdownMenuContent>
-            </DropdownMenu>
+            <FilterDropdown
+              label="Level"
+              options={ROLE_LEVEL_OPTIONS}
+              selected={selectedLevels}
+              onChange={handleLevelFilterChange}
+            />
 
             {/* Status Filter */}
-            <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="flex items-center gap-2">
-                    <Filter className="h-4 w-4" /> Status
-                    {selectedStatuses.length > 0 && (
-                      <Badge variant="secondary" className="rounded-full px-2">
-                        {selectedStatuses.length}
-                      </Badge>
-                    )}
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                    <DropdownMenuLabel>Filter by Status</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    {EMPLOYMENT_STATUS_OPTIONS.map((status) => (
-                      <DropdownMenuCheckboxItem
-                        key={status}
-                        checked={selectedStatuses.includes(status)}
-                        onCheckedChange={(checked) => handleStatusFilterChange(status, !!checked)}
-                      >
-                        {status}
-                      </DropdownMenuCheckboxItem>
-                    ))}
-                </DropdownMenuContent>
-            </DropdownMenu>
+            <FilterDropdown
+              label="Status"
+              options={EMPLOYMENT_STATUS_OPTIONS}
+              selected={selectedStatuses}
+              onChange={handleStatusFilterChange}
+            />
 
             {/* Search Input */}
             <div className="relative">
@@ -452,88 +286,292 @@ export default function ResourcesPage() {
         </CardContent>
       </Card>
 
-      {/* Employee Details Dialog */}
-      <Dialog open={!!selectedEmployee} onOpenChange={() => setSelectedEmployee(null)}>
-        <DialogContent className="sm:max-w-[425px]">
-          {selectedEmployee && (
-            <>
-            <DialogHeader>
-              <DialogTitle className="flex items-center space-x-3">
-                <Avatar>
-                  <AvatarFallback className={`font-mono text-background ${getRoleColor(selectedEmployee.role)}`}>
-                    {initials(selectedEmployee.name)}
-                  </AvatarFallback>
-                </Avatar>
-                <div>
-                  <div>{selectedEmployee.name}</div>
-                  <div className="text-sm text-muted-foreground font-normal">{selectedEmployee.role}</div>
-                </div>
-              </DialogTitle>
-            </DialogHeader>
+      <EmployeeDetailDialog
+        employee={selectedEmployee}
+        onClose={() => setSelectedEmployee(null)}
+        getRoleColor={getRoleColor}
+        initials={initials}
+      />
 
-            <div className="grid gap-4 py-4">
-              <div className="flex items-center space-x-2">
-                <Mail className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm">{selectedEmployee.email}</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Phone className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm">+{selectedEmployee.phone}</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <MapPin className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm">{selectedEmployee.location || "N/A"}</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Calendar className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm">Joined {new Date(selectedEmployee.joinDate).toLocaleDateString("id-ID")}</span>
-              </div>
-
-              {selectedEmployee.status === "Contract" && (
-                <>
-                  <Separator className="my-4" />
-                  <p className="text-md font-semibold">Contract Details</p>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1">
-                      <Label className="text-xs text-muted-foreground">Start</Label>
-                      <p className="text-sm">{selectedEmployee.contractStartDate}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs text-muted-foreground">End</Label>
-                      <p className="text-sm">{selectedEmployee.contractEndDate}</p>
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete Employee Confirmation */}
-      <AlertDialog open={!!employeeToDelete} onOpenChange={() => setEmployeeToDelete(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently remove <strong>{employeeToDelete?.name}</strong> from your team.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => employeeToDelete && handleDeleteEmployee(employeeToDelete)}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <DeleteEmployeeDialog
+        employee={employeeToDelete}
+        isOpen={!!employeeToDelete}
+        onOpenChange={() => setEmployeeToDelete(null)}
+        onDelete={handleDeleteEmployee}
+      />
 
       <Toaster theme="light" position="top-center" richColors />
     </div>
   )
 }
+
+const getRoleColor = (role: Role): string => {
+  switch (role) {
+    case "System Analyst":      return "bg-blue-100 text-blue-800"
+    case "Data Engineer":       return "bg-green-100 text-green-800"
+    case "Software Engineer":   return "bg-purple-100 text-purple-800"
+  }
+}
+
+const getStatusColor = (status: EmploymentStatus): string => {
+  switch (status) {
+    case "Permanent": return "bg-green-100 text-green-800"
+    case "Contract":  return "bg-yellow-100 text-yellow-800"
+  }
+}
+
+const createEmployee = ({ status, ...data }: AddEmployeeFormValues): EmployeeRow => {
+  const now = new Date().toISOString()
+  const base = {
+    id: Math.floor(Math.random() * 1000000),
+    createdAt: now,
+    updatedAt: now,
+    status,
+  }
+
+  switch (status) {
+    case "Permanent":
+      return { ...base, ...data, code: `ORG-${Math.floor(Math.random() * 1000000)}` } as PermanentEmployee
+    case "Contract":
+      return { ...base, ...data, status: "Contract", code: `CR-${Math.floor(Math.random() * 10000000)}` } as ContractEmployee
+  }
+}
+
+const initialEmployees: EmployeeRow[] = rawEmployees.map(
+  ({ status, ...data }: any) => {
+    switch (status) {
+      case "Permanent": return { status, ...data } as PermanentEmployee
+      case "Contract": return { status, ...data } as ContractEmployee
+      default: throw new Error("Invalid employee status")
+    }
+  }
+)
+
+const AddEmployeeDialog = ({ isOpen, onOpenChange, onAdd }: {
+  isOpen: boolean,
+  onOpenChange: (open: boolean) => void,
+  onAdd: (data: AddEmployeeFormValues) => void,
+}) => (
+  <Dialog open={isOpen} onOpenChange={onOpenChange}>
+    <DialogTrigger asChild>
+      <Button>
+        <Plus className="h-4 w-4 mr-2" />
+        Add Resource
+      </Button>
+    </DialogTrigger>
+    <DialogContent className="sm:max-w-[425px]">
+      <DialogHeader>
+        <DialogTitle>Add New Resource</DialogTitle>
+        <DialogDescription>Add a member to your domain.</DialogDescription>
+      </DialogHeader>
+      <AddEmployeeForm onSubmit={onAdd} onCancel={() => onOpenChange(false)} />
+    </DialogContent>
+  </Dialog>
+)
+
+const StatCard = ({ title, value, description }: {
+  title: string,
+  value: ReactNode,
+  description: string
+}) => (
+  <Card className="py-4 gap-0">
+    <CardHeader>
+      <CardTitle className="text-sm font-medium">{title}</CardTitle>
+    </CardHeader>
+    <CardContent>
+      <p className="text-2xl font-bold">{value}</p>
+      <p className="text-xs text-muted-foreground">{description}</p>
+    </CardContent>
+  </Card>
+)
+
+const FilterDropdown = <T extends string>({ label, options, selected, onChange }: {
+  label: string,
+  options: readonly T[],
+  selected: readonly T[],
+  onChange: (option: T, checked: boolean) => void
+}) => (
+  <DropdownMenu>
+    <DropdownMenuTrigger asChild>
+      <Button variant="outline" className="flex items-center gap-2">
+        <Filter className="h-4 w-4" /> {label}
+        {selected.length > 0 && (
+          <Badge variant="secondary" className="rounded-full px-2">
+            {selected.length}
+          </Badge>
+        )}
+      </Button>
+    </DropdownMenuTrigger>
+    <DropdownMenuContent align="end">
+      <DropdownMenuLabel>Filter by {label}</DropdownMenuLabel>
+      <DropdownMenuSeparator />
+      {options.map((opt) => (
+        <DropdownMenuCheckboxItem
+          key={opt}
+          checked={selected.includes(opt)}
+          onCheckedChange={(checked) => onChange(opt, !!checked)}
+        >
+          {opt}
+        </DropdownMenuCheckboxItem>
+      ))}
+    </DropdownMenuContent>
+  </DropdownMenu>
+)
+
+const IdentityCell = ({ employee }: { employee: EmployeeRow }) => (
+  <div className="flex items-center space-x-3">
+    <Avatar>
+      <AvatarFallback className={`font-mono text-background ${getRoleColor(employee.role)}`}>
+        {initials(employee.name)}
+      </AvatarFallback>
+    </Avatar>
+    <div>
+      <div className="font-medium">{employee.name}</div>
+      <div className="font-normal text-sm text-muted-foreground">{employee.email}</div>
+    </div>
+  </div>
+)
+
+const RoleBadge = ({ role }: { role: Role }) => (
+  <Badge variant="outline" className={getRoleColor(role)}>
+    {role}
+  </Badge>
+)
+
+const StatusBadge = ({ status }: { status: EmploymentStatus }) => (
+  <Badge variant="outline" className={getStatusColor(status)}>
+    {status}
+  </Badge>
+)
+
+const ActionMenu = ({ employee, onViewDetails, onSendEmail, onRemove }: {
+  employee: EmployeeRow,
+  onViewDetails: (employee: EmployeeRow) => void,
+  onSendEmail: (employee: EmployeeRow) => void,
+  onRemove: (employee: EmployeeRow) => void,
+}) => (
+  <div className="text-center">
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" className="h-8 w-8 p-0">
+          <span className="sr-only">Open menu</span>
+          <MoreHorizontal className="h-4 w-4" />
+        </Button>
+      </DropdownMenuTrigger>
+
+      <DropdownMenuContent align="center">
+        <DropdownMenuLabel>Actions</DropdownMenuLabel>
+
+        <DropdownMenuItem onClick={() => onViewDetails(employee)}>
+          <Edit className="mr-2 h-4 w-4" />
+          View Details
+        </DropdownMenuItem>
+
+        <DropdownMenuItem onClick={() => onSendEmail(employee)}>
+          <Mail className="mr-2 h-4 w-4" />
+          Send Email
+        </DropdownMenuItem>
+
+        <DropdownMenuSeparator />
+
+        <DropdownMenuItem className="text-red-400" onClick={() => onRemove(employee)}>
+          <Trash2 className="mr-2 h-4 w-4 text-red-400" />
+          Remove
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  </div>
+)
+
+const DeleteEmployeeDialog = ({ employee, isOpen, onOpenChange, onDelete }: {
+  employee: EmployeeRow | null,
+  isOpen: boolean,
+  onOpenChange: (open: boolean) => void,
+  onDelete: (employee: EmployeeRow) => void,
+}) => (
+  <AlertDialog open={isOpen} onOpenChange={onOpenChange}>
+    <AlertDialogContent>
+      <AlertDialogHeader>
+        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+        <AlertDialogDescription>
+          This action cannot be undone. This will permanently remove <strong>{employee?.name}</strong> from your team.
+        </AlertDialogDescription>
+      </AlertDialogHeader>
+
+      <AlertDialogFooter>
+        <AlertDialogCancel>Cancel</AlertDialogCancel>
+        <AlertDialogAction
+          onClick={() => employee && onDelete(employee)}
+          className="bg-red-600 hover:bg-red-700"
+        >
+          Delete
+        </AlertDialogAction>
+      </AlertDialogFooter>
+    </AlertDialogContent>
+  </AlertDialog>
+)
+
+const EmployeeDetailDialog = ({ employee, onClose, getRoleColor, initials }: {
+  employee: EmployeeRow | null
+  onClose: () => void
+  getRoleColor: (role: Role) => string
+  initials: (name: string) => string
+}) => (
+  <Dialog open={!!employee} onOpenChange={onClose}>
+    <DialogContent className="sm:max-w-[425px]">
+      {employee && (
+        <>
+          <DialogHeader>
+            <DialogTitle className="flex items-center space-x-3">
+              <Avatar>
+                <AvatarFallback
+                  className={`font-mono text-background ${getRoleColor(employee.role)}`}
+                >
+                  {initials(employee.name)}
+                </AvatarFallback>
+              </Avatar>
+              <div>
+                <div>{employee.name}</div>
+                <div className="text-sm text-muted-foreground font-normal">
+                  {employee.role}
+                </div>
+              </div>
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="grid gap-4 py-4">
+            <DetailItem Icon={Mail} value={employee.email} />
+            <DetailItem Icon={Phone} value={`+${employee.phone}`} />
+            <DetailItem Icon={MapPin} value={employee.location || "N/A"} />
+            <DetailItem Icon={Calendar} value={`Joined ${new Date(employee.joinDate).toLocaleDateString("id-ID")}`} />
+
+            {employee.status === "Contract" && (
+              <>
+                <Separator className="my-4" />
+                <p className="text-md font-semibold">Contract Details</p>
+                <div className="grid grid-cols-2 gap-4">
+                  <ContractField label="Start" value={employee.contractStartDate} />
+                  <ContractField label="End" value={employee.contractEndDate} />
+                </div>
+              </>
+            )}
+          </div>
+        </>
+      )}
+    </DialogContent>
+  </Dialog>
+)
+
+const DetailItem = ({ Icon, value }: { Icon: ComponentType<{ className?: string }>, value: string }) => (
+  <div className="flex items-center space-x-2">
+    <Icon className="h-4 w-4 text-muted-foreground" />
+    <span className="text-sm">{value}</span>
+  </div>
+)
+
+const ContractField = ({ label, value }: { label: string; value?: string }) => (
+  <div className="space-y-1">
+    <Label className="text-xs text-muted-foreground">{label}</Label>
+    <p className="text-sm">{value || "N/A"}</p>
+  </div>
+)
