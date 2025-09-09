@@ -1,6 +1,6 @@
 "use client"
 
-import { Box, FileBoxIcon, FolderOpen, LayoutDashboard, Users } from "lucide-react"
+import { Box, FileBoxIcon, FolderOpen, LayoutDashboard, Users, Combine } from "lucide-react"
 import { Sidebar,
   SidebarContent,
   SidebarHeader,
@@ -40,6 +40,11 @@ const menuItems = [
     url: '/dashboard/history',
     icon: FileBoxIcon,
   },
+  // {
+  //   title: 'Role and Level',
+  //   url: '/dashboard/projects/role/level',
+  //   icon: Combine,
+  // }
 ];
 
 export function AppSidebar() {
