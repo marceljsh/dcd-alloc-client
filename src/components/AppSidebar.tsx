@@ -32,12 +32,12 @@ const menuItems = [
   },
   {
     title: 'Timeline',
-    url: '/dashboard/gantt',
+    url: '/dashboard/timeline',
     icon: Box,
   },
   {
-    title: 'Archive/History',
-    url: '/dashboard/archive',
+    title: 'History',
+    url: '/dashboard/history',
     icon: FileBoxIcon,
   },
 ]

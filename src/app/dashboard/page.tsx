@@ -598,7 +598,7 @@ export default function DashboardPage() {
         })),
       },
       {
-        title: "Project Priority",
+        title: "Project Size",
         value: `${totalProjects} Projects`,
         icon: Filter,
         color: "text-purple-500",

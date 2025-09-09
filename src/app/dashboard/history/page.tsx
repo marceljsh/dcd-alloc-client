@@ -17,15 +17,13 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Search, Trash2, RotateCcw, Users, Filter } from "lucide-react"
+import { Search, Users, Filter } from "lucide-react"
 
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuTrigger,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu"
 
 import { ProjectRow } from "@/types/project"
@@ -33,7 +31,7 @@ import rawProjects from "@/data/projects.json"
 import { ProjectCategory, ProjectPriority } from "@/types/common"
 
 const allProjects: ProjectRow[] = rawProjects as ProjectRow[]
-const initialArchived = allProjects.filter((p) => p.priority === "Critical")
+const initialHistory = allProjects // bisa pakai filter kalau history punya kriteria khusus
 
 // Utils
 const getCategoryColor = (category: ProjectCategory) => {
@@ -53,26 +51,17 @@ const getPriorityColor = (priority: ProjectPriority) => {
   }
 }
 
-export default function ArchivePage() {
-  const [archived, setArchived] = useState<ProjectRow[]>(initialArchived)
+export default function HistoryPage() {
+  const [history] = useState<ProjectRow[]>(initialHistory)
 
   // Filter states
   const [selectedCategories, setSelectedCategories] = useState<string[]>([])
   const [selectedPriorities, setSelectedPriorities] = useState<string[]>([])
   const [selectedTeams, setSelectedTeams] = useState<string[]>([])
 
-  const [projects] = useState<ProjectRow[]>(() => rawProjects as ProjectRow[])
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [globalFilter, setGlobalFilter] = useState("")
-
-  const handleRestore = (project: ProjectRow) => {
-    setArchived((prev) => prev.filter((p) => p.code !== project.code))
-  }
-
-  const handleDelete = (project: ProjectRow) => {
-    setArchived((prev) => prev.filter((p) => p.code !== project.code))
-  }
 
   const columns = useMemo<ColumnDef<ProjectRow>[]>(() => [
     { accessorKey: "code", header: "Project Code", cell: ({ row }) => <div className="font-mono">{row.getValue("code")}</div> },
@@ -84,27 +73,10 @@ export default function ArchivePage() {
     { accessorKey: "budget", header: "Budget", cell: ({ row }) => `Rp${(row.getValue("budget") as number).toLocaleString("id-ID")}` },
     { accessorKey: "startDate", header: "Start Date", cell: ({ row }) => new Date(row.getValue("startDate")).toLocaleDateString("id-ID") },
     { accessorKey: "endDate", header: "End Date", cell: ({ row }) => new Date(row.getValue("endDate")).toLocaleDateString("id-ID") },
-    {
-      id: "actions",
-      header: "Actions",
-      cell: ({ row }) => {
-        const project = row.original
-        return (
-          <div className="flex gap-2">
-            <Button size="sm" variant="outline" onClick={() => handleRestore(project)}>
-              <RotateCcw className="h-4 w-4 mr-1" /> Restore
-            </Button>
-            <Button size="sm" variant="destructive" onClick={() => handleDelete(project)}>
-              <Trash2 className="h-4 w-4 mr-1" /> Delete
-            </Button>
-          </div>
-        )
-      },
-    },
-  ], [archived])
+  ], [])
 
   const table = useReactTable({
-    data: archived,
+    data: history,
     columns,
     state: { sorting, columnFilters, globalFilter },
     onSortingChange: setSorting,
@@ -204,7 +176,7 @@ export default function ArchivePage() {
             <div className="relative">
               <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search archived projects..."
+                placeholder="Search history projects..."
                 value={globalFilter}
                 onChange={(e) => setGlobalFilter(e.target.value)}
                 className="pl-8"
@@ -224,7 +196,7 @@ const PageHeader = () => (
   <div className="flex items-center justify-between">
     <div>
       <h1 className="text-3xl font-bold">History</h1>
-      <p className="text-muted-foreground">View and manage last projects</p>
+      <p className="text-muted-foreground">View past project records</p>
     </div>
   </div>
 )
@@ -264,7 +236,7 @@ const ProjectsDataTable = ({ table, columns }: { table: any; columns: any[] }) =
         ) : (
           <TableRow>
             <TableCell colSpan={columns.length} className="h-24 text-center">
-              No archived projects.
+              No history projects.
             </TableCell>
           </TableRow>
         )}
