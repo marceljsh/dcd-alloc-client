@@ -1,6 +1,6 @@
 "use client"
 
-import { Box, FileBoxIcon, FolderOpen, LayoutDashboard, Users, Combine } from "lucide-react"
+import { ChartGantt, Folder, FolderCheck, FolderOpen, LayoutDashboard, Users } from "lucide-react"
 import { Sidebar,
   SidebarContent,
   SidebarHeader,
@@ -15,36 +15,11 @@ import Image from "next/image"
 import Link from "next/link"
 
 const menuItems = [
-  {
-    title: 'Dashboard',
-    url: '/dashboard',
-    icon: LayoutDashboard,
-  },
-  {
-    title: 'Resources',
-    url: '/dashboard/resources',
-    icon: Users,
-  },
-  {
-    title: 'Projects',
-    url: '/dashboard/projects',
-    icon: FolderOpen,
-  },
-  {
-    title: 'Timeline',
-    url: '/dashboard/timeline',
-    icon: Box,
-  },
-  {
-    title: 'History',
-    url: '/dashboard/history',
-    icon: FileBoxIcon,
-  },
-  // {
-  //   title: 'Role and Level',
-  //   url: '/dashboard/projects/role/level',
-  //   icon: Combine,
-  // }
+  { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
+  { title: 'Resources', url: '/dashboard/resources', icon: Users },
+  { title: 'Projects', url: '/dashboard/projects', icon: FolderOpen },
+  { title: 'Timeline', url: '/dashboard/gantt', icon: ChartGantt },
+  { title: 'History', url: '/dashboard/history', icon: FolderCheck },
 ];
 
 export function AppSidebar() {

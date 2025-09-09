@@ -500,20 +500,20 @@ export default function DashboardPage() {
   }, [projectsFilteredByRoleAndProject, selectedPeriods])
 
 const utilizationChartData = useMemo(() => {
-  if (filteredProjects.length === 0) return [];
-  const rolesInView = [...new Set(filteredProjects.map((p) => p.role))];
-  return rolesInView.map((role) => {
-    const roleProjects = filteredProjects.filter((p) => p.role === role);
-    const totalReq = roleProjects.reduce((s, p) => s + p.req, 0);
-    const totalAlloc = roleProjects.reduce((s, p) => s + p.alloc, 0);
-    const utilization = totalReq > 0 ? (totalAlloc / totalReq) * 100 : 0;
-    return {
-      role,
-      Allocated: Math.min(100, utilization),
-      Overload: Math.max(0, utilization - 100),
-    };
-  });
-}, [filteredProjects]);
+    if (filteredProjects.length === 0) return [];
+    const rolesInView = [...new Set(filteredProjects.map(p => p.role))];
+    return rolesInView.map(role => {
+        const roleProjects = filteredProjects.filter(p => p.role === role);
+        const totalReq = roleProjects.reduce((s, p) => s + p.req, 0);
+        const totalAlloc = roleProjects.reduce((s, p) => s + p.alloc, 0);
+        const utilization = totalReq > 0 ? (totalAlloc / totalReq) * 100 : 0;
+        return {
+            role,
+            Allocated: Math.min(100, utilization),
+            Overload: Math.max(0, utilization - 100)
+        };
+    });
+  }, [filteredProjects]);
 
   const processedTrend = useMemo(() => {
     let data
