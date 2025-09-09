@@ -40,7 +40,7 @@ const menuItems = [
     url: '/dashboard/history',
     icon: FileBoxIcon,
   },
-]
+];
 
 export function AppSidebar() {
   const path = usePathname().substring(1)
