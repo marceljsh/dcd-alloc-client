@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { JSX, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -197,12 +197,12 @@ export default function RoleAssignmentPage() {
         </div>
 
         {/* Header */}
-        <div className="space-y-1 mb-2">
+        <div className="space-y-1 mb-2 mt-7">
           <div className="flex items-center gap-2">
             <Users className="w-5 h-5 text-teal-600" />
             <h1 className="text-lg font-semibold">Role & Level Selection</h1>
           </div>
-          <p className="text-gray-600 text-sm">
+          <p className="text-gray-600 text-sm mb-3">
             Configure available team members and their leverage factors for Project 1
           </p>
         </div>

@@ -18,15 +18,10 @@ const menuItems = [
   { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
   { title: 'Resources', url: '/dashboard/resources', icon: Users },
   { title: 'Projects', url: '/dashboard/projects', icon: FolderOpen },
-<<<<<<< HEAD
   { title: 'Timeline', url: '/dashboard/timeline', icon: ChartGantt },
   { title: 'History', url: '/dashboard/history', icon: FolderCheck },
 ];
-=======
-  { title: 'Timeline', url: '/dashboard/gantt', icon: ChartGantt },
-  { title: 'Archive', url: '/dashboard/archive', icon: FolderCheck },
-]
->>>>>>> marceljsh/pipeline-ayu
+
 
 export function AppSidebar() {
   const path = usePathname().substring(1)

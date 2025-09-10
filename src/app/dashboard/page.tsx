@@ -319,7 +319,7 @@ const productivityTrendAll = [
   { month: "Dec", "Software Engineer": 85, "Data Engineer": 65, "System Analyst": 90 },
 ]
 
-const generateDaysInMonth = (monthName, year) => {
+const generateDaysInMonth = (monthName: string, year: number) => {
   const monthIndex = new Date(`${monthName} 1, ${year}`).getMonth()
   const daysInMonth = new Date(year, monthIndex + 1, 0).getDate()
 
