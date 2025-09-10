@@ -1,5 +1,14 @@
-"use client"
+"use client";
 
+import {
+  Box,
+  FolderOpen,
+  LayoutDashboard,
+  PencilRuler,
+  Users,
+} from "lucide-react";
+import {
+  Sidebar,
 import { ChartGantt, FolderCheck, FolderOpen, LayoutDashboard, Users } from "lucide-react"
 import { Sidebar,
   SidebarContent,
@@ -9,10 +18,10 @@ import { Sidebar,
   SidebarMenuItem,
   SidebarTrigger,
   useSidebar,
-} from "@/components/ui/sidebar"
-import { usePathname } from "next/navigation"
-import Image from "next/image"
-import Link from "next/link"
+} from "@/components/ui/sidebar";
+import { usePathname } from "next/navigation";
+import Image from "next/image";
+import Link from "next/link";
 
 const menuItems = [
   { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
@@ -23,11 +32,15 @@ const menuItems = [
 ];
 
 export function AppSidebar() {
-  const path = usePathname().substring(1)
-  const { open } = useSidebar()
+  const path = usePathname().substring(1);
+  const { open } = useSidebar();
 
   return (
-    <Sidebar collapsible="icon" className="border-r border-border bg-background" variant="inset">
+    <Sidebar
+      collapsible="icon"
+      className="border-r border-border bg-background"
+      variant="inset"
+    >
       <SidebarHeader className="border-b border-border h-14">
         <div className="flex items-baseline justify-between">
           <Link href="/" className="group-data-[collapsible=icon]:hidden px-2">
@@ -57,5 +70,5 @@ export function AppSidebar() {
         </SidebarMenu>
       </SidebarContent>
     </Sidebar>
-  )
+  );
 }
