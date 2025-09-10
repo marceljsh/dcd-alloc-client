@@ -1,8 +1,7 @@
 "use client"
 
-import type React from "react"
-
 import { useMemo, useState } from "react"
+import type React from "react"
 import {
   type ColumnDef,
   flexRender,
@@ -84,7 +83,6 @@ type ActiveDialog = "add" | "detail" | "timeline" | null
 
 export default function ProjectsPage() {
   const router = useRouter()
-
   const [activeDialog, setActiveDialog] = useState<ActiveDialog>(null)
   const [selectedProject, setSelectedProject] = useState<ProjectRow | null>(null)
 

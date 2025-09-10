@@ -1,7 +1,14 @@
-"use client"
+"use client";
 
-import { ChartGantt, FolderCheck, FolderOpen, LayoutDashboard, Users } from "lucide-react"
-import { Sidebar,
+import {
+  ChartGantt,
+  FolderCheck,
+  FolderOpen,
+  LayoutDashboard,
+  Users,
+} from "lucide-react";
+import {
+  Sidebar,
   SidebarContent,
   SidebarHeader,
   SidebarMenu,
@@ -9,29 +16,39 @@ import { Sidebar,
   SidebarMenuItem,
   SidebarTrigger,
   useSidebar,
-} from "@/components/ui/sidebar"
-import { usePathname } from "next/navigation"
-import Image from "next/image"
-import Link from "next/link"
+} from "@/components/ui/sidebar";
+import { usePathname } from "next/navigation";
+import Image from "next/image";
+import Link from "next/link";
 
 const menuItems = [
-  { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
-  { title: 'Resources', url: '/dashboard/resources', icon: Users },
-  { title: 'Projects', url: '/dashboard/projects', icon: FolderOpen },
-  { title: 'Timeline', url: '/dashboard/timeline', icon: ChartGantt },
-  { title: 'History', url: '/dashboard/history', icon: FolderCheck },
+  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
+  { title: "Resources", url: "/dashboard/resources", icon: Users },
+  { title: "Projects", url: "/dashboard/projects", icon: FolderOpen },
+  { title: "Timeline", url: "/dashboard/timeline", icon: ChartGantt },
+  { title: "History", url: "/dashboard/history", icon: FolderCheck },
 ];
 
 export function AppSidebar() {
-  const path = usePathname().substring(1)
-  const { open } = useSidebar()
+  const path = usePathname().substring(1);
+  const { open } = useSidebar();
 
   return (
-    <Sidebar collapsible="icon" className="border-r border-border bg-background" variant="inset">
+    <Sidebar
+      collapsible="icon"
+      className="border-r border-border bg-background"
+      variant="inset"
+    >
       <SidebarHeader className="border-b border-border h-14">
         <div className="flex items-baseline justify-between">
           <Link href="/" className="group-data-[collapsible=icon]:hidden px-2">
-            <Image src="/bmri.svg" alt="BMRI Logo" width={0} height={0} className="h-8 w-auto" />
+            <Image
+              src="/bmri.svg"
+              alt="BMRI Logo"
+              width={0}
+              height={0}
+              className="h-8 w-auto"
+            />
           </Link>
           <div className="px-1">
             <SidebarTrigger />
@@ -57,5 +74,5 @@ export function AppSidebar() {
         </SidebarMenu>
       </SidebarContent>
     </Sidebar>
-  )
+  );
 }
