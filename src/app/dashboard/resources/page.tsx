@@ -516,62 +516,82 @@ const EmployeeDetailDialog = ({ employee, onClose, getRoleColor, initials }: {
   onClose: () => void
   getRoleColor: (role: EmployeeRole) => string
   initials: (name: string) => string
-}) => (
-  <Dialog open={!!employee} onOpenChange={onClose}>
-    <DialogContent className="sm:max-w-[425px]">
-      {employee && (
-        <>
-          <DialogHeader>
-            <DialogTitle className="flex items-center space-x-3">
-              <Avatar>
-                <AvatarFallback
-                  className={`font-mono text-background ${getRoleColor(employee.role)}`}
-                >
-                  {initials(employee.name)}
-                </AvatarFallback>
-              </Avatar>
-              <div>
-                <div>{employee.name}</div>
-                <div className="text-sm text-muted-foreground font-normal">
-                  {employee.role}
-                </div>
-              </div>
-            </DialogTitle>
-          </DialogHeader>
+}) => {
+  if (!employee) return null
 
-          <div className="grid gap-4 py-4">
-            <DetailItem Icon={Mail} value={employee.email} />
-            <DetailItem Icon={Phone} value={`+${employee.phone}`} />
-            <DetailItem Icon={MapPin} value={employee.location || "N/A"} />
-            <DetailItem Icon={Calendar} value={`Joined ${new Date(employee.joinDate).toLocaleDateString("id-ID")}`} />
+  return (
+    <Dialog open={!!employee} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle className="flex items-center space-x-3">
+            <Avatar>
+              <AvatarFallback className={`font-mono text-background ${getRoleColor(employee.role)}`}>
+                {initials(employee.name)}
+              </AvatarFallback>
+            </Avatar>
+            <div>
+              <div>{employee.name}</div>
+              <div className="text-sm text-muted-foreground font-normal">{employee.role}</div>
+            </div>
+          </DialogTitle>
+        </DialogHeader>
 
-            {employee.status === "Contract" && (
-              <>
-                <Separator className="my-4" />
-                <p className="text-md font-semibold">Contract Details</p>
-                <div className="grid grid-cols-2 gap-4">
-                  <ContractField label="Start" value={employee.contractStartDate} />
-                  <ContractField label="End" value={employee.contractEndDate} />
-                </div>
-              </>
-            )}
+        <div className="grid gap-4 py-4">
+          <DetailItem icon={Mail} value={employee.email} />
+          <DetailItem icon={Phone} value={`+${employee.phone}`} />
+          <DetailItem icon={MapPin} value={employee.location} />
+          <DetailItem icon={Calendar} value={`Joined ${new Date(employee.joinDate).toLocaleDateString('id-ID')}`} />
+
+          {employee.status === "Contract" && (
+            <>
+            <Separator className="my-4" />
+            <ContractDetails employee={employee as ContractEmployee} />
+            </>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+const ContractDetails = ({ employee }: { employee: ContractEmployee }) => (
+  <div>
+    <p className="text-md font-semibold">Contract Details</p>
+    <div className="grid grid-cols-2 gap-4">
+      <ContractField label="Start" value={employee.contractStartDate} />
+      <ContractField label="End" value={employee.contractEndDate} />
+
+      <div className="col-span-2">
+        <Label className="text-xs text-muted-foreground">Contract File</Label>
+
+        {employee.contractFilePath ? (
+          <div className="mt-2 border rounded overflow-hidden">
+            <iframe
+              src={employee.contractFilePath}
+              title="Contract PDF"
+              className="w-full h-48"
+            />
           </div>
-        </>
-      )}
-    </DialogContent>
-  </Dialog>
+        ) : (
+          <div className="mt-2">
+            <div className="w-full h-48 rounded bg-slate-300/50 animate-pulse" />
+          </div>
+        )}
+      </div>
+    </div>
+  </div>
 )
 
-const DetailItem = ({ Icon, value }: { Icon: ComponentType<{ className?: string }>, value: string }) => (
+const DetailItem = ({ icon: Icon, value }: { icon: ComponentType<{ className?: string }>, value: string }) => (
   <div className="flex items-center space-x-2">
     <Icon className="h-4 w-4 text-muted-foreground" />
     <span className="text-sm">{value}</span>
   </div>
 )
 
-const ContractField = ({ label, value }: { label: string; value?: string }) => (
+const ContractField = ({ label, value }: { label: string, value: string }) => (
   <div className="space-y-1">
     <Label className="text-xs text-muted-foreground">{label}</Label>
-    <p className="text-sm">{value || "N/A"}</p>
+    <p className="text-sm">{value}</p>
   </div>
 )
