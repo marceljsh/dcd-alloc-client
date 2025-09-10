@@ -1,11 +1,11 @@
-import { RoleLevel, Role, Team, EmploymentStatus } from "@/types/common";
+import { EmployeeLevel, EmployeeRole, Team, EmploymentStatus } from "@/types/common";
 
 interface EmployeeBase {
   id: number;
   code: string;
   name: string;
-  role: Role;
-  level: RoleLevel;
+  role: EmployeeRole;
+  level: EmployeeLevel;
   team: Team;
   status: EmploymentStatus;
   email: string;
@@ -22,7 +22,7 @@ export interface PermanentEmployee extends EmployeeBase {
 
 export interface ContractEmployee extends EmployeeBase {
   status: 'Contract';
-  contractFilePath: string;
+  contractFilePath?: string;
   contractStartDate: string;
   contractEndDate: string;
 }
