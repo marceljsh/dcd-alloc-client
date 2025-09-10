@@ -70,14 +70,14 @@ const getPriorityColor = (priority: ProjectPriority) => {
   }
 }
 
-const formatRupiah = (number) => {
-  if (number >= 1_000_000_000) {
-    return `Rp ${(number / 1_000_000_000).toFixed(1).replace(/\.0$/, "")} Bilion`
+const formatRupiah = (n: number) => {
+  if (n >= 1_000_000_000) {
+    return `Rp ${(n / 1_000_000_000).toFixed(1).replace(/\.0$/, "")} Bilion`
   }
-  if (number >= 1_000_000) {
-    return `Rp ${(number / 1_000_000).toFixed(1).replace(/\.0$/, "")} Milion`
+  if (n >= 1_000_000) {
+    return `Rp ${(n / 1_000_000).toFixed(1).replace(/\.0$/, "")} Milion`
   }
-  return `Rp ${number.toLocaleString("id-ID")}`
+  return `Rp ${n.toLocaleString("id-ID")}`
 }
 
 type ActiveDialog = "add" | "detail" | "timeline" | null
@@ -655,12 +655,9 @@ const ProjectDetailDialog = ({
   )
 }
 
-const ProjectTimelineDialog = ({
-  project,
-  isOpen,
-  onClose,
-}: { project: ProjectRow | null; isOpen: boolean; onClose: () => void }) => {
+const ProjectTimelineDialog = ({ project, isOpen, onClose }: { project: ProjectRow, isOpen: boolean, onClose: () => void }) => {
   if (!project) return null
+
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-7xl">
