@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
@@ -27,15 +27,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
-import {
-  ArrowDown,
-  ArrowUp,
-  Filter,
-  AlertTriangle,
-  DollarSign,
-  Users,
-  Target,
-} from "lucide-react"
+import { ArrowDown, ArrowUp, Filter, AlertTriangle, DollarSign, Users, Target, Layers } from "lucide-react"
 
 // --- DATASET ---
 const allProjects = [
@@ -44,6 +36,7 @@ const allProjects = [
     req: 12,
     alloc: 10.5,
     util: 87.5,
+    priority: "Medium",
     category: "Medium",
     role: "System Analyst",
     budget: 150000,
@@ -54,7 +47,8 @@ const allProjects = [
     req: 8.5,
     alloc: 9,
     util: 105.9,
-    category: "Big",
+    priority: "High",
+    category: "Small",
     role: "Software Engineer",
     budget: 200000,
     actual: 210000,
@@ -64,6 +58,7 @@ const allProjects = [
     req: 15,
     alloc: 14,
     util: 93.3,
+    priority: "Medium",
     category: "Medium",
     role: "Data Engineer",
     budget: 175000,
@@ -74,6 +69,7 @@ const allProjects = [
     req: 6,
     alloc: 5,
     util: 83.3,
+    priority: "Low",
     category: "Small",
     role: "System Analyst",
     budget: 75000,
@@ -84,6 +80,7 @@ const allProjects = [
     req: 10,
     alloc: 10,
     util: 100,
+    priority: "Low",
     category: "Small",
     role: "Software Engineer",
     budget: 100000,
@@ -94,6 +91,7 @@ const allProjects = [
     req: 25,
     alloc: 22.5,
     util: 90.0,
+    priority: "Critical",
     category: "Big",
     role: "Software Engineer",
     budget: 300000,
@@ -104,6 +102,7 @@ const allProjects = [
     req: 7,
     alloc: 7.5,
     util: 107.1,
+    priority: "Low",
     category: "Small",
     role: "System Analyst",
     budget: 80000,
@@ -114,7 +113,8 @@ const allProjects = [
     req: 18,
     alloc: 16.2,
     util: 90.0,
-    category: "Big",
+    priority: "High",
+    category: "Medium",
     role: "Software Engineer",
     budget: 220000,
     actual: 210000,
@@ -124,6 +124,7 @@ const allProjects = [
     req: 11.5,
     alloc: 11.5,
     util: 100.0,
+    priority: "Medium",
     category: "Medium",
     role: "Data Engineer",
     budget: 130000,
@@ -134,6 +135,7 @@ const allProjects = [
     req: 4.5,
     alloc: 3.5,
     util: 77.8,
+    priority: "Low",
     category: "Small",
     role: "System Analyst",
     budget: 50000,
@@ -144,7 +146,8 @@ const allProjects = [
     req: 9,
     alloc: 9.5,
     util: 105.6,
-    category: "Medium",
+    priority: "Medium",
+    category: "Small",
     role: "Software Engineer",
     budget: 110000,
     actual: 115000,
@@ -154,6 +157,7 @@ const allProjects = [
     req: 30,
     alloc: 28,
     util: 93.3,
+    priority: "Critical",
     category: "Big",
     role: "System Analyst",
     budget: 350000,
@@ -164,6 +168,7 @@ const allProjects = [
     req: 5.5,
     alloc: 5,
     util: 90.9,
+    priority: "Low",
     category: "Small",
     role: "Data Engineer",
     budget: 60000,
@@ -174,7 +179,8 @@ const allProjects = [
     req: 17,
     alloc: 17.5,
     util: 102.9,
-    category: "Big",
+    priority: "High",
+    category: "Medium",
     role: "Software Engineer",
     budget: 210000,
     actual: 215000,
@@ -184,7 +190,8 @@ const allProjects = [
     req: 20,
     alloc: 18,
     util: 90.0,
-    category: "Big",
+    priority: "Critical",
+    category: "Medium",
     role: "Data Engineer",
     budget: 250000,
     actual: 240000,
@@ -194,6 +201,7 @@ const allProjects = [
     req: 8,
     alloc: 6,
     util: 75.0,
+    priority: "Low",
     category: "Small",
     role: "System Analyst",
     budget: 90000,
@@ -204,6 +212,7 @@ const allProjects = [
     req: 13,
     alloc: 12.5,
     util: 96.2,
+    priority: "Medium",
     category: "Medium",
     role: "Software Engineer",
     budget: 160000,
@@ -214,6 +223,7 @@ const allProjects = [
     req: 22,
     alloc: 20,
     util: 90.9,
+    priority: "High",
     category: "Big",
     role: "Data Engineer",
     budget: 280000,
@@ -224,6 +234,7 @@ const allProjects = [
     req: 6.5,
     alloc: 7,
     util: 107.7,
+    priority: "Low",
     category: "Small",
     role: "System Analyst",
     budget: 70000,
@@ -234,6 +245,7 @@ const allProjects = [
     req: 14,
     alloc: 13,
     util: 92.9,
+    priority: "Medium",
     category: "Medium",
     role: "Data Engineer",
     budget: 180000,
@@ -244,7 +256,8 @@ const allProjects = [
     req: 19,
     alloc: 19.5,
     util: 102.6,
-    category: "Big",
+    priority: "High",
+    category: "Medium",
     role: "Software Engineer",
     budget: 240000,
     actual: 245000,
@@ -254,6 +267,7 @@ const allProjects = [
     req: 16,
     alloc: 15,
     util: 93.8,
+    priority: "Medium",
     category: "Medium",
     role: "System Analyst",
     budget: 200000,
@@ -264,6 +278,7 @@ const allProjects = [
     req: 10.5,
     alloc: 10,
     util: 95.2,
+    priority: "Medium",
     category: "Medium",
     role: "Data Engineer",
     budget: 120000,
@@ -274,12 +289,14 @@ const allProjects = [
     req: 28,
     alloc: 25,
     util: 89.3,
+    priority: "Critical",
     category: "Big",
     role: "Software Engineer",
     budget: 320000,
     actual: 310000,
   },
 ]
+
 
 const roleUtilizationAll = [
   { role: "System Analyst", Allocated: 92, Idle: 8, Overload: 0 },
@@ -377,8 +394,8 @@ function ProjectTable({ filteredProjects }) {
               <th className="p-2 cursor-pointer" onClick={() => handleSort("util")}>
                 Utilization % {getSortIcon("util")}
               </th>
-              <th className="p-2 cursor-pointer" onClick={() => handleSort("category")}>
-                Category {getSortIcon("category")}
+              <th className="p-2 cursor-pointer" onClick={() => handleSort("priority")}>
+                Priority {getSortIcon("priority")}
               </th>
               <th className="p-2 cursor-pointer" onClick={() => handleSort("budget")}>
                 Budget {getSortIcon("budget")}
@@ -397,7 +414,7 @@ function ProjectTable({ filteredProjects }) {
                 <td className={`p-2 font-semibold ${row.util > 100 ? "text-red-600" : "text-green-600"}`}>
                   {row.util.toFixed(1)}%
                 </td>
-                <td className="p-2">{row.category}</td>
+                <td className="p-2">{row.priority}</td>
                 <td className="p-2">${row.budget.toLocaleString()}</td>
                 <td className={`p-2 font-semibold ${row.actual > row.budget ? "text-red-600" : "text-green-600"}`}>
                   ${row.actual.toLocaleString()}
@@ -409,7 +426,8 @@ function ProjectTable({ filteredProjects }) {
       </div>
 
       <div className="flex justify-between items-center mt-4">
-        <Button className="mb-2"
+        <Button
+          className="mb-2 bg-transparent"
           variant="outline"
           size="sm"
           onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
@@ -435,7 +453,6 @@ function ProjectTable({ filteredProjects }) {
 
 const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884D8"]
 
-// --- MAIN PAGE COMPONENT ---
 export default function DashboardPage() {
   const [selectedPeriods, setSelectedPeriods] = useState([])
   const [selectedRoles, setSelectedRoles] = useState([])
@@ -482,8 +499,7 @@ export default function DashboardPage() {
     })
   }, [projectsFilteredByRoleAndProject, selectedPeriods])
 
-  // **FIXED**: Moved this logic from ProjectTable to DashboardPage
-  const utilizationChartData = useMemo(() => {
+const utilizationChartData = useMemo(() => {
     if (filteredProjects.length === 0) return [];
     const rolesInView = [...new Set(filteredProjects.map(p => p.role))];
     return rolesInView.map(role => {
@@ -514,7 +530,11 @@ export default function DashboardPage() {
         : ["Software Engineer", "Data Engineer", "System Analyst"]
     const rolesFromProjects =
       selectedProjects.length > 0
-        ? Array.from(new Set(allProjects.filter((p) => selectedProjects.map((sp) => sp.value).includes(p.project)).map((p) => p.role)))
+        ? Array.from(
+            new Set(
+              allProjects.filter((p) => selectedProjects.map((sp) => sp.value).includes(p.project)).map((p) => p.role),
+            ),
+          )
         : []
     const finalRoles = rolesFromProjects.length > 0 ? rolesFromProjects : rolesToDisplay
     return data.map((entry) => {
@@ -530,100 +550,122 @@ export default function DashboardPage() {
 
   const getAreaKeys = useMemo(() => {
     if (selectedProjects.length > 0) {
-        return Array.from(new Set(filteredProjects.map((p) => p.role)))
+      return Array.from(new Set(filteredProjects.map((p) => p.role)))
     }
     if (selectedRoles.length > 0) {
-        return selectedRoles.map((r) => r.value)
+      return selectedRoles.map((r) => r.value)
     }
-    return ["Software Engineer", "Data Engineer", "System Analyst"];
+    return ["Software Engineer", "Data Engineer", "System Analyst"]
   }, [selectedRoles, selectedProjects, filteredProjects])
 
   const summary = useMemo(() => {
-    const totalProjects = filteredProjects.length
-    const totalResources = filteredProjects.reduce((sum, p) => sum + p.alloc, 0)
-    const avgUtil = filteredProjects.reduce((sum, p) => sum + p.util, 0) / (totalProjects || 1)
-    const criticalProjects = filteredProjects.filter((p) => p.util > 100).sort((a, b) => b.util - a.util)
-    const overBudgetProjects = filteredProjects.filter((p) => p.actual > p.budget).sort((a, b) => (b.actual - b.budget) - (a.actual - a.budget))
-    const projectCategories = filteredProjects.reduce((acc, p) => {
-        acc[p.category] = (acc[p.category] || 0) + 1;
-        return acc;
-    }, {});
+  const totalProjects = filteredProjects.length
+  const totalResources = filteredProjects.reduce((sum, p) => sum + p.alloc, 0)
+  const avgUtil =
+    filteredProjects.reduce((sum, p) => sum + p.util, 0) / (totalProjects || 1)
 
-    return [
-      {
-        title: "Total Resources (FTE)",
-        value: totalResources.toFixed(1),
-        icon: Users,
-        color: "text-blue-500",
-        desc: [...new Set(filteredProjects.map(p => p.role))].map(role => ({
-            label: role,
-            value: filteredProjects.filter(p => p.role === role).reduce((s, p) => s + p.alloc, 0).toFixed(1)
-        }))
-      },
-      {
-        title: "Avg. Utilization %",
-        value: `${(avgUtil || 0).toFixed(0)}%`,
-        icon: Target,
-        color: avgUtil > 100 ? "text-red-500" : "text-green-500",
-        desc: [...new Set(filteredProjects.map(p => p.role))].map(role => {
-            const roleProjects = filteredProjects.filter(p => p.role === role);
-            const rAvgUtil = roleProjects.reduce((s, p) => s + p.util, 0) / (roleProjects.length || 1);
-            return {
-                label: role,
-                value: `${rAvgUtil.toFixed(0)}%`,
-                color: rAvgUtil > 100 ? "text-red-500" : rAvgUtil < 80 ? "text-yellow-500" : "text-green-500"
-            }
-        })
-      },
-      {
-        title: "Critical Projects",
-        value: criticalProjects.length,
-        icon: AlertTriangle,
+  const overBudgetProjects = filteredProjects
+    .filter((p) => p.actual > p.budget)
+    .sort((a, b) => b.actual - b.budget - (a.actual - a.budget))
+
+  const projectCategories = filteredProjects.reduce((acc, p) => {
+    acc[p.category] = (acc[p.category] || 0) + 1
+    return acc
+  }, {})
+
+  return [
+    {
+      title: "Total Resources (FTE)",
+      value: totalResources.toFixed(1),
+      icon: Users,
+      color: "text-blue-500",
+      desc: [...new Set(filteredProjects.map((p) => p.role))].map((role) => ({
+        label: role,
+        value: filteredProjects
+          .filter((p) => p.role === role)
+          .reduce((s, p) => s + p.alloc, 0)
+          .toFixed(1),
+      })),
+    },
+    {
+      title: "Avg. Utilization %",
+      value: `${(avgUtil || 0).toFixed(0)}%`,
+      icon: Target,
+      color: avgUtil > 100 ? "text-red-500" : "text-green-500",
+      desc: [...new Set(filteredProjects.map((p) => p.role))].map((role) => {
+        const roleProjects = filteredProjects.filter((p) => p.role === role)
+        const rAvgUtil =
+          roleProjects.reduce((s, p) => s + p.util, 0) /
+          (roleProjects.length || 1)
+        return {
+          label: role,
+          value: `${rAvgUtil.toFixed(0)}%`,
+          color:
+            rAvgUtil > 100
+              ? "text-red-500"
+              : rAvgUtil < 80
+              ? "text-yellow-500"
+              : "text-green-500",
+        }
+      }),
+    },
+    {
+      title: "Critical Projects",
+      value: filteredProjects.filter((p) => p.util > 100).length,
+      icon: AlertTriangle,
+      color: "text-red-500",
+      desc: filteredProjects
+        .filter((p) => p.util > 100)
+        .sort((a, b) => b.util - a.util)
+        .slice(0, 3)
+        .map((p) => ({
+          label: p.project,
+          value: `${p.util.toFixed(1)}%`,
+          color: "text-red-500",
+        })),
+    },
+    {
+      title: "Over-budget Projects",
+      value: overBudgetProjects.length,
+      icon: DollarSign,
+      color: "text-orange-500",
+      desc: overBudgetProjects.slice(0, 3).map((p) => ({
+        label: p.project,
+        value: `+ $${(p.actual - p.budget).toLocaleString()}`,
         color: "text-red-500",
-        desc: criticalProjects.slice(0, 3).map(p => ({
-            label: p.project,
-            value: `${p.util.toFixed(1)}%`,
-            color: "text-red-500"
-        }))
-      },
-      {
-        title: "Over-budget Projects",
-        value: overBudgetProjects.length,
-        icon: DollarSign,
-        color: "text-orange-500",
-        desc: overBudgetProjects.slice(0, 3).map(p => ({
-            label: p.project,
-            value: `+ $${(p.actual - p.budget).toLocaleString()}`,
-            color: "text-red-500"
-        }))
-      },
-      {
-        title: "Project Category",
-        value: `${totalProjects} Projects`,
-        icon: Filter,
-        color: "text-purple-500",
-        desc: [
-            { label: "Big", value: projectCategories["Big"] || 0 },
-            { label: "Medium", value: projectCategories["Medium"] || 0 },
-            { label: "Small", value: projectCategories["Small"] || 0 },
-        ]
-      }
-    ]
-  }, [filteredProjects])
+      })),
+    },
+    {
+      title: "Project Category",
+      value: `${totalProjects} Projects`,
+      icon: Layers, // pakai icon biar lebih relevan
+      color: "text-purple-500",
+      desc: [
+        { label: "Small", value: projectCategories["Small"] || 0 },
+        { label: "Medium", value: projectCategories["Medium"] || 0 },
+        { label: "Big", value: projectCategories["Big"] || 0 },
+      ],
+    },
+  ]
+}, [filteredProjects])
+
 
   const enhancedMetrics = useMemo(() => {
-    const categoryDistribution = filteredProjects.reduce((acc, p) => {
-        acc[p.category] = (acc[p.category] || 0) + 1;
-        return acc;
-    }, {});
+    const priorityDistribution = filteredProjects.reduce((acc, p) => {
+      acc[p.priority] = (acc[p.priority] || 0) + 1
+      return acc
+    }, {})
     const roleDistribution = filteredProjects.reduce((acc, p) => {
-        acc[p.role] = (acc[p.role] || 0) + p.alloc;
-        return acc;
-    }, {});
+      acc[p.role] = (acc[p.role] || 0) + p.alloc
+      return acc
+    }, {})
 
     return {
-      categoryDistribution: Object.entries(categoryDistribution).map(([name, value]) => ({ name, value })),
-      roleDistribution: Object.entries(roleDistribution).map(([name, value]) => ({ name, value: Number(value.toFixed(1)) })),
+      priorityDistribution: Object.entries(priorityDistribution).map(([name, value]) => ({ name, value })),
+      roleDistribution: Object.entries(roleDistribution).map(([name, value]) => ({
+        name,
+        value: Number(value.toFixed(1)),
+      })),
     }
   }, [filteredProjects])
 
@@ -637,7 +679,7 @@ export default function DashboardPage() {
         <div className="flex gap-2 flex-wrap">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="gap-1">
+              <Button variant="outline" className="gap-1 bg-transparent">
                 <Filter className="h-4 w-4" />
                 Period ({selectedPeriods.length > 0 ? selectedPeriods.join(", ") : "All"})
               </Button>
@@ -645,16 +687,21 @@ export default function DashboardPage() {
             <DropdownMenuContent className="w-56">
               <DropdownMenuLabel>Filter by Period</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuCheckboxItem checked={selectedPeriods.length === 0} onCheckedChange={() => setSelectedPeriods([])}>
+              <DropdownMenuCheckboxItem
+                checked={selectedPeriods.length === 0}
+                onCheckedChange={() => setSelectedPeriods([])}
+              >
                 All Periods
               </DropdownMenuCheckboxItem>
               {productivityTrendAll.map((d) => (
                 <DropdownMenuCheckboxItem
                   key={d.month}
                   checked={selectedPeriods.includes(d.month)}
-                  onCheckedChange={(checked) => setSelectedPeriods(
-                    checked ? [...selectedPeriods, d.month] : selectedPeriods.filter((m) => m !== d.month)
-                  )}
+                  onCheckedChange={(checked) =>
+                    setSelectedPeriods(
+                      checked ? [...selectedPeriods, d.month] : selectedPeriods.filter((m) => m !== d.month),
+                    )
+                  }
                 >
                   {d.month}
                 </DropdownMenuCheckboxItem>
@@ -664,7 +711,7 @@ export default function DashboardPage() {
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="gap-1">
+              <Button variant="outline" className="gap-1 bg-transparent">
                 <Filter className="h-4 w-4" />
                 Role ({selectedRoles.length || "All"})
               </Button>
@@ -672,16 +719,23 @@ export default function DashboardPage() {
             <DropdownMenuContent className="w-56">
               <DropdownMenuLabel>Filter by Role</DropdownMenuLabel>
               <DropdownMenuSeparator />
-               <DropdownMenuCheckboxItem checked={selectedRoles.length === 0} onCheckedChange={() => setSelectedRoles([])}>
+              <DropdownMenuCheckboxItem
+                checked={selectedRoles.length === 0}
+                onCheckedChange={() => setSelectedRoles([])}
+              >
                 All Roles
               </DropdownMenuCheckboxItem>
               {roleUtilizationAll.map((r) => (
                 <DropdownMenuCheckboxItem
                   key={r.role}
                   checked={selectedRoles.some((role) => role.value === r.role)}
-                  onCheckedChange={(checked) => setSelectedRoles(
-                    checked ? [...selectedRoles, { value: r.role, label: r.role }] : selectedRoles.filter((role) => role.value !== r.role)
-                  )}
+                  onCheckedChange={(checked) =>
+                    setSelectedRoles(
+                      checked
+                        ? [...selectedRoles, { value: r.role, label: r.role }]
+                        : selectedRoles.filter((role) => role.value !== r.role),
+                    )
+                  }
                 >
                   {r.role}
                 </DropdownMenuCheckboxItem>
@@ -691,7 +745,7 @@ export default function DashboardPage() {
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="gap-1">
+              <Button variant="outline" className="gap-1 bg-transparent">
                 <Filter className="h-4 w-4" />
                 Project ({selectedProjects.length || "All"})
               </Button>
@@ -699,16 +753,23 @@ export default function DashboardPage() {
             <DropdownMenuContent className="w-56">
               <DropdownMenuLabel>Filter by Project</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuCheckboxItem checked={selectedProjects.length === 0} onCheckedChange={() => setSelectedProjects([])}>
+              <DropdownMenuCheckboxItem
+                checked={selectedProjects.length === 0}
+                onCheckedChange={() => setSelectedProjects([])}
+              >
                 All Projects
               </DropdownMenuCheckboxItem>
               {allProjects.map((p) => (
                 <DropdownMenuCheckboxItem
                   key={p.project}
                   checked={selectedProjects.some((proj) => proj.value === p.project)}
-                  onCheckedChange={(checked) => setSelectedProjects(
-                    checked ? [...selectedProjects, { value: p.project, label: p.project }] : selectedProjects.filter((proj) => proj.value !== p.project)
-                  )}
+                  onCheckedChange={(checked) =>
+                    setSelectedProjects(
+                      checked
+                        ? [...selectedProjects, { value: p.project, label: p.project }]
+                        : selectedProjects.filter((proj) => proj.value !== p.project),
+                    )
+                  }
                 >
                   {p.project}
                 </DropdownMenuCheckboxItem>
@@ -743,13 +804,21 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 xl:grid-cols-5 gap-6">
         <Card className="shadow-sm xl:col-span-1">
           <CardHeader className="mt-3">
-            <CardTitle className="text-lg font-semibold">Project Distribution</CardTitle>
+            <CardTitle className="text-lg font-semibold">Project Distribution by Priority</CardTitle>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={200}>
               <PieChart>
-                <Pie data={enhancedMetrics.categoryDistribution} cx="50%" cy="50%" innerRadius={40} outerRadius={70} paddingAngle={5} dataKey="value">
-                  {enhancedMetrics.categoryDistribution.map((entry, index) => (
+                <Pie
+                  data={enhancedMetrics.priorityDistribution}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={40}
+                  outerRadius={70}
+                  paddingAngle={5}
+                  dataKey="value"
+                >
+                  {enhancedMetrics.priorityDistribution.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
@@ -767,7 +836,14 @@ export default function DashboardPage() {
           <CardContent>
             <ResponsiveContainer width="100%" height={200}>
               <PieChart>
-                <Pie data={enhancedMetrics.roleDistribution} cx="50%" cy="50%" outerRadius={80} dataKey="value" label={({ name, value }) => `${name}: ${value}`}>
+                <Pie
+                  data={enhancedMetrics.roleDistribution}
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={80}
+                  dataKey="value"
+                  label={({ name, value }) => `${name}: ${value}`}
+                >
                   {enhancedMetrics.roleDistribution.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
@@ -778,7 +854,6 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        {/* **FIXED**: Added xl:col-span-2 for proper grid layout */}
         <Card className="shadow-sm border-gray-200 xl:col-span-2">
           <CardHeader className="mt-3">
             <CardTitle className="text-lg">Resource Utilization by Role</CardTitle>
@@ -817,12 +892,21 @@ export default function DashboardPage() {
             <ResponsiveContainer width="100%" height={320}>
               <AreaChart data={processedTrend} margin={{ top: 10, right: 20, left: 0, bottom: 10 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                <XAxis dataKey={selectedPeriods.length === 1 ? "dayLabel" : "month"} tick={{ fontSize: 12, fill: "#374151" }} />
+                <XAxis
+                  dataKey={selectedPeriods.length === 1 ? "dayLabel" : "month"}
+                  tick={{ fontSize: 12, fill: "#374151" }}
+                />
                 <YAxis tick={{ fontSize: 12, fill: "#374151" }} unit="%" />
                 <Tooltip formatter={(value) => `${value}%`} />
                 <Legend />
                 {getAreaKeys.includes("Software Engineer") && (
-                  <Area type="monotone" dataKey="Software Engineer" stroke="#6366f1" fill="#6366f1" fillOpacity={0.25} />
+                  <Area
+                    type="monotone"
+                    dataKey="Software Engineer"
+                    stroke="#6366f1"
+                    fill="#6366f1"
+                    fillOpacity={0.25}
+                  />
                 )}
                 {getAreaKeys.includes("Data Engineer") && (
                   <Area type="monotone" dataKey="Data Engineer" stroke="#f43f5e" fill="#f43f5e" fillOpacity={0.25} />
@@ -844,7 +928,14 @@ export default function DashboardPage() {
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={filteredProjects} margin={{ top: 5, right: 30, left: 20, bottom: 10 }}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="project" textAnchor="end" interval={0} tick={{ fontSize: 10 }} height={30} tickFormatter={(value: string) => value.replace("Project ", "")} />
+              <XAxis
+                dataKey="project"
+                textAnchor="end"
+                interval={0}
+                tick={{ fontSize: 10 }}
+                height={30}
+                tickFormatter={(value: string) => value.replace("Project ", "")}
+              />
               <YAxis
                 tickFormatter={(value) =>
                   new Intl.NumberFormat("id-ID", {
