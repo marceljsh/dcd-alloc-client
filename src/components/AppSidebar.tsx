@@ -30,9 +30,9 @@ export function AppSidebar() {
     <Sidebar collapsible="icon" className="border-r border-border bg-background" variant="inset">
       <SidebarHeader className="border-b border-border h-14">
         <div className="flex items-baseline justify-between">
-          <div className="group-data-[collapsible=icon]:hidden px-2">
+          <Link href="/" className="group-data-[collapsible=icon]:hidden px-2">
             <Image src="/bmri.svg" alt="BMRI Logo" width={0} height={0} className="h-8 w-auto" />
-          </div>
+          </Link>
           <div className="px-1">
             <SidebarTrigger />
           </div>

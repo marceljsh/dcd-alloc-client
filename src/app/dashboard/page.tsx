@@ -670,8 +670,8 @@ const utilizationChartData = useMemo(() => {
   }, [filteredProjects])
 
   return (
-    <div className="p-2 space-y-2 bg-gray-50 min-h-screen">
-      <div className="flex items-center justify-between flex-wrap gap-4 bg-white p-4 rounded-lg shadow-sm">
+    <div className="space-y-4 min-h-screen mx-10 mb-10">
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Resource Allocation Dashboard</h1>
           <p className="text-gray-600 mt-1">Monitor project resources, utilization, and budget performance</p>
@@ -781,12 +781,10 @@ const utilizationChartData = useMemo(() => {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-2">
         {summary.map((item, i) => (
-          <Card key={i} className="shadow-sm hover:shadow-md transition-shadow">
-            <CardHeader className="pb-1 mt-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-medium text-gray-600">{item.title}</CardTitle>
-                <item.icon className={`h-5 w-5 ${item.color}`} />
-              </div>
+          <Card key={i} className="shadow-sm hover:shadow-md transition-shadow py-4">
+            <CardHeader className="flex items-center justify-between">
+              <CardTitle className="text-sm font-medium text-gray-600">{item.title}</CardTitle>
+              <item.icon className={`h-5 w-5 ${item.color}`} />
             </CardHeader>
             <CardContent>
               <p className={`text-2xl font-bold mb-2 ${item.color}`}>{item.value}</p>

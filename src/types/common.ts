@@ -1,19 +1,19 @@
 import { ProjectRow, StageRow, TaskRow } from "@/types/project";
 import { EmployeeRow } from "@/types/employee";
 
-export const ROLE_OPTIONS = ['Software Engineer', 'Data Engineer', 'System Analyst'] as const;
-export const ROLE_LEVEL_OPTIONS = ['Junior', 'Middle', 'Senior'] as const;
-export const EMPLOYMENT_STATUS_OPTIONS = ['Contract', 'Permanent'] as const;
-export const PROJECT_CATEGORY_OPTIONS = ['Small', 'Medium', 'Big'] as const;
-export const PROJECT_PRIORITY_OPTIONS = ['Low', 'Medium', 'High', 'Critical'] as const;
-export const TEAM_OPTIONS = ['DMA', 'NCM', 'CRM', 'CM', 'FRM', 'RRM'] as const;
+export const employeeRoles = ['Software Engineer', 'Data Engineer', 'System Analyst'] as const;
+export const employeeLevels = ['Junior', 'Middle', 'Senior'] as const;
+export const employmentStatuses = ['Contract', 'Permanent'] as const;
+export const projectCategories = ['Small', 'Medium', 'Big'] as const;
+export const projectPriorities = ['Low', 'Medium', 'High', 'Critical'] as const;
+export const teams = ['DMA', 'NCM', 'CRM', 'CM', 'FRM', 'RRM'] as const;
 
-export type Role = typeof ROLE_OPTIONS[number];
-export type RoleLevel = typeof ROLE_LEVEL_OPTIONS[number];
-export type EmploymentStatus = typeof EMPLOYMENT_STATUS_OPTIONS[number];
-export type ProjectCategory = typeof PROJECT_CATEGORY_OPTIONS[number];
-export type ProjectPriority = typeof PROJECT_PRIORITY_OPTIONS[number];
-export type Team = typeof TEAM_OPTIONS[number];
+export type EmployeeRole = typeof employeeRoles[number];
+export type EmployeeLevel = typeof employeeLevels[number];
+export type EmploymentStatus = typeof employmentStatuses[number];
+export type ProjectCategory = typeof projectCategories[number];
+export type ProjectPriority = typeof projectPriorities[number];
+export type Team = typeof teams[number];
 
 export interface DateRange {
   label: string;
