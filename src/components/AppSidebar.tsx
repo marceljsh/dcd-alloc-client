@@ -22,7 +22,6 @@ const menuItems = [
   { title: 'History', url: '/dashboard/history', icon: FolderCheck },
 ];
 
-
 export function AppSidebar() {
   const path = usePathname().substring(1)
   const { open } = useSidebar()
