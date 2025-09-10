@@ -1,6 +1,6 @@
 "use client"
 
-import { Box, FileBoxIcon, FolderOpen, LayoutDashboard, Users } from "lucide-react"
+import { ChartGantt, FolderCheck, FolderOpen, LayoutDashboard, Users } from "lucide-react"
 import { Sidebar,
   SidebarContent,
   SidebarHeader,
@@ -15,32 +15,12 @@ import Image from "next/image"
 import Link from "next/link"
 
 const menuItems = [
-  {
-    title: 'Dashboard',
-    url: '/dashboard',
-    icon: LayoutDashboard,
-  },
-  {
-    title: 'Resources',
-    url: '/dashboard/resources',
-    icon: Users,
-  },
-  {
-    title: 'Projects',
-    url: '/dashboard/projects',
-    icon: FolderOpen,
-  },
-  {
-    title: 'Timeline',
-    url: '/dashboard/gantt',
-    icon: Box,
-  },
-  {
-    title: 'Archive',
-    url: '/dashboard/archive',
-    icon: FileBoxIcon,
-  },
-]
+  { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
+  { title: 'Resources', url: '/dashboard/resources', icon: Users },
+  { title: 'Projects', url: '/dashboard/projects', icon: FolderOpen },
+  { title: 'Timeline', url: '/dashboard/timeline', icon: ChartGantt },
+  { title: 'History', url: '/dashboard/history', icon: FolderCheck },
+];
 
 export function AppSidebar() {
   const path = usePathname().substring(1)
@@ -50,9 +30,9 @@ export function AppSidebar() {
     <Sidebar collapsible="icon" className="border-r border-border bg-background" variant="inset">
       <SidebarHeader className="border-b border-border h-14">
         <div className="flex items-baseline justify-between">
-          <div className="group-data-[collapsible=icon]:hidden px-2">
+          <Link href="/" className="group-data-[collapsible=icon]:hidden px-2">
             <Image src="/bmri.svg" alt="BMRI Logo" width={0} height={0} className="h-8 w-auto" />
-          </div>
+          </Link>
           <div className="px-1">
             <SidebarTrigger />
           </div>

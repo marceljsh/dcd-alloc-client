@@ -27,30 +27,31 @@ function EmployeeItem({ employee, selectedTaskId, onAssignEmployee }: EmployeeIt
     }
   };
 
-    return (
-      <Card
-        className={`cursor-pointer p-3 transition-all scale-95 ${
-          selectedTaskId ? 'hover:bg-accent border-primary/20 shadow-sm hover:scale-100' : 'hover:bg-accent/50 cursor-default'
-        }`}
-        onClick={handleClick}
-      >
-        <div className="flex items-center gap-3">
-          <Avatar className="h-10 w-10">
-            <div className={`${backgroundByRole(employee.role)} text-primary-foreground flex h-full w-full items-center justify-center font-mono`}>
-              {initials(employee.name)}
-            </div>
-          </Avatar>
-          <div className="min-w-0 flex-1">
-            <p className="truncate">{employee.name}</p>
-            <p className="text-muted-foreground text-sm">{employee.role}</p>
+  return (
+    <Card
+      className={`cursor-pointer p-3 transition-all scale-95 ${
+        selectedTaskId ? 'hover:bg-accent border-primary/20 shadow-sm hover:scale-100' : 'hover:bg-accent/50 cursor-default'
+      }`}
+      onClick={handleClick}
+    >
+      <div className="flex items-center gap-3">
+        <Avatar className="h-10 w-10">
+          <div className={`${backgroundByRole(employee.role)} text-primary-foreground flex h-full w-full items-center justify-center font-mono`}>
+            {initials(employee.name)}
           </div>
+        </Avatar>
+        <div className="min-w-0 flex-1">
+          <p className="truncate">{employee.name}</p>
+          <p className="text-muted-foreground text-sm">{employee.role}</p>
         </div>
-      </Card>
-    );
-  }
+      </div>
+    </Card>
+  );
+}
 
-  export function EmployeeList({ employees, selectedTaskId, roleFilter, onRoleFilterChange, uniqueRoles, onAssignEmployee }: EmployeeListProps) {
-
+export function EmployeeList({
+  employees, selectedTaskId, roleFilter, onRoleFilterChange, uniqueRoles, onAssignEmployee
+}: EmployeeListProps) {
   return (
     <div className="space-y-3 h-[67vh] flex flex-col">
       <div className="flex items-center justify-between">
