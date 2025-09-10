@@ -71,7 +71,10 @@ export function GanttPanel({
                 style={{
                   gridColumn: `span ${monthDates.length}`,
                   zIndex: 12 - i,
-                  paddingLeft: i == 0 || i ==  ? "12px" : "0",
+                  paddingLeft:
+                    i == 0 || i == Object.keys(groupedDates).length - 1
+                      ? "12px"
+                      : "0",
                 }}
               >
                 {getMonthAbbr(monthDates[0])} {monthDates[0].getFullYear()}
