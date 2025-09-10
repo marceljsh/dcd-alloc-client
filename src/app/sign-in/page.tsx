@@ -1,35 +1,47 @@
-"use client";
+"use client"
 
-import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Toaster } from "@/components/ui/sonner";
-import Image from "next/image";
-import { toast } from "sonner";
-import { Eye, EyeClosed, UserPlus } from "lucide-react";
+import { useState, useTransition } from "react"
+import { useRouter } from "next/navigation"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Toaster } from "@/components/ui/sonner"
+import Image from "next/image"
+import { toast } from "sonner"
+import { Eye, EyeClosed, UserPlus } from "lucide-react"
 
 export default function SignInPage() {
-  const router = useRouter();
-  const [isPending, startTransition] = useTransition();
-  const [showPassword, setShowPassword] = useState(false);
+  const router = useRouter()
+  const [isPending, startTransition] = useTransition()
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+    e.preventDefault()
 
-    toast.promise(
-      new Promise((resolve) => setTimeout(resolve, 2000)),
-      {
-        loading: "Signing you in...",
-        success: () => {
-          startTransition(() => router.push("/dashboard"));
-          return "Signed in successfully!";
-        },
-        error: "Something went wrong. Try again.",
-      }
-    );
-  };
+    if (isSubmitting) return // Prevent double submission
+
+    setIsSubmitting(true)
+
+    const loginPromise = new Promise<void>((resolve) => {
+      setTimeout(() => {
+        resolve()
+      }, 2000)
+    })
+
+    toast.promise(loginPromise, {
+      loading: 'Signing you in...',
+      success: () => {
+        startTransition(() => {
+          router.push('/dashboard')
+        })
+        return 'Signed in successfully!'
+      },
+      error: 'Something went wrong. Try again.',
+    })
+  }
+
+  const isDisabled = isSubmitting || isPending
 
   return (
     <div className="bg-background flex min-h-svh flex-col items-center justify-center gap-6 p-6 md:p-10">
@@ -90,8 +102,8 @@ export default function SignInPage() {
                   </div>
                 </div>
 
-                <Button type="submit" disabled={isPending} className="w-full bg-sky-900 hover:bg-sky-700">
-                  {isPending ? "Signing in..." : "Sign In"}
+                <Button type="submit" disabled={isDisabled} className="w-full bg-sky-900 hover:bg-sky-700">
+                  {isDisabled ? "Signing in..." : "Sign In"}
                 </Button>
               </div>
               <div className="after:border-border relative text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t">
@@ -109,5 +121,5 @@ export default function SignInPage() {
       </div>
       <Toaster theme="light" position="bottom-center" richColors />
     </div>
-  );
+  )
 }

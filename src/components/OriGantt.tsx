@@ -90,7 +90,6 @@ const tasks: Dict<number, Task> = new Dict([
   [4,  { id: 4,  stageId: 2, employeeId: 3, name: 'API Development', startDate: '2024-01-22', endDate: '2024-02-05', storyPoints: 21 }],
   [5,  { id: 5,  stageId: 2, employeeId: 4, name: 'Frontend Components', startDate: '2024-01-28', endDate: '2024-02-10', storyPoints: 13 }],
   [6,  { id: 6,  stageId: 4, employeeId: 5, name: 'Data Analysis', startDate: '2024-01-12', endDate: '2024-01-22', storyPoints: 8 }],
-  [6,  { id: 6,  stageId: 4, employeeId: 5, name: 'Data Analysis', startDate: '2024-01-12', endDate: '2024-01-22', storyPoints: 8 }],
   [7,  { id: 7,  stageId: 4, employeeId: 1, name: 'Architecture Review', startDate: '2024-01-18', endDate: '2024-01-28', storyPoints: 5 }],
   [8,  { id: 8,  stageId: 5, employeeId: 2, name: 'ETL Pipeline', startDate: '2024-01-25', endDate: '2024-02-08', storyPoints: 21 }],
   [9,  { id: 9,  stageId: 5, employeeId: 3, name: 'Dashboard UI', startDate: '2024-02-01', endDate: '2024-02-12', storyPoints: 13 }],
@@ -100,8 +99,8 @@ const tasks: Dict<number, Task> = new Dict([
 
 const getRoleColor = (role: Role) => {
   switch (role) {
-    case "System Analyst":    return "bg-blue-100 text-blue-800"
-    case "Data Engineer":     return "bg-green-100 text-green-800"
+    case "System Analyst":      return "bg-blue-100 text-blue-800"
+    case "Data Engineer":       return "bg-green-100 text-green-800"
     case "Software Engineer": return "bg-purple-100 text-purple-800"
 
     default: return "bg-gray-100 text-gray-800"
@@ -125,8 +124,10 @@ export default function Component({ className, ...props }: React.HTMLAttributes<
   const { startDate, endDate, totalDays } = useMemo(() => {
     const filteredTasks = tasks.getValues().filter((task) => {
       const stage = stages.get(task.stageId)
-      if (!stage) return false
-      return selectedProjects.includes(stage.projectId)
+      const employee = employees.get(task.employeeId)
+      if (!stage || !employee) return false
+      return (selectedProjects.length === 0 || selectedProjects.includes(stage.projectId)) &&
+             (selectedRoles.length === 0 || selectedRoles.includes(employee.role))
     })
 
     if (filteredTasks.length === 0) {
@@ -246,14 +247,18 @@ export default function Component({ className, ...props }: React.HTMLAttributes<
   const tasksByEmployee = useMemo(() => {
     const filteredTasks = tasks.getValues().filter((task) => {
       const stage = stages.get(task.stageId)
+      const employee = employees.get(task.employeeId)
       if (!employees.has(task.employeeId) || !stage || !projects.has(stage.projectId)) {
         return false;
       }
-
-      return selectedProjects.length === 0 || selectedProjects.includes(stage.projectId)
+      return (selectedProjects.length === 0 || selectedProjects.includes(stage.projectId)) &&
+             (selectedRoles.length === 0 || selectedRoles.includes(employee.role))
     })
 
-    return employees.getValues().map((employee) => ({
+    /* filter employees based on selected roles */
+    const filteredEmployees = employees.getValues().filter(employee => selectedRoles.includes(employee.role))
+
+    return filteredEmployees.map((employee) => ({
       employee,
       tasks: filteredTasks.filter((task) => task.employeeId === employee.id),
     }))
@@ -280,7 +285,7 @@ export default function Component({ className, ...props }: React.HTMLAttributes<
           const otherStart = new Date(otherTask.startDate)
           const otherEnd = new Date(otherTask.endDate)
 
-          return taskStart <= otherEnd && taskEnd >= otherStart  // use <= and >= to handle same-day boundaries
+          return taskStart <= otherEnd && taskEnd >= otherStart   // use <= and >= to handle same-day boundaries
         })
 
         if (!hasOverlap) break
@@ -458,7 +463,9 @@ export default function Component({ className, ...props }: React.HTMLAttributes<
                     {/* Employee Rows and Task Bars */}
                     <TooltipProvider>
                       {tasksByEmployee.map(({ employee, tasks: employeeTasks }) => {
-                        if (employeeTasks.length === 0) return null
+                        // Hanya tampilkan baris jika ada tugas atau jika peran tersebut terpilih (untuk menampilka nama karyawan tanpa tugas)
+                        // Periksa apakah peran karyawan ada di selectedRoles
+                        if (!selectedRoles.includes(employee.role)) return null;
 
                         const taskLevels = getTaskLevels(employeeTasks)
                         const maxLevel = Math.max(...Object.values(taskLevels), 0)

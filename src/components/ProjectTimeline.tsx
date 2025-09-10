@@ -6,17 +6,13 @@ import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/comp
 import { Calendar, User, Zap, Layers } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-// ---------------------------
 // Type Definitions
-// ---------------------------
 type Employee = { id: number; name: string; role: string }
 type Task = { id: number; name: string; employeeId: number; startDate: string; endDate: string; storyPoints: number }
 type Stage = { id: number; name: string; tasks: Task[] }
 type Project = { id: number; name: string; stages: Stage[] }
 
-// ---------------------------
 // Sample Data
-// ---------------------------
 const employees: Employee[] = [
   { id: 1, name: 'Alice Johnson', role: 'System Analyst' },
   { id: 2, name: 'Bob Smith', role: 'Data Engineer' },
@@ -28,9 +24,7 @@ const taskNamePool = [
   'Backend Development', 'Unit Testing', 'UAT', 'Marketing Prep', 'Launch Event'
 ]
 
-// ---------------------------
 // Utility Functions
-// ---------------------------
 const getTaskColor = (index: number) =>
   ['bg-red-500', 'bg-blue-500', 'bg-green-500', 'bg-yellow-500', 'bg-purple-500'][index % 5]
 
@@ -64,9 +58,7 @@ const getTaskLevels = (tasks: Task[]) => {
   return levels
 }
 
-// ---------------------------
 // Dummy Project Generator
-// ---------------------------
 const generateDummyProject = (): Project => {
   const stageNames = ['Design', 'Development', 'Testing', 'Market Launch']
   let taskId = 1
@@ -97,17 +89,11 @@ const generateDummyProject = (): Project => {
   return { id: 1, name: 'Project Alpha', stages }
 }
 
-// ---------------------------
-// Main Component
-// ---------------------------
 export default function ProjectTimeline() {
   const [project, setProject] = useState<Project>(generateDummyProject)
   const dayWidth = 32
   const tasks = project.stages.flatMap(s => s.tasks)
 
-  // ---------------------------
-  // Drag State
-  // ---------------------------
   const [draggingTask, setDraggingTask] = useState<Task | null>(null)
   const [dragStartX, setDragStartX] = useState(0)
   const [dragStartDate, setDragStartDate] = useState<Date | null>(null)
@@ -167,9 +153,7 @@ export default function ProjectTimeline() {
     setDragOverStage(null)
   }
 
-  // ---------------------------
   // Calculate Project Date Range
-  // ---------------------------
   const { startDate, endDate } = useMemo(() => {
     if (!tasks.length) return { startDate: new Date(), endDate: new Date() }
     const sDates = tasks.map(t => new Date(t.startDate))
@@ -180,9 +164,7 @@ export default function ProjectTimeline() {
     }
   }, [tasks])
 
-  // ---------------------------
   // Daily Headers
-  // ---------------------------
   const dailyHeaders = useMemo(() => {
     const headers: Date[] = []
     const current = new Date(startDate)
@@ -196,9 +178,7 @@ export default function ProjectTimeline() {
     return headers
   }, [startDate, endDate])
 
-  // ---------------------------
   // Month Headers
-  // ---------------------------
   const monthHeaders = useMemo(() => {
     const months: { name: string; span: number }[] = []
     dailyHeaders.forEach(d => {
@@ -213,9 +193,7 @@ export default function ProjectTimeline() {
     return months
   }, [dailyHeaders])
 
-  // ---------------------------
   // Truncate Task Name
-  // ---------------------------
   const truncateName = (name: string, widthPx: number) => {
     const charWidth = 8
     const maxChars = Math.floor(widthPx / charWidth)
@@ -234,7 +212,7 @@ export default function ProjectTimeline() {
           <div className="sticky top-0 z-30 bg-white">
             <div className="flex">
               {/* Stage / Task Column */}
-              <div className="w-64 p-3 font-semibold border-r border-b bg-gray-100 sticky left-0 top-0 z-40 truncate">
+              <div className="w-64 p-3 font-semibold border-r border-b bg-gray-100 sticky left-0 top-2 z-40 truncate">
                 Stage / Task
               </div>
 

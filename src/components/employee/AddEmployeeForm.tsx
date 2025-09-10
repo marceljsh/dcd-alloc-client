@@ -1,9 +1,3 @@
-import {
-  EMPLOYMENT_STATUS_OPTIONS,
-  ROLE_OPTIONS,
-  ROLE_LEVEL_OPTIONS,
-  TEAM_OPTIONS,
-} from "@/types/common";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -28,6 +22,7 @@ import {
 } from "@/components/ui/select";
 import { useState } from "react";
 import { toast } from "sonner";
+import { employeeLevels, employeeRoles, employmentStatuses, teams } from "@/types/common";
 
 async function getSignedUploadUrl(args: { path: string; bucket?: string }) {
   const res = await fetch("/api/storage/signed-upload-url", {
@@ -65,10 +60,10 @@ async function uploadViaSignedUrlWithToken(
 const schema = z.object({
   name: z.string().min(1, "Name is required"),
   email: z.email("Invalid email"),
-  role: z.enum(ROLE_OPTIONS, "Role is required"),
-  level: z.enum(ROLE_LEVEL_OPTIONS, "Level is required"),
-  status: z.enum(EMPLOYMENT_STATUS_OPTIONS, "Status is required"),
-  team: z.enum(TEAM_OPTIONS, "Team is required"),
+  role: z.enum(employeeRoles, "Role is required"),
+  level: z.enum(employeeLevels, "Level is required"),
+  status: z.enum(employmentStatuses, "Status is required"),
+  team: z.enum(teams, "Team is required"),
   phone: z
     .string()
     .min(1, "Phone number is required")
@@ -226,7 +221,7 @@ export function AddEmployeeForm({ onSubmit, onCancel }: AddEmployeeFormProps) {
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    {ROLE_OPTIONS.map((role) => (
+                    {employeeRoles.map((role) => (
                       <SelectItem key={role} value={role}>
                         {role}
                       </SelectItem>
@@ -260,7 +255,7 @@ export function AddEmployeeForm({ onSubmit, onCancel }: AddEmployeeFormProps) {
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    {ROLE_LEVEL_OPTIONS.map((level) => (
+                    {employeeLevels.map((level) => (
                       <SelectItem key={level} value={level}>
                         {level}
                       </SelectItem>
@@ -294,7 +289,7 @@ export function AddEmployeeForm({ onSubmit, onCancel }: AddEmployeeFormProps) {
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    {EMPLOYMENT_STATUS_OPTIONS.map((status) => (
+                    {employmentStatuses.map((status) => (
                       <SelectItem key={status} value={status}>
                         {status}
                       </SelectItem>
@@ -328,7 +323,7 @@ export function AddEmployeeForm({ onSubmit, onCancel }: AddEmployeeFormProps) {
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    {TEAM_OPTIONS.map((team) => (
+                    {teams.map((team) => (
                       <SelectItem key={team} value={team}>
                         {team}
                       </SelectItem>
