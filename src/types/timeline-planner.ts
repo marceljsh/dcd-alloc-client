@@ -17,16 +17,17 @@ export type Activity = {
 
 export type ViewType = "Week" | "Month";
 
-export type DragState = {
+export interface DragState {
   activityId: number;
   subId: number;
   startX: number;
   origLeftPercent: number;
-  containerLeft: number;
   containerWidth: number;
   daysInWindow: number;
   origStartDate: string;
   origEndDate: string;
-  dragType: "move" | "resizeStart" | "resizeEnd"; // Tambahkan ini
+  dragType: "move" | "resizeStart" | "resizeEnd";
   containerStart: string;
-};
+  hasMoved: boolean;
+  rafId?: number; // Add this
+}

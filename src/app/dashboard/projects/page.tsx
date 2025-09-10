@@ -66,7 +66,6 @@ export default function ProjectsPage() {
     const lowerCaseSearchTerm = searchTerm.toLowerCase()
     return searchableFields.some((field) => {
       const isMatch = field.includes(lowerCaseSearchTerm)
-      console.log(field, `matches "${lowerCaseSearchTerm}":`, isMatch)
       return isMatch
     })
   })

@@ -3,12 +3,11 @@
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
-import { addDays, format, formatISO } from "date-fns";
+import { addDays, format } from "date-fns";
 
 import { SubActivity } from "@/types/timeline-planner";
 import { useProjectPlanner } from "@/hooks/use-project-planner";
-import { useDragAndDrop } from "@/hooks/use-drag-n-drop";
-import { getDaysArray, getTimelinePosition } from "@/lib/utils";
+import { getDaysArray } from "@/lib/utils";
 import { TimelineHeader } from "@/components/project/TimelineHeader";
 import { ActivityRow } from "@/components/project/ActivityRow";
 import { AddActivityDialog } from "@/components/project/AddActivityDialog";
@@ -22,17 +21,13 @@ export function ProjectPlanner() {
     activities,
     windowStart,
     daysInWindow,
-    draggingRef,
     containerRef,
     setSelectedView,
     moveWindowPrev,
     moveWindowNext,
     addActivity,
     addSubActivity,
-    setActivities,
   } = useProjectPlanner();
-
-  useDragAndDrop(draggingRef, setActivities);
 
   // Dialog states
   const [isAddActivityOpen, setIsAddActivityOpen] = useState(false);
@@ -43,8 +38,6 @@ export function ProjectPlanner() {
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailSub, setDetailSub] = useState<SubActivity | null>(null);
 
-  const windowEnd = addDays(windowStart, daysInWindow - 1);
-
   useKeyboardShortcuts({
     onAddActivity: () => setIsAddActivityOpen(true),
     onPreviousWeek: moveWindowPrev,
@@ -52,48 +45,6 @@ export function ProjectPlanner() {
     onToggleView: () =>
       setSelectedView(selectedView === "Week" ? "Month" : "Week"),
   });
-
-  const handleSubActivityClick = (sub: SubActivity) => {
-    setDetailSub(sub);
-    setDetailOpen(true);
-  };
-
-  const handlePointerDown = (
-    e: React.PointerEvent,
-    activityId: number,
-    sub: SubActivity,
-    type: "move" | "resizeStart" | "resizeEnd"
-  ) => {
-    const container = containerRef.current;
-    if (!container) return;
-
-    const rect = container.getBoundingClientRect();
-    const pos = getTimelinePosition(
-      sub.startDate,
-      sub.endDate,
-      windowStart,
-      daysInWindow
-    );
-    const origLeftPercent = parseFloat(pos.left);
-
-    draggingRef.current = {
-      activityId,
-      subId: sub.id,
-      startX: e.clientX,
-      origLeftPercent,
-      containerLeft: rect.left,
-      containerWidth: rect.width,
-      daysInWindow,
-      origStartDate: sub.startDate,
-      origEndDate: sub.endDate,
-      dragType: type,
-      containerStart: formatISO(windowStart, { representation: "date" }),
-    };
-
-    const bar = e.currentTarget as HTMLElement;
-    bar.setPointerCapture(e.pointerId);
-    bar.setAttribute("data-dragging", `${activityId}-${sub.id}`);
-  };
 
   const handleAddSubActivity = (activityId: number) => {
     setSelectedActivityId(activityId);
@@ -123,17 +74,20 @@ export function ProjectPlanner() {
           {/* Timeline header */}
           <div
             ref={containerRef}
-            className="grid gap-4 pb-2 border-b"
+            className="grid gap-0 pb-2 border-b"
             style={{
               gridTemplateColumns: `200px repeat(${daysInWindow}, 1fr)`,
             }}
           >
+            {/* Placeholder for the label column */}
+            <div />
             {getDaysArray(windowStart, daysInWindow).map((d, idx) => (
-              <div
-                key={idx}
-                className="font-medium text-sm text-center text-xs"
-              >
-                {format(d, "EEE d")}
+              <div key={idx} className="font-medium text-xs text-center">
+                {
+                  selectedView === "Month"
+                    ? format(d, "d")
+                    : format(d, "EEE d")
+                }
               </div>
             ))}
           </div>
@@ -144,11 +98,8 @@ export function ProjectPlanner() {
               key={activity.id}
               activity={activity}
               windowStart={windowStart}
-              windowEnd={windowEnd}
               daysInWindow={daysInWindow}
               onAddSubActivity={handleAddSubActivity}
-              onPointerDown={handlePointerDown}
-              onSubActivityClick={handleSubActivityClick}
             />
           ))}
 
