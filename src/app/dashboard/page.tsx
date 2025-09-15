@@ -850,7 +850,7 @@ export default function Page() {
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-2">
             <Card className="shadow-sm">
               <CardHeader className="mt-3">
-                <CardTitle className="text-lg font-semibold">Project Distribution by Priority</CardTitle>
+                <CardTitle className="text-lg font-semibold text-center">Project Distribution by Priority</CardTitle>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={220}>
@@ -878,11 +878,11 @@ export default function Page() {
 
             <Card className="shadow-sm">
               <CardHeader className="mt-3">
-                <CardTitle className="text-lg font-semibold">Project Budget Analysis</CardTitle>
+                <CardTitle className="text-lg font-semibold text-center">Project Budget Analysis</CardTitle>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={220}>
-                  <BarChart data={filteredProjects.slice(0, 5)} margin={{ top: 5, right: 10, left: 0, bottom: 10 }}>
+                  <BarChart data={filteredProjects.slice(0, 5)} margin={{ top: 5, right: 10, left: -40, bottom: 10 }}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis
                       dataKey="name"
@@ -901,7 +901,7 @@ export default function Page() {
 
             <Card className="shadow-sm">
               <CardHeader className="mt-3">
-                <CardTitle className="text-lg font-semibold">Project Crew Allocation</CardTitle>
+                <CardTitle className="text-lg font-semibold text-center">Project Crew Allocation</CardTitle>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={220}>
@@ -926,7 +926,7 @@ export default function Page() {
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-2">
             <Card className="shadow-sm">
               <CardHeader className="mt-3">
-                <CardTitle className="text-lg font-semibold">Project Timeline & Progress</CardTitle>
+                <CardTitle className="text-lg font-semibold text-center">Project Timeline & Progress</CardTitle>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={280}>
@@ -956,7 +956,7 @@ export default function Page() {
 
             <Card className="shadow-sm">
               <CardHeader className="mt-3">
-                <CardTitle className="text-lg font-semibold">Priority vs Budget Analysis</CardTitle>
+                <CardTitle className="text-lg font-semibold text-center">Priority vs Budget Analysis</CardTitle>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={280}>
@@ -988,7 +988,7 @@ export default function Page() {
           <div className="grid grid-cols-1 gap-6">
             <Card className="shadow-sm">
               <CardHeader className="mt-3">
-                <CardTitle className="text-lg font-semibold">Resource Allocation Timeline</CardTitle>
+                <CardTitle className="text-lg font-semibold text-center">Resource Allocation Timeline</CardTitle>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
@@ -1026,7 +1026,7 @@ export default function Page() {
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-2">
             <Card className="shadow-sm mb">
               <CardHeader className="mt-2">
-                <CardTitle className="text-lg font-semibold">FTE Workload by Role</CardTitle>
+                <CardTitle className="text-lg font-semibold text-center">FTE Workload by Role</CardTitle>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={240}>
@@ -1060,7 +1060,7 @@ export default function Page() {
 
             <Card className="shadow-sm">
               <CardHeader className="mt-3">
-                <CardTitle className="text-lg font-semibold">FTE Utilization by Team</CardTitle>
+                <CardTitle className="text-lg font-semibold text-center">FTE Utilization by Team</CardTitle>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={240}>
@@ -1130,7 +1130,7 @@ export default function Page() {
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-2">
             <Card className="shadow-sm">
               <CardHeader className="mt-3">
-                <CardTitle className="text-lg font-semibold">Team Workload Distribution</CardTitle>
+                <CardTitle className="text-lg font-semibold text-center">Team Workload Distribution</CardTitle>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={280}>
@@ -1156,7 +1156,7 @@ export default function Page() {
 
             <Card className="shadow-sm">
               <CardHeader className="mt-3">
-                <CardTitle className="text-lg font-semibold">Skills Distribution by Level</CardTitle>
+                <CardTitle className="text-lg font-semibold text-center">Skills Distribution by Level</CardTitle>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={280}>
