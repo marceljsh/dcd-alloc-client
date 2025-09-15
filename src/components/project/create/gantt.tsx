@@ -1,7 +1,7 @@
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { getMonthAbbr } from "@/lib/dates";
 import * as React from "react";
-import { ProjectActivity } from "./type";
+import { ProjectActivity } from "@/types/projects";
 import {
   Accordion,
   AccordionContent,
@@ -70,11 +70,13 @@ export function GanttPanel({
                 className="text-xs font-bold text-center bg-gray-50 whitespace-nowrap overflow-visible flex items-center justify-center"
                 style={{
                   gridColumn: `span ${monthDates.length}`,
-                  zIndex: 12 - i,
-                  paddingLeft:
+                  zIndex:
                     i == 0 || i == Object.keys(groupedDates).length - 1
-                      ? "12px"
-                      : "0",
+                      ? 10
+                      : 1,
+                  paddingLeft: i == 0 ? "12px" : "0px",
+                  paddingRight:
+                    i == Object.keys(groupedDates).length - 1 ? "12px" : "0px",
                 }}
               >
                 {getMonthAbbr(monthDates[0])} {monthDates[0].getFullYear()}

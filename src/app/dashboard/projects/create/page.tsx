@@ -1,12 +1,29 @@
 "use client";
-import { ProjectPlanner } from "@/components/project/create";
+import { ProjectPlanner } from "@/components/project/create/add-activity";
+import { StepIndicator } from "@/components/project/create/step-indicator";
 import { RoleLevel } from "@/components/ProjectManagement";
-import { Card, CardContent } from "@/components/ui/card";
-import { ProjectTemplate, ResultCSV } from "@/lib/storage";
-import { CheckCircle } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { ResultCSV } from "@/lib/storage";
+import { ProjectData } from "@/types/projects";
 import { useState } from "react";
 
-export default function Estimator() {
+export default function ProjectCreate() {
+  const [activeTab, setActiveTab] = useState("Project Input");
+  const [projectName, setProjectName] = useState("");
+  const [budget, setBudget] = useState("");
+  const [selectedTeam, setSelectedTeam] = useState("");
+  const [selectedPriority, setSelectedPriority] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState(""); // ⬅️ Tambahin state baru
+
   const [currentStep, setCurrentStep] = useState(1);
   const [projectData, setProjectData] = useState<ProjectData | null>(null);
   const [roleLevels, setRoleLevels] = useState<RoleLevel[]>([]);
@@ -19,14 +36,20 @@ export default function Estimator() {
     { id: 4, name: "Simulation", description: "What-if analysis" },
   ];
 
+  const teams = [
+    "Frontend Team",
+    "Backend Team",
+    "Design Team",
+    "QA Team",
+    "DevOps Team",
+  ];
+
   const goToStep = (step: number) => {
-    // Allow going to any previous step or current step
     if (step <= currentStep) {
       setCurrentStep(step);
       return;
     }
 
-    // Allow going forward only if prerequisites are met
     if (step === 2 && projectData) {
       setCurrentStep(step);
     } else if (step === 3 && projectData && roleLevels.length > 0) {
@@ -41,42 +64,13 @@ export default function Estimator() {
     }
   };
 
-  const handleProjectSubmit = (data: ProjectData) => {
-    setProjectData(data);
-    setCurrentStep(2);
-  };
+  const priorities = ["Low", "Medium", "High", "Critical"];
 
-  const handleRoleLevelSubmit = (data: RoleLevel[]) => {
-    setRoleLevels(data);
-    setCurrentStep(3);
-  };
-
-  const handleLoadProject = (
-    loadedProjectData: ProjectData,
-    loadedRoleLevels: RoleLevel[]
-  ) => {
-    setProjectData(loadedProjectData);
-    setRoleLevels(loadedRoleLevels);
-    setCurrentStep(3); // Go to results after loading
-  };
-
-  const handleLoadTemplate = (template: ProjectTemplate) => {
-    const templateProjectData: ProjectData = {
-      projectName: `New ${template.name}`,
-      startDate: "",
-      endDate: "",
-      totalEffort: 400, // Default
-      effortDistribution: template.effortDistribution,
-      complexity: template.complexity,
-      buffer: template.buffer,
-    };
-    setProjectData(templateProjectData);
-    setRoleLevels(template.roleLevels);
-    setCurrentStep(1); // Start from project input to fill in dates and effort
-  };
+  const categories = ["Small", "Medium", "Big"]; // ⬅️ Tambahin list category
 
   return (
     <div className="space-y-6 mx-10">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Create Project</h1>
@@ -86,88 +80,116 @@ export default function Estimator() {
         </div>
       </div>
 
+      {/* Steps (progress bar) tetap sama */}
       <div className="mb-6">
         <Card className="border-0 shadow-sm">
           <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              {steps.map((step, index) => (
-                <div key={step.id} className="flex items-center flex-1">
-                  <div
-                    className={`flex items-center gap-3 px-4 py-2 rounded-full cursor-pointer transition-all duration-200 ${
-                      currentStep === step.id
-                        ? "bg-primary text-primary-foreground shadow-md"
-                        : currentStep > step.id
-                        ? "text-primary hover:bg-primary/10"
-                        : step.id === 2 && projectData
-                        ? "text-muted-foreground hover:bg-muted/50"
-                        : step.id === 3 && projectData && roleLevels.length > 0
-                        ? "text-muted-foreground hover:bg-muted/50"
-                        : step.id === 4 &&
-                          projectData &&
-                          roleLevels.length > 0 &&
-                          estimationResults.length > 0
-                        ? "text-muted-foreground hover:bg-muted/50"
-                        : "text-muted-foreground/50 cursor-not-allowed"
-                    }`}
-                    onClick={() => goToStep(step.id)}
-                  >
-                    {currentStep > step.id ? (
-                      <CheckCircle className="h-4 w-4" />
-                    ) : (
-                      <div
-                        className={`h-4 w-4 rounded-full border-2 ${
-                          currentStep === step.id
-                            ? "bg-primary-foreground border-primary-foreground"
-                            : "border-current"
-                        }`}
-                      />
-                    )}
-                    <span className="text-sm font-medium">{step.name}</span>
-                  </div>
-                  {index < steps.length - 1 && (
-                    <div className="flex-1 h-px bg-muted mx-4" />
-                  )}
-                </div>
-              ))}
-            </div>
+            <StepIndicator
+              steps={steps}
+              currentStep={currentStep}
+              onStepClick={goToStep}
+              projectData={projectData}
+              roleLevels={roleLevels}
+              estimationResults={estimationResults}
+            />
           </CardContent>
         </Card>
       </div>
 
-      {/* Main Content */}
       <div className="mb-12">
         {currentStep === 1 && (
-          <ProjectPlanner
-          //   // onSubmit={handleProjectSubmit}
-          //   // initialData={projectData || undefined}
-          />
-          // <ProjectPlannerNew/>
+          <div>
+            <Card className="mb-6 py-6">
+              <CardHeader>
+                <CardTitle className="text-lg">Project Details</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Row 1: Project Name, Team, Priority */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-2 col-span-2">
+                    <Label htmlFor="projectName">Project Name</Label>
+                    <Input
+                      id="projectName"
+                      placeholder="Enter project name"
+                      value={projectName}
+                      onChange={(e) => setProjectName(e.target.value)}
+                      className="w-full"
+                    />
+                  </div>
+                  <div className="space-y-2 col-span-1">
+                    <Label htmlFor="team">Team</Label>
+                    <Select
+                      value={selectedTeam}
+                      onValueChange={setSelectedTeam}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select team" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {teams.map((team) => (
+                          <SelectItem key={team} value={team}>
+                            {team}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* Row 2: Budget & Category */}
+                <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
+                  <div className="space-y-2 md:col-span-4">
+                    <Label htmlFor="budget">Budget</Label>
+                    <Input
+                      id="budget"
+                      placeholder="Enter budget amount"
+                      value={budget}
+                      onChange={(e) => setBudget(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2 col-span-1">
+                    <Label htmlFor="priority">Priority</Label>
+                    <Select
+                      value={selectedPriority}
+                      onValueChange={setSelectedPriority}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select priority" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {priorities.map((priority) => (
+                          <SelectItem key={priority} value={priority}>
+                            {priority}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2 md:col-span-1">
+                    <Label htmlFor="category">Category</Label>
+                    <Select
+                      value={selectedCategory}
+                      onValueChange={setSelectedCategory}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {categories.map((c) => (
+                          <SelectItem key={c} value={c.toLowerCase()}>
+                            {c}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <ProjectPlanner />
+          </div>
         )}
-        {currentStep === 2 && projectData && (
-          <RoleLevelSelection
-            projectData={projectData}
-            onSubmit={handleRoleLevelSubmit}
-            initialRoleLevels={roleLevels.length > 0 ? roleLevels : undefined}
-          />
-        )}
-        {currentStep === 3 && projectData && roleLevels.length > 0 && (
-          <EstimationResults
-            projectData={projectData}
-            roleLevels={roleLevels}
-            onContinue={() => setCurrentStep(4)}
-            onResultsCalculated={handleEstimationComplete}
-          />
-        )}
-        {currentStep === 4 &&
-          projectData &&
-          roleLevels.length > 0 &&
-          estimationResults.length > 0 && (
-            <WhatIfSimulation
-              projectData={projectData}
-              initialRoleLevels={roleLevels}
-              estimationResults={estimationResults}
-            />
-          )}
       </div>
     </div>
   );

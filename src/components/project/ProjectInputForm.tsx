@@ -279,10 +279,6 @@ export function ProjectInputForm({
         totalEffort,
         effortDistribution,
       };
-      console.log(
-        "[v0] Submitting project data with activities and sub-activities:",
-        dataToSubmit
-      );
       onSubmit(dataToSubmit);
     }
   };

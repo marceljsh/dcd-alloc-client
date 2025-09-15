@@ -1,10 +1,8 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
-  Sheet,
   SheetClose,
   SheetContent,
   SheetFooter,
@@ -28,130 +26,86 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ProjectActivity, ProjectSubActivity, SheetType } from "./type";
-import { on } from "events";
+import {
+  ProjectActivity,
+  ProjectSubActivity,
+  EntityType,
+  ModeType,
+} from "@/types/projects";
+import { calculateDuration, calculateWorkingDays } from "@/lib/dates";
+import {
+  ActivityFormData,
+  activityFormSchema,
+  createSubActivitySchema,
+} from "@/lib/schemas/project";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 
-// Helper function to calculate working days between two dates (excluding weekends)
-const calculateWorkingDays = (startDate: string, endDate: string): number => {
-  if (!startDate || !endDate) return 0;
-
-  const start = new Date(startDate);
-  const end = new Date(endDate);
-
-  if (end <= start) return 0;
-
-  let workingDays = 0;
-  const currentDate = new Date(start);
-
-  while (currentDate <= end) {
-    const dayOfWeek = currentDate.getDay();
-    // 0 = Sunday, 6 = Saturday
-    if (dayOfWeek !== 0 && dayOfWeek !== 6) {
-      workingDays++;
-    }
-    currentDate.setDate(currentDate.getDate() + 1);
-  }
-
-  return workingDays;
-};
-
-// Calculate duration based on working days and FTE
-const calculateDuration = (
-  startDate: string,
-  endDate: string,
-  fte: number
-): number => {
-  const workingDays = calculateWorkingDays(startDate, endDate);
-  const hoursPerDay = 8; // Standard working hours per day
-  return Math.round(workingDays * hoursPerDay * fte);
-};
-
-// Zod schema untuk validasi
-const activityFormSchema = z
-  .object({
-    activityName: z
-      .string()
-      .min(1, "Activity name is required")
-      .min(3, "Activity name must be at least 3 characters")
-      .max(100, "Activity name must not exceed 100 characters"),
-    startDate: z
-      .string()
-      .min(1, "Start date is required")
-      .refine((date) => {
-        const selectedDate = new Date(date);
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        return selectedDate >= today;
-      }, "Start date cannot be in the past"),
-    endDate: z
-      .string()
-      .min(1, "End date is required for auto calculation")
-      .refine((date) => {
-        if (!date) return false;
-        const endDate = new Date(date);
-        return !isNaN(endDate.getTime());
-      }, "Invalid end date format"),
-    fte: z
-      .number()
-      .min(0.1, "FTE must be at least 0.1")
-      .max(2, "FTE cannot exceed 2.0")
-      .refine(
-        (val) => val % 0.1 === 0 || Math.round(val * 10) / 10 === val,
-        "FTE must be in increments of 0.1"
-      ),
-    duration: z
-      .number()
-      .min(1, "Duration must be at least 1 hour")
-      .max(2000, "Duration cannot exceed 2000 hours")
-      .int("Duration must be a whole number"),
-    calculationMode: z.enum(["auto", "manual"]),
-  })
-  .refine(
-    (data) => {
-      // Cross-field validation: end date must be after start date
-      if (data.endDate && data.startDate) {
-        const startDate = new Date(data.startDate);
-        const endDate = new Date(data.endDate);
-        return endDate > startDate;
-      }
-      return true;
-    },
-    {
-      message: "End date must be after start date",
-      path: ["endDate"],
-    }
-  );
-
-type ActivityFormData = z.infer<typeof activityFormSchema>;
 interface ActivityFormProps {
-  sheetType: SheetType;
+  sheetType: EntityType;
   onAddActivity: (activity: ProjectActivity) => void;
   onAddSubActivity: (subActivity: ProjectSubActivity) => void;
-  parentActivityId: number | null;
+  onEditActivity: (activity: ProjectActivity) => void;
+  onEditSubActivity: (subActivity: ProjectSubActivity) => void;
+  parentActivity: ProjectActivity | null;
   formDetails: ProjectActivity | null;
-  mode: "View" | "Edit" | "Add";
+  mode: ModeType;
 }
+
+const createActivity = (data: ActivityFormData): ProjectActivity => ({
+  id: data.id ?? Date.now(),
+  activity: data.activityName.trim(),
+  startDate: data.startDate,
+  endDate: data.endDate,
+  duration: data.duration,
+  fte: data.fte,
+  role: data.role,
+});
+
+const createSubActivity = (
+  data: ActivityFormData,
+  parent: ProjectActivity
+): ProjectSubActivity => ({
+  id: data.id ?? Date.now(),
+  activity: data.activityName.trim(),
+  startDate: data.startDate,
+  endDate: data.endDate,
+  duration: data.duration,
+  fte: data.fte,
+  parentId: parent.id,
+  role: "",
+});
+
+const getDefaultFormValues = (): ActivityFormData => ({
+  activityName: "",
+  startDate: "",
+  endDate: "",
+  fte: 1.0,
+  duration: 0,
+  calculationMode: "auto",
+  role: "",
+});
 
 export function ActivityForm({
   sheetType,
   mode,
   onAddActivity,
   onAddSubActivity,
-  parentActivityId,
+  onEditActivity,
+  onEditSubActivity,
+  parentActivity,
   formDetails,
 }: ActivityFormProps) {
+  const schema =
+    sheetType === "subactivity" && parentActivity
+      ? createSubActivitySchema(
+          parentActivity.startDate,
+          parentActivity.endDate
+        )
+      : activityFormSchema;
+
   const form = useForm<ActivityFormData>({
-    resolver: zodResolver(activityFormSchema),
-    defaultValues: {
-      activityName: formDetails ? formDetails.activity : "",
-      startDate: formDetails
-        ? formDetails.startDate
-        : new Date().toISOString().split("T")[0],
-      endDate: formDetails ? formDetails.endDate : "",
-      fte: formDetails ? formDetails.fte : 1.0,
-      duration: formDetails ? formDetails.duration : 8,
-      calculationMode: formDetails ? undefined : "auto",
-    },
+    resolver: zodResolver(schema),
+    defaultValues: getDefaultFormValues(),
   });
 
   const watchedFields = form.watch([
@@ -163,35 +117,29 @@ export function ActivityForm({
 
   const onSubmit = (data: ActivityFormData) => {
     if (sheetType === "activity") {
-      const newActivity: ProjectActivity = {
-        id: Date.now(),
-        activity: data.activityName.trim(),
-        startDate: data.startDate,
-        endDate: data.endDate,
-        duration: data.duration,
-        fte: data.fte,
-      };
+      const newActivity = createActivity(data);
 
-      onAddActivity(newActivity);
+      if (mode === "Edit") {
+        onEditActivity(newActivity);
+      } else {
+        newActivity.duration = 0;
+        onAddActivity(newActivity);
+      }
     } else {
-      const newSubActivity: ProjectSubActivity = {
-        id: Date.now(),
-        activity: data.activityName.trim(),
-        startDate: data.startDate,
-        endDate: data.endDate,
-        duration: data.duration,
-        parentId: parentActivityId!,
-        fte: data.fte,
-      };
+      const newSubActivity = createSubActivity(data, parentActivity!);
 
-      onAddSubActivity(newSubActivity);
+      if (mode === "Edit") {
+        onEditSubActivity(newSubActivity);
+      } else {
+        onAddSubActivity(newSubActivity);
+      }
     }
 
-    form.reset();
+    form.reset(getDefaultFormValues());
   };
 
   const handleCancel = () => {
-    form.reset();
+    form.reset(getDefaultFormValues());
   };
 
   const calculationMode = form.watch("calculationMode");
@@ -200,14 +148,28 @@ export function ActivityForm({
     currentDates[0] && currentDates[1]
       ? calculateWorkingDays(currentDates[0], currentDates[1])
       : 0;
-  let wordingSubmitButton;
-  if (mode === "Add") {
-    wordingSubmitButton =
-      sheetType === "activity" ? "Add Activity" : "Add Sub-Activity";
-  } else if (mode === "Edit") {
-    wordingSubmitButton =
-      sheetType === "activity" ? "Update Activity" : "Update Sub-Activity";
-  }
+
+  const isFteFieldVisible =
+    sheetType === "subactivity" && calculationMode === "auto";
+
+  const isCalculationModeVisible =
+    sheetType === "subactivity" && mode != "Edit";
+
+  const isDurationVisible = sheetType === "subactivity";
+
+  const isRoleVisible = sheetType === "activity";
+
+  const getSubmitButtonText = () => {
+    if (mode === "Add") {
+      return sheetType === "activity" ? "Add Activity" : "Add Sub-Activity";
+    } else {
+      return sheetType === "activity"
+        ? "Update Activity"
+        : "Update Sub-Activity";
+    }
+  };
+
+  const submitButtonText = getSubmitButtonText();
 
   useEffect(() => {
     const [startDate, endDate, fte, calculationMode] = watchedFields;
@@ -224,23 +186,27 @@ export function ActivityForm({
         form.setValue("duration", calculatedDuration, { shouldValidate: true });
       }
     }
-  }, [watchedFields, form]);
+  }, [watchedFields, form, formDetails]);
 
   useEffect(() => {
-    if (formDetails) {
+    if (formDetails && mode === "Edit") {
       form.reset({
+        id: formDetails.id,
         activityName: formDetails.activity,
         startDate: formDetails.startDate,
         endDate: formDetails.endDate,
         fte: formDetails.fte,
         duration: formDetails.duration,
-        calculationMode: undefined,
+        calculationMode: "auto",
+        role: formDetails.role,
       });
+    } else if (mode === "Add") {
+      form.reset(getDefaultFormValues());
     }
-  }, [formDetails, form]);
+  }, [formDetails, mode, sheetType, form]);
 
   return (
-    <SheetContent className="sm:max-w-[600px]">
+    <SheetContent className="sm:max-w-[600px] flex flex-col overflow-y-scroll">
       <SheetHeader>
         <SheetTitle>
           {mode} {sheetType === "activity" ? "Activity" : "Sub-Activity"}
@@ -272,12 +238,13 @@ export function ActivityForm({
                 </FormItem>
               )}
             />
+
             {/* Calculation Mode */}
-            <FormField
-              control={form.control}
-              name="calculationMode"
-              render={({ field }) =>
-                field.value !== undefined ? (
+            {isCalculationModeVisible && (
+              <FormField
+                control={form.control}
+                name="calculationMode"
+                render={({ field }) => (
                   <FormItem>
                     <FormLabel>Duration Calculation</FormLabel>
                     <FormControl>
@@ -300,48 +267,75 @@ export function ActivityForm({
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
-                ) : (
-                  <></>
-                )
-              }
-            />
-            {/* Start Date Field */}
-            <FormField
-              control={form.control}
-              name="startDate"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Start Date</FormLabel>
-                  <FormControl>
-                    <Input type="date" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            {/* End Date Field */}
-            <FormField
-              control={form.control}
-              name="endDate"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>
-                    End Date {calculationMode === "manual" && "(optional)"}
-                  </FormLabel>
-                  <FormControl>
-                    <Input type="date" {...field} />
-                  </FormControl>
-                  {workingDays > 0 && (
-                    <FormDescription>
-                      Working days: {workingDays} days (excluding weekends)
-                    </FormDescription>
-                  )}
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            {/* FTE Field - only show in auto mode */}
-            {calculationMode === "auto" && !formDetails && (
+                )}
+              />
+            )}
+
+            {/* Start & End Date Field */}
+            <div className="grid grid-cols-2 gap-4 items-start">
+              {/* Start Date Field */}
+              <FormField
+                control={form.control}
+                name="startDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Start Date</FormLabel>
+                    <FormControl>
+                      <Input type="date" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* End Date Field */}
+              <FormField
+                control={form.control}
+                name="endDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>
+                      End Date {calculationMode === "manual" && "(optional)"}
+                    </FormLabel>
+                    <FormControl>
+                      <Input type="date" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            {/* Role Field */}
+            {isRoleVisible && (
+              <FormField
+                control={form.control}
+                name="role"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Role</FormLabel>
+                    <FormControl>
+                      <Select
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Select Role" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="SE">Software Engineer</SelectItem>
+                          <SelectItem value="SA">Solution Analyst</SelectItem>
+                          <SelectItem value="DE">Data Engineer</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+            )}
+
+            {/* FTE Field - cleaner conditional rendering */}
+            {isFteFieldVisible && (
               <FormField
                 control={form.control}
                 name="fte"
@@ -366,44 +360,44 @@ export function ActivityForm({
                 )}
               />
             )}
-            {/* Duration Field */}
-            <FormField
-              control={form.control}
-              name="duration"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Duration (hours)</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      min="1"
-                      max="2000"
-                      {...field}
-                      onChange={(e) => field.onChange(Number(e.target.value))}
-                      disabled={calculationMode === "auto" || !!formDetails}
-                    />
-                  </FormControl>
-                  {calculationMode === "auto" ? (
-                    <FormDescription>
-                      Auto-calculated: {workingDays} days × 8 hours ×{" "}
-                      {form.getValues("fte")} FTE = {field.value} hours
-                    </FormDescription>
-                  ) : (
-                    <FormDescription>
-                      {formDetails
-                        ? "Cannot edit duration if sub-activity exists"
-                        : "Enter duration manually in hours"}
-                    </FormDescription>
-                  )}
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
 
+            {/* Duration Field */}
+            {isDurationVisible && (
+              <FormField
+                control={form.control}
+                name="duration"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Duration (hours)</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        min="1"
+                        max="2000"
+                        {...field}
+                        onChange={(e) => field.onChange(Number(e.target.value))}
+                        disabled={calculationMode === "auto" || !!formDetails}
+                      />
+                    </FormControl>
+                    {calculationMode === "auto" ? (
+                      <FormDescription>
+                        Auto-calculated: {workingDays} days × 8 hours ×{" "}
+                        {form.getValues("fte")} FTE = {field.value} hours
+                      </FormDescription>
+                    ) : (
+                      <FormDescription>
+                        Enter duration manually in hours
+                      </FormDescription>
+                    )}
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+          </div>
           <SheetFooter className="flex gap-2">
             <Button type="submit" disabled={form.formState.isSubmitting}>
-              {form.formState.isSubmitting ? "Adding..." : wordingSubmitButton}
+              {form.formState.isSubmitting ? "Processing..." : submitButtonText}
             </Button>
             <SheetClose asChild>
               <Button type="button" variant="outline" onClick={handleCancel}>
