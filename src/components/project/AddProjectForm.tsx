@@ -1,67 +1,89 @@
-"use client"
+"use client";
 
-import { z } from "zod"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { useForm } from "react-hook-form"
-import { teams, Team, projectCategories, ProjectCategory, projectPriorities, ProjectPriority } from "@/types/common"
-import { Form, FormField, FormItem, FormLabel, FormMessage, FormControl } from "@/components/ui/form"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select"
-import { DatePicker } from "@/components/DatePicker"
-import { DnDPills } from "@/components/DnDPills"
-import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import {
+  teams,
+  Team,
+  projectCategories,
+  ProjectCategory,
+  projectPriorities,
+  ProjectPriority,
+} from "@/types/common";
+import {
+  Form,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+  FormControl,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectTrigger,
+  SelectContent,
+  SelectItem,
+  SelectValue,
+} from "@/components/ui/select";
+import { DatePicker } from "@/components/DatePicker";
+import { DnDPills } from "@/components/DnDPills";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 const schema = z
   .object({
-    name: z.string().min(1, 'Project name is required'),
-    team: z.enum(teams, 'Team is required'),
-    category: z.enum(projectCategories, 'Category is required'),
-    priority: z.enum(projectPriorities, 'Priority is required'),
-    budget: z.number().min(1, 'Budget is required'),
-    startDate: z.string()
-              .min(1, 'Start date is required')
-              .refine((date) => !isNaN(Date.parse(date)), 'Invalid date format'),
-    endDate: z.string()
-              .min(1, 'End date is required')
-              .refine((date) => !isNaN(Date.parse(date)), 'Invalid date format'),
+    name: z.string().min(1, "Project name is required"),
+    team: z.enum(teams, "Team is required"),
+    category: z.enum(projectCategories, "Category is required"),
+    priority: z.enum(projectPriorities, "Priority is required"),
+    budget: z.number().min(1, "Budget is required"),
+    startDate: z
+      .string()
+      .min(1, "Start date is required")
+      .refine((date) => !isNaN(Date.parse(date)), "Invalid date format"),
+    endDate: z
+      .string()
+      .min(1, "End date is required")
+      .refine((date) => !isNaN(Date.parse(date)), "Invalid date format"),
     stages: z.array(z.string()),
   })
-  .refine(
-    (data) => Date.parse(data.endDate) > Date.parse(data.startDate),
-    { message: 'End date must be after start date', path: ['endDate'] }
-  )
+  .refine((data) => Date.parse(data.endDate) > Date.parse(data.startDate), {
+    message: "End date must be after start date",
+    path: ["endDate"],
+  });
 
-export type AddProjectFormValues = z.infer<typeof schema>
+export type AddProjectFormValues = z.infer<typeof schema>;
 
 export function AddProjectForm({ onCancel }: { onCancel: () => void }) {
-  const [inputStage, setInputStage] = useState<string>('')
+  const [inputStage, setInputStage] = useState<string>("");
   const form = useForm<AddProjectFormValues>({
     resolver: zodResolver(schema),
-    mode: 'onSubmit',
+    mode: "onSubmit",
     defaultValues: {
-      name: '',
+      name: "",
       team: undefined,
       category: undefined,
       priority: undefined,
       budget: 0,
-      startDate: '',
-      endDate: '',
+      startDate: "",
+      endDate: "",
       stages: [],
     } as any,
-  })
+  });
 
-  const router = useRouter()
+  const router = useRouter();
 
   return (
     <Form {...form}>
       <form
         onSubmit={form.handleSubmit((data) => {
-          const draftId = Math.floor(Date.now() / 1000)
-          sessionStorage.setItem(`project-${draftId}`, JSON.stringify(data))
-          router.push(`/dashboard/projects/new?ts=${draftId}`)
-          form.reset()
+          const draftId = Math.floor(Date.now() / 1000);
+          sessionStorage.setItem(`project-${draftId}`, JSON.stringify(data));
+          router.push(`/dashboard/projects/new?ts=${draftId}`);
+          form.reset();
         })}
         className="grid gap-4 py-4"
       >
@@ -94,12 +116,18 @@ export function AddProjectForm({ onCancel }: { onCancel: () => void }) {
                   onValueChange={(val) => field.onChange(val as Team)}
                   value={field.value}
                 >
-                  <SelectTrigger className={`col-span-3 ${fieldState.error ? "border-red-500" : ""}`}>
+                  <SelectTrigger
+                    className={`col-span-3 ${
+                      fieldState.error ? "border-red-500" : ""
+                    }`}
+                  >
                     <SelectValue placeholder="Select a team" />
                   </SelectTrigger>
                   <SelectContent>
                     {teams.map((team) => (
-                      <SelectItem key={team} value={team}>{team}</SelectItem>
+                      <SelectItem key={team} value={team}>
+                        {team}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -118,15 +146,23 @@ export function AddProjectForm({ onCancel }: { onCancel: () => void }) {
               <FormLabel>Category</FormLabel>
               <div className="col-span-3">
                 <Select
-                  onValueChange={(val) => field.onChange(val as ProjectCategory)}
+                  onValueChange={(val) =>
+                    field.onChange(val as ProjectCategory)
+                  }
                   value={field.value}
                 >
-                  <SelectTrigger className={`col-span-3 ${fieldState.error ? "border-red-500" : ""}`}>
+                  <SelectTrigger
+                    className={`col-span-3 ${
+                      fieldState.error ? "border-red-500" : ""
+                    }`}
+                  >
                     <SelectValue placeholder="Select a category" />
                   </SelectTrigger>
                   <SelectContent>
                     {projectCategories.map((cat) => (
-                      <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                      <SelectItem key={cat} value={cat}>
+                        {cat}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -145,15 +181,23 @@ export function AddProjectForm({ onCancel }: { onCancel: () => void }) {
               <FormLabel>Priority</FormLabel>
               <div className="col-span-3">
                 <Select
-                  onValueChange={(val) => field.onChange(val as ProjectPriority)}
+                  onValueChange={(val) =>
+                    field.onChange(val as ProjectPriority)
+                  }
                   value={field.value}
                 >
-                  <SelectTrigger className={`col-span-3 ${fieldState.error ? "border-red-500" : ""}`}>
+                  <SelectTrigger
+                    className={`col-span-3 ${
+                      fieldState.error ? "border-red-500" : ""
+                    }`}
+                  >
                     <SelectValue placeholder="Select a priority" />
                   </SelectTrigger>
                   <SelectContent>
                     {projectPriorities.map((priority) => (
-                      <SelectItem key={priority} value={priority}>{priority}</SelectItem>
+                      <SelectItem key={priority} value={priority}>
+                        {priority}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -175,7 +219,13 @@ export function AddProjectForm({ onCancel }: { onCancel: () => void }) {
                   <Input
                     type="number"
                     {...field}
-                    onChange={(e) => field.onChange(e.target.value === "" ? undefined : Number(e.target.value))}
+                    onChange={(e) =>
+                      field.onChange(
+                        e.target.value === ""
+                          ? undefined
+                          : Number(e.target.value)
+                      )
+                    }
                   />
                 </FormControl>
                 <FormMessage />
@@ -238,10 +288,13 @@ export function AddProjectForm({ onCancel }: { onCancel: () => void }) {
                     onChange={(e) => setInputStage(e.target.value)}
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
-                        e.preventDefault()
+                        e.preventDefault();
                         if (inputStage.trim()) {
-                          field.onChange([...(field.value ?? []), inputStage.trim()])
-                          setInputStage("")
+                          field.onChange([
+                            ...(field.value ?? []),
+                            inputStage.trim(),
+                          ]);
+                          setInputStage("");
                         }
                       }
                     }}
@@ -252,9 +305,12 @@ export function AddProjectForm({ onCancel }: { onCancel: () => void }) {
                     type="button"
                     size="sm"
                     onClick={() => {
-                      const newStage = inputStage.trim()
+                      const newStage = inputStage.trim();
                       if (newStage && !field.value.includes(newStage)) {
-                        field.onChange([...field.value, newStage], setInputStage(''))
+                        field.onChange(
+                          [...field.value, newStage],
+                          setInputStage("")
+                        );
                       }
                     }}
                   >
@@ -267,10 +323,18 @@ export function AddProjectForm({ onCancel }: { onCancel: () => void }) {
                   <DnDPills
                     pills={field.value}
                     onChange={(newOrder) => field.onChange(newOrder)}
-                    onDelete={(name) => field.onChange(field.value.filter((stage) => stage !== name))}
-                    onRename={(oldName, newName) => field.onChange(
-                      field.value.map((stage) => stage === oldName ? newName : stage)
-                    )}
+                    onDelete={(name) =>
+                      field.onChange(
+                        field.value.filter((stage) => stage !== name)
+                      )
+                    }
+                    onRename={(oldName, newName) =>
+                      field.onChange(
+                        field.value.map((stage) =>
+                          stage === oldName ? newName : stage
+                        )
+                      )
+                    }
                   />
                 )}
               </div>
@@ -284,7 +348,10 @@ export function AddProjectForm({ onCancel }: { onCancel: () => void }) {
             Cancel
           </Button>
 
-          <Button type="button" variant="outline" className="bg-gray-100 text-gray-700 hover:bg-gray-200"
+          <Button
+            type="button"
+            variant="outline"
+            className="bg-gray-100 text-gray-700 hover:bg-gray-200"
           >
             Save Draft
           </Button>
@@ -293,5 +360,5 @@ export function AddProjectForm({ onCancel }: { onCancel: () => void }) {
         </div>
       </form>
     </Form>
-  )
+  );
 }

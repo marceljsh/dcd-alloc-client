@@ -27,8 +27,24 @@ import { initialProjectData } from "@/data/projects";
 import { useActivities } from "@/hooks/projects/use-activities";
 import { useProjectDates } from "@/hooks/projects/use-project-dates";
 import { useProjectForm } from "@/hooks/projects/use-project-form";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { projectCategories, projectPriorities, teams } from "@/types/common";
 
 export function ProjectPlanner() {
+  const [projectName, setProjectName] = useState("");
+  const [budget, setBudget] = useState("");
+  const [selectedTeam, setSelectedTeam] = useState("");
+  const [selectedPriority, setSelectedPriority] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("");
   const {
     activities,
     addActivity,
@@ -91,6 +107,90 @@ export function ProjectPlanner() {
 
   return (
     <div>
+      <Card className="mb-6 py-6">
+        <CardHeader>
+          <CardTitle className="text-lg">Project Details</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Row 1: Project Name, Team, Priority */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-2 col-span-2">
+              <Label htmlFor="projectName">Project Name</Label>
+              <Input
+                id="projectName"
+                placeholder="Enter project name"
+                value={projectName}
+                onChange={(e) => setProjectName(e.target.value)}
+                className="w-full"
+              />
+            </div>
+            <div className="space-y-2 col-span-1">
+              <Label htmlFor="team">Team</Label>
+              <Select value={selectedTeam} onValueChange={setSelectedTeam}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select team" />
+                </SelectTrigger>
+                <SelectContent>
+                  {teams.map((team) => (
+                    <SelectItem key={team} value={team}>
+                      {team}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Row 2: Budget & Category */}
+          <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
+            <div className="space-y-2 md:col-span-4">
+              <Label htmlFor="budget">Budget</Label>
+              <Input
+                id="budget"
+                placeholder="Enter budget amount"
+                value={budget}
+                onChange={(e) => setBudget(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2 col-span-1">
+              <Label htmlFor="priority">Priority</Label>
+              <Select
+                value={selectedPriority}
+                onValueChange={setSelectedPriority}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select priority" />
+                </SelectTrigger>
+                <SelectContent>
+                  {projectPriorities.map((priority) => (
+                    <SelectItem key={priority} value={priority}>
+                      {priority}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2 md:col-span-1">
+              <Label htmlFor="category">Category</Label>
+              <Select
+                value={selectedCategory}
+                onValueChange={setSelectedCategory}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select category" />
+                </SelectTrigger>
+                <SelectContent>
+                  {projectCategories.map((c) => (
+                    <SelectItem key={c} value={c.toLowerCase()}>
+                      {c}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
       <Sheet onOpenChange={setIsOpen} open={isOpen}>
         <ActivityForm
           parentActivity={parentActivity}
