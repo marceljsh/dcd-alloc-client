@@ -40,7 +40,10 @@ export function StepIndicator({
         const isCompleted = currentStep > step.id;
 
         return (
-          <div key={step.id} className="flex flex-1 items-center">
+          <div
+            key={step.id}
+            className="flex flex-1 items-center"
+          >
             <div
               className={`flex items-center gap-3 rounded-full px-4 py-2 transition-all duration-200
                 ${

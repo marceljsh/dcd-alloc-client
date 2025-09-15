@@ -38,17 +38,13 @@ import {
   activityFormSchema,
   createSubActivitySchema,
 } from "@/lib/schemas/project";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 
 interface ActivityFormProps {
   sheetType: EntityType;
-  onAddActivity: (activity: ProjectActivity) => void;
-  onAddSubActivity: (subActivity: ProjectSubActivity) => void;
-  onEditActivity: (activity: ProjectActivity) => void;
-  onEditSubActivity: (subActivity: ProjectSubActivity) => void;
   parentActivity: ProjectActivity | null;
-  formDetails: ProjectActivity | null;
+  formDetails: ProjectActivity | ProjectSubActivity | null;
   mode: ModeType;
+  onSubmit: (entity: ProjectActivity | ProjectSubActivity) => void;
 }
 
 const createActivity = (data: ActivityFormData): ProjectActivity => ({
@@ -59,6 +55,7 @@ const createActivity = (data: ActivityFormData): ProjectActivity => ({
   duration: data.duration,
   fte: data.fte,
   role: data.role,
+  subActivities: [], // Initialize empty sub-activities array
 });
 
 const createSubActivity = (
@@ -72,7 +69,7 @@ const createSubActivity = (
   duration: data.duration,
   fte: data.fte,
   parentId: parent.id,
-  role: "",
+  role: data.role || "", // Fallback to empty string
 });
 
 const getDefaultFormValues = (): ActivityFormData => ({
@@ -85,15 +82,25 @@ const getDefaultFormValues = (): ActivityFormData => ({
   role: "",
 });
 
+const mapEntityToFormData = (
+  entity: ProjectActivity | ProjectSubActivity
+): ActivityFormData => ({
+  id: entity.id,
+  activityName: entity.activity,
+  startDate: entity.startDate,
+  endDate: entity.endDate,
+  fte: entity.fte,
+  duration: entity.duration,
+  calculationMode: "auto",
+  role: entity.role || "",
+});
+
 export function ActivityForm({
   sheetType,
   mode,
-  onAddActivity,
-  onAddSubActivity,
-  onEditActivity,
-  onEditSubActivity,
   parentActivity,
   formDetails,
+  onSubmit,
 }: ActivityFormProps) {
   const schema =
     sheetType === "subactivity" && parentActivity
@@ -115,26 +122,28 @@ export function ActivityForm({
     "calculationMode",
   ]);
 
-  const onSubmit = (data: ActivityFormData) => {
+  const handleFormSubmit = (data: ActivityFormData) => {
+    let entity: ProjectActivity | ProjectSubActivity;
+
     if (sheetType === "activity") {
-      const newActivity = createActivity(data);
+      entity = createActivity(data);
 
-      if (mode === "Edit") {
-        onEditActivity(newActivity);
-      } else {
-        newActivity.duration = 0;
-        onAddActivity(newActivity);
+      if (mode === "Edit" && formDetails && "subActivities" in formDetails) {
+        (entity as ProjectActivity).subActivities =
+          formDetails.subActivities || [];
       }
+
+      if (mode === "Add") {
+        entity.duration = 0;
+      }
+    } else if (parentActivity) {
+      entity = createSubActivity(data, parentActivity);
     } else {
-      const newSubActivity = createSubActivity(data, parentActivity!);
-
-      if (mode === "Edit") {
-        onEditSubActivity(newSubActivity);
-      } else {
-        onAddSubActivity(newSubActivity);
-      }
+      console.error("Cannot create sub-activity without parent activity");
+      return;
     }
 
+    onSubmit(entity);
     form.reset(getDefaultFormValues());
   };
 
@@ -151,25 +160,21 @@ export function ActivityForm({
 
   const isFteFieldVisible =
     sheetType === "subactivity" && calculationMode === "auto";
-
   const isCalculationModeVisible =
-    sheetType === "subactivity" && mode != "Edit";
-
+    sheetType === "subactivity" && mode !== "Edit";
   const isDurationVisible = sheetType === "subactivity";
-
   const isRoleVisible = sheetType === "activity";
 
   const getSubmitButtonText = () => {
-    if (mode === "Add") {
-      return sheetType === "activity" ? "Add Activity" : "Add Sub-Activity";
-    } else {
-      return sheetType === "activity"
-        ? "Update Activity"
-        : "Update Sub-Activity";
-    }
+    const action = mode === "Add" ? "Add" : "Update";
+    const entityType = sheetType === "activity" ? "Activity" : "Sub-Activity";
+    return `${action} ${entityType}`;
   };
 
-  const submitButtonText = getSubmitButtonText();
+  const getSheetTitle = () => {
+    const entityType = sheetType === "activity" ? "Activity" : "Sub-Activity";
+    return `${mode} ${entityType}`;
+  };
 
   useEffect(() => {
     const [startDate, endDate, fte, calculationMode] = watchedFields;
@@ -190,16 +195,8 @@ export function ActivityForm({
 
   useEffect(() => {
     if (formDetails && mode === "Edit") {
-      form.reset({
-        id: formDetails.id,
-        activityName: formDetails.activity,
-        startDate: formDetails.startDate,
-        endDate: formDetails.endDate,
-        fte: formDetails.fte,
-        duration: formDetails.duration,
-        calculationMode: "auto",
-        role: formDetails.role,
-      });
+      const formData = mapEntityToFormData(formDetails);
+      form.reset(formData);
     } else if (mode === "Add") {
       form.reset(getDefaultFormValues());
     }
@@ -208,13 +205,14 @@ export function ActivityForm({
   return (
     <SheetContent className="sm:max-w-[600px] flex flex-col overflow-y-scroll">
       <SheetHeader>
-        <SheetTitle>
-          {mode} {sheetType === "activity" ? "Activity" : "Sub-Activity"}
-        </SheetTitle>
+        <SheetTitle>{getSheetTitle()}</SheetTitle>
       </SheetHeader>
 
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <form
+          onSubmit={form.handleSubmit(handleFormSubmit)}
+          className="space-y-6"
+        >
           <div className="grid flex-1 auto-rows-min gap-6 px-4">
             {/* Activity Name Field */}
             <FormField
@@ -223,7 +221,7 @@ export function ActivityForm({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>
-                    {sheetType === "activity" ? "Activity " : "Sub-Activity "}
+                    {sheetType === "activity" ? "Activity" : "Sub-Activity"}{" "}
                     Name
                   </FormLabel>
                   <FormControl>
@@ -239,7 +237,7 @@ export function ActivityForm({
               )}
             />
 
-            {/* Calculation Mode */}
+            {/* Calculation Mode - Only for new sub-activities */}
             {isCalculationModeVisible && (
               <FormField
                 control={form.control}
@@ -271,9 +269,8 @@ export function ActivityForm({
               />
             )}
 
-            {/* Start & End Date Field */}
+            {/* Date Fields */}
             <div className="grid grid-cols-2 gap-4 items-start">
-              {/* Start Date Field */}
               <FormField
                 control={form.control}
                 name="startDate"
@@ -288,7 +285,6 @@ export function ActivityForm({
                 )}
               />
 
-              {/* End Date Field */}
               <FormField
                 control={form.control}
                 name="endDate"
@@ -306,7 +302,7 @@ export function ActivityForm({
               />
             </div>
 
-            {/* Role Field */}
+            {/* Role Field - Only for activities */}
             {isRoleVisible && (
               <FormField
                 control={form.control}
@@ -317,7 +313,7 @@ export function ActivityForm({
                     <FormControl>
                       <Select
                         onValueChange={field.onChange}
-                        defaultValue={field.value}
+                        value={field.value}
                       >
                         <SelectTrigger className="w-full">
                           <SelectValue placeholder="Select Role" />
@@ -329,12 +325,13 @@ export function ActivityForm({
                         </SelectContent>
                       </Select>
                     </FormControl>
+                    <FormMessage />
                   </FormItem>
                 )}
               />
             )}
 
-            {/* FTE Field - cleaner conditional rendering */}
+            {/* FTE Field - Only for sub-activities with auto calculation */}
             {isFteFieldVisible && (
               <FormField
                 control={form.control}
@@ -361,7 +358,7 @@ export function ActivityForm({
               />
             )}
 
-            {/* Duration Field */}
+            {/* Duration Field - Only for sub-activities */}
             {isDurationVisible && (
               <FormField
                 control={form.control}
@@ -395,9 +392,12 @@ export function ActivityForm({
               />
             )}
           </div>
+
           <SheetFooter className="flex gap-2">
             <Button type="submit" disabled={form.formState.isSubmitting}>
-              {form.formState.isSubmitting ? "Processing..." : submitButtonText}
+              {form.formState.isSubmitting
+                ? "Processing..."
+                : getSubmitButtonText()}
             </Button>
             <SheetClose asChild>
               <Button type="button" variant="outline" onClick={handleCancel}>

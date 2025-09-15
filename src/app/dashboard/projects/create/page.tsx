@@ -2,16 +2,13 @@
 import { ProjectPlanner } from "@/components/project/create/add-activity";
 import { StepIndicator } from "@/components/project/create/step-indicator";
 import { RoleLevel } from "@/components/ProjectManagement";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 
 import { ResultCSV } from "@/lib/storage";
-import { projectCategories, projectPriorities, teams } from "@/types/common";
 import { ProjectData } from "@/types/projects";
 import { useState } from "react";
 
 export default function ProjectCreate() {
-  const [activeTab, setActiveTab] = useState("Project Input");
-
   const [currentStep, setCurrentStep] = useState(1);
   const [projectData, setProjectData] = useState<ProjectData | null>(null);
   const [roleLevels, setRoleLevels] = useState<RoleLevel[]>([]);

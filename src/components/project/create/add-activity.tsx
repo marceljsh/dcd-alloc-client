@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   ResizablePanelGroup,
   ResizablePanel,
@@ -8,25 +8,8 @@ import {
 } from "@/components/ui/resizable";
 import { PlusIcon } from "lucide-react";
 import { Button } from "../../ui/button";
-import { Sheet } from "../../ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "../../ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
-
-import {
-  ProjectActivity,
-  ProjectSubActivity,
-  EntityType,
-  ModeType,
-  ActivityAction,
-} from "@/types/projects";
-
-import { ActivityForm } from "./form";
-import { GanttPanel } from "./gantt";
-import { ActivitiesPanel } from "./left-panel";
-
-import { initialProjectData } from "@/data/projects";
-import { useActivities } from "@/hooks/projects/use-activities";
-import { useProjectDates } from "@/hooks/projects/use-project-dates";
-import { useProjectForm } from "@/hooks/projects/use-project-form";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -37,73 +20,55 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+
+import { ActivityForm } from "./form";
+import { GanttPanel } from "./gantt";
+import { ActivitiesPanel } from "./left-panel";
+
+import { initialProjectData } from "@/data/projects";
+import { useProject, useProjectDetails } from "@/hooks/projects/use-project";
 import { projectCategories, projectPriorities, teams } from "@/types/common";
+import { ProjectPlannerSkeleton } from "./project-planner-skeleton";
 
 export function ProjectPlanner() {
-  const [projectName, setProjectName] = useState("");
-  const [budget, setBudget] = useState("");
-  const [selectedTeam, setSelectedTeam] = useState("");
-  const [selectedPriority, setSelectedPriority] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
   const {
     activities,
-    addActivity,
-    addSubActivity,
-    updateActivity,
-    updateSubActivity,
-    deleteActivity,
-    deleteSubActivity,
-  } = useActivities(initialProjectData);
-
-  const { dates, groupedDates, updateDateRange } = useProjectDates(activities);
+    form,
+    dates,
+    groupedDates,
+    expandedItems,
+    handleAction,
+    handleFormSubmit,
+    openAddActivity,
+    setExpandedItems,
+    closeForm,
+    initializeProject,
+  } = useProject();
 
   const {
-    isOpen,
-    sheetType,
-    setIsOpen,
-    mode,
-    parentActivity,
-    formDetails,
-    openSheet,
-    closeSheet,
-    setFormDetails,
-  } = useProjectForm();
+    projectDetails,
+    updateProjectName,
+    updateBudget,
+    updateTeam,
+    updatePriority,
+    updateCategory,
+  } = useProjectDetails();
 
-  const [expandedItems, setExpandedItems] = useState<string[]>([]);
+  useEffect(() => {
+    const loadData = async () => {
+      await initializeProject(initialProjectData);
+      // Simulate loading time for better UX
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      setIsLoading(false);
+    };
+    loadData();
+  }, [initializeProject]);
 
-  const handleSubmit = (
-    entity: ProjectActivity | ProjectSubActivity,
-    action: (entity: any) => void
-  ) => {
-    action(entity);
-    updateDateRange(entity);
-    closeSheet();
-  };
-
-  const handleOpen = (
-    type: EntityType,
-    mode: ModeType,
-    parent?: ProjectActivity | null,
-    details?: ProjectActivity | ProjectSubActivity | null
-  ) => {
-    setFormDetails(details ?? null);
-    openSheet(type, parent ?? null, mode);
-  };
-
-  const handleAction = (action: ActivityAction) => {
-    switch (action.type) {
-      case "add-sub":
-        return handleOpen("subactivity", "Add", action.parent);
-      case "edit-activity":
-        return handleOpen("activity", "Edit", null, action.activity);
-      case "delete-activity":
-        return deleteActivity(action.id);
-      case "edit-sub":
-        return handleOpen("subactivity", "Edit", action.parent, action.sub);
-      case "delete-sub":
-        return deleteSubActivity(action.activityId, action.subId);
-    }
-  };
+  if (isLoading) {
+    return <ProjectPlannerSkeleton />;
+  }
 
   return (
     <div>
@@ -119,14 +84,14 @@ export function ProjectPlanner() {
               <Input
                 id="projectName"
                 placeholder="Enter project name"
-                value={projectName}
-                onChange={(e) => setProjectName(e.target.value)}
+                value={projectDetails.name}
+                onChange={(e) => updateProjectName(e.target.value)}
                 className="w-full"
               />
             </div>
             <div className="space-y-2 col-span-1">
               <Label htmlFor="team">Team</Label>
-              <Select value={selectedTeam} onValueChange={setSelectedTeam}>
+              <Select value={projectDetails.team} onValueChange={updateTeam}>
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select team" />
                 </SelectTrigger>
@@ -148,15 +113,15 @@ export function ProjectPlanner() {
               <Input
                 id="budget"
                 placeholder="Enter budget amount"
-                value={budget}
-                onChange={(e) => setBudget(e.target.value)}
+                value={projectDetails.budget}
+                onChange={(e) => updateBudget(e.target.value)}
               />
             </div>
             <div className="space-y-2 col-span-1">
               <Label htmlFor="priority">Priority</Label>
               <Select
-                value={selectedPriority}
-                onValueChange={setSelectedPriority}
+                value={projectDetails.priority}
+                onValueChange={updatePriority}
               >
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select priority" />
@@ -173,8 +138,8 @@ export function ProjectPlanner() {
             <div className="space-y-2 md:col-span-1">
               <Label htmlFor="category">Category</Label>
               <Select
-                value={selectedCategory}
-                onValueChange={setSelectedCategory}
+                value={projectDetails.category}
+                onValueChange={updateCategory}
               >
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select category" />
@@ -191,23 +156,10 @@ export function ProjectPlanner() {
           </div>
         </CardContent>
       </Card>
-      <Sheet onOpenChange={setIsOpen} open={isOpen}>
-        <ActivityForm
-          parentActivity={parentActivity}
-          sheetType={sheetType}
-          formDetails={formDetails}
-          mode={mode}
-          onAddActivity={(a) => handleSubmit(a, addActivity)}
-          onAddSubActivity={(s) => handleSubmit(s, addSubActivity)}
-          onEditActivity={(a) => handleSubmit(a, updateActivity)}
-          onEditSubActivity={(s) => handleSubmit(s, updateSubActivity)}
-        />
 
+      <div>
         <div className="mb-4 flex">
-          <Button
-            variant="default"
-            onClick={() => handleOpen("activity", "Add")}
-          >
+          <Button variant="default" onClick={openAddActivity}>
             <PlusIcon className="mr-2 h-4 w-4" />
             Add Activity
           </Button>
@@ -238,7 +190,31 @@ export function ProjectPlanner() {
             </ResizablePanelGroup>
           </div>
         </ScrollArea>
-      </Sheet>
+
+        <Sheet open={form.isOpen} onOpenChange={closeForm}>
+          <SheetContent>
+            <SheetHeader>
+              <SheetTitle>
+                {form.mode}{" "}
+                {form.type === "activity" ? "Activity" : "Sub-Activity"}
+              </SheetTitle>
+            </SheetHeader>
+            <ActivityForm
+              parentActivity={form.parentActivity}
+              sheetType={form.type}
+              formDetails={form.formDetails}
+              mode={form.mode}
+              onSubmit={(entity) =>
+                handleFormSubmit(entity, form.type, form.mode)
+              }
+            />
+          </SheetContent>
+        </Sheet>
+
+        <div className="flex justify-end mt-8">
+          <Button className="w-32">Next</Button> 
+        </div>
+      </div>
     </div>
   );
 }

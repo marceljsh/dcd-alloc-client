@@ -116,24 +116,18 @@ export function ActivitiesPanel({
                 </ContextMenuTrigger>
 
                 <ContextMenuContent>
-                  <SheetTrigger
+                  <ContextMenuItem
                     onClick={() => onAction(ACTIONS.addSub(activity))}
-                    asChild
                   >
-                    <ContextMenuItem>
-                      <Plus className="mr-2 h-4 w-4" />
-                      Add SubActivity
-                    </ContextMenuItem>
-                  </SheetTrigger>
-                  <SheetTrigger
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add SubActivity
+                  </ContextMenuItem>
+                  <ContextMenuItem
                     onClick={() => onAction(ACTIONS.editActivity(activity))}
-                    asChild
                   >
-                    <ContextMenuItem>
-                      <Pencil className="mr-2 h-4 w-4" />
-                      Edit Activity
-                    </ContextMenuItem>
-                  </SheetTrigger>
+                    <Pencil className="mr-2 h-4 w-4" />
+                    Edit Activity
+                  </ContextMenuItem>
                   <ContextMenuItem
                     onClick={() =>
                       onAction(ACTIONS.deleteActivity(activity.id))
@@ -168,20 +162,16 @@ export function ActivitiesPanel({
                             </ContextMenuTrigger>
 
                             <ContextMenuContent>
-                              <SheetTrigger
+                              <ContextMenuItem
                                 onClick={() =>
                                   onAction(
                                     ACTIONS.editSub(subActivity, activity)
                                   )
                                 }
-                                asChild
                               >
-                                <ContextMenuItem>
-                                  <Pencil className="mr-2 h-4 w-4" />
-                                  Edit Sub-Activity
-                                </ContextMenuItem>
-                              </SheetTrigger>
-
+                                <Pencil className="mr-2 h-4 w-4" />
+                                Edit Sub-Activity
+                              </ContextMenuItem>
                               <ContextMenuItem
                                 onClick={() =>
                                   onAction(
