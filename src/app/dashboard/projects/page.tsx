@@ -33,6 +33,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import type { ProjectRow } from "@/types/project"
 import rawProjects from "@/data/projects.json"
 import type { ProjectCategory, ProjectPriority } from "@/types/common"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { toast } from "sonner"
 import { Toaster } from "@/components/ui/sonner"
 import { AddProjectForm } from "@/components/project/AddProjectForm"
@@ -68,6 +69,17 @@ const getPriorityColor = (priority: ProjectPriority) => {
       return "bg-red-100 text-red-800"
   }
 }
+
+const colors = [
+  "bg-red-500",
+  "bg-blue-500",
+  "bg-green-500",
+  "bg-yellow-500",
+  "bg-purple-500",
+  "bg-pink-500",
+  "bg-indigo-500",
+  "bg-orange-500",
+]
 
 const formatRupiah = (n: number) => {
   if (n >= 1_000_000_000) {
@@ -178,22 +190,22 @@ export default function ProjectsPage() {
           }
           return (
             <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="h-8 w-8 p-0">
+              <DropdownMenuTrigger asChild >
+                <Button data-testid="open-menu-project" variant="ghost" className="h-8 w-8 p-0">
                   <span className="sr-only">Open menu</span>
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start">
                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                <DropdownMenuItem onClick={() => openDialog("detail")}>
+                <DropdownMenuItem data-testid="view-details-project" onClick={() => openDialog("detail")}>
                   <Edit className="mr-2 h-4 w-4" /> View Details
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => openDialog("timeline")}>
-                  <Calendar className="mr-2 h-4 w-4" /> View Timeline
+                <DropdownMenuItem  onClick={() => openDialog("timeline")}>
+                  <Calendar data-testid="view-timeline-project" className="mr-2 h-4 w-4" /> View Timeline
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem className="text-red-400" onClick={() => handleArchive(project)}>
+                <DropdownMenuItem data-testid="archive" className="text-red-400" onClick={() => handleArchive(project)}>
                   <Trash2 className="mr-2 h-4 w-4 text-red-400" /> Archive
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -478,34 +490,32 @@ const ProjectDetailDialog = ({
   }
 
   const subactivities = [
-    {
-      name: "UI Design",
-      role: "Designer (Junior)",
-      workload: 120,
-      assignedEmployees: "Alice, Bob",
-      adjustedFTE: "96 hrs (0.8x)",
-      startDate: "15/02/25",
-      status: "In Progress",
-    },
-    {
-      name: "API Dev",
-      role: "Backend (Senior)",
-      workload: 200,
-      assignedEmployees: "Charlie",
-      adjustedFTE: "240 hrs (1.2x)",
-      startDate: "15/03/25",
-      status: "Pending",
-    },
-    {
-      name: "Testing",
-      role: "QA (Middle)",
-      workload: 100,
-      assignedEmployees: "Dana",
-      adjustedFTE: "100 hrs (1x)",
-      startDate: "30/03/25",
-      status: "Pending",
-    },
-  ]
+  {
+    name: "UI Design",
+    role: "System Analyst",
+    workload: 120,
+    employees: [
+      { name: "Alice", imageUrl: "" },
+      { name: "Bob", imageUrl: "" },
+      { name: "Charlie", imageUrl: "" },
+      { name: "Diana", imageUrl: "" },
+    ],
+    fte: "0.8x",
+    startDate: "15/02/25",
+    endDate: "28/02/25",
+    status: "In Progress",
+  },
+  {
+    name: "API Dev",
+    role: "Data Engineer",
+    workload: 200,
+    employees: [{ name: "Charlie", imageUrl: "" }],
+    fte: "1.2x",
+    startDate: "15/03/25",
+    endDate: "29/03/25",
+    status: "Pending",
+  },
+]
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -616,34 +626,49 @@ const ProjectDetailDialog = ({
                 <TableHeader>
                   <TableRow>
                     <TableHead className="text-xs">Subactivity</TableHead>
-                    <TableHead className="text-xs">Role Needed</TableHead>
-                    <TableHead className="text-xs">Workload (hrs)</TableHead>
-                    <TableHead className="text-xs">Assigned Employee(s)</TableHead>
+                    <TableHead className="text-xs">Role</TableHead>
+                    <TableHead className="text-xs">Duration</TableHead>
+                    <TableHead className="text-xs">Assigned</TableHead>
                     <TableHead className="text-xs">Adjusted FTE</TableHead>
                     <TableHead className="text-xs">Start Date</TableHead>
-                    <TableHead className="text-xs">Status</TableHead>
+                    <TableHead className="text-xs">End Date</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {subactivities.map((activity, index) => (
-                    <TableRow key={index}>
-                      <TableCell className="text-sm">{activity.name}</TableCell>
-                      <TableCell className="text-sm">{activity.role}</TableCell>
-                      <TableCell className="text-sm">{activity.workload} hrs</TableCell>
-                      <TableCell className="text-sm">{activity.assignedEmployees}</TableCell>
-                      <TableCell className="text-sm">{activity.adjustedFTE}</TableCell>
-                      <TableCell className="text-sm">{activity.startDate}</TableCell>
-                      <TableCell className="text-sm">
-                        <Badge
-                          variant={activity.status === "In Progress" ? "default" : "secondary"}
-                          className="text-xs"
-                        >
-                          {activity.status}
-                        </Badge>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
+                {subactivities.map((activity, index) => (
+                  <TableRow key={index}>
+                    <TableCell className="text-sm">{activity.name}</TableCell>
+                    <TableCell className="text-sm">{activity.role}</TableCell>
+                    <TableCell className="text-sm">{activity.workload} hrs</TableCell>
+                    <TableCell>
+                      <div className="flex -space-x-2">
+                        {activity.employees.slice(0, 1).map((emp, i) => {
+                          const colorClass = colors[i % colors.length] // warna berdasarkan index
+                          return (
+                            <Avatar key={i} className="border border-white">
+                              <AvatarImage src={emp.imageUrl || ""} alt={emp.name} />
+                              <AvatarFallback className={`${colorClass} text-white`}>
+                                {emp.name[0]}
+                              </AvatarFallback>
+                            </Avatar>
+                          )
+                        })}
+
+                        {activity.employees.length > 2 && (
+                          <Avatar className="border border-white">
+                            <AvatarFallback className="bg-gray-400 text-white">
+                              +{activity.employees.length - 2}
+                            </AvatarFallback>
+                          </Avatar>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-sm">{activity.fte}</TableCell>
+                    <TableCell className="text-sm">{activity.startDate}</TableCell>
+                    <TableCell className="text-sm">{activity.endDate}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
               </Table>
             </div>
           </div>
