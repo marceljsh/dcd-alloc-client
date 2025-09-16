@@ -1,0 +1,62 @@
+import { ProjectActivity } from "@/types/projects";
+
+export const initialProjectData: ProjectActivity[] = [
+  {
+    id: 1,
+    activity: "Design",
+    startDate: "2025-09-01",
+    endDate: "2025-09-10",
+    duration: 48,
+    fte: 1,
+    role: "SA",
+    subActivities: [
+      {
+        id: 11,
+        activity: "Wireframing",
+        startDate: "2025-09-01",
+        endDate: "2025-09-02",
+        duration: 16,
+        parentId: 1,
+        fte: 1,
+        role: "",
+      },
+      {
+        id: 12,
+        activity: "Prototyping",
+        startDate: "2025-09-03",
+        endDate: "2025-09-05",
+        duration: 32,
+        parentId: 1,
+        fte: 1,
+        role: "",
+      },
+    ],
+  },
+  {
+    id: 2,
+    activity: "Development",
+    startDate: "2025-09-06",
+    endDate: "2025-09-10",
+    duration: 0,
+    fte: 1,
+    role: "SE",
+  },
+  {
+    id: 3,
+    activity: "Testing",
+    startDate: "2025-09-21",
+    endDate: "2025-09-24",
+    duration: 0,
+    fte: 1,
+    role: "SA",
+  },
+  {
+    id: 4,
+    activity: "Deployment",
+    startDate: "2025-09-28",
+    endDate: "2025-09-30",
+    duration: 0,
+    fte: 1,
+    role: "SE",
+  },
+];

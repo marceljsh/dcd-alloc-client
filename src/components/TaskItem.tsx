@@ -1,10 +1,14 @@
-import { Task } from '@/types/project'
-import { useEffect, useState } from 'react'
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
-import { Card } from '@/components/ui/card'
-import { ChevronDown, ChevronRight, Edit2, Trash2 } from 'lucide-react'
-import { Label } from '@/components/ui/label'
-import { Input } from '@/components/ui/input'
+import { Task } from "@/types/projects";
+import { useEffect, useState } from "react";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { Card } from "@/components/ui/card";
+import { ChevronDown, ChevronRight, Edit2, Trash2 } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -14,109 +18,129 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
-import { EmployeeCard } from '@/components/employee/EmployeeCard'
-import { toast } from 'sonner'
-import { DatePicker } from '@/components/DatePicker'
+} from "@/components/ui/alert-dialog";
+import { EmployeeCard } from "@/components/employee/EmployeeCard";
+import { toast } from "sonner";
+import { DatePicker } from "@/components/DatePicker";
 
 interface TaskItemProps {
-  task: Task
-  onTaskUpdate: (taskId: string, updates: Partial<Task>) => void
-  onTaskSelection: (taskId: string | null) => void
-  onTaskDelete: (taskId: string) => void
-  onTaskRename: (taskId: string, newName: string) => void
-  isSelected: boolean
+  task: Task;
+  onTaskUpdate: (taskId: string, updates: Partial<Task>) => void;
+  onTaskSelection: (taskId: string | null) => void;
+  onTaskDelete: (taskId: string) => void;
+  onTaskRename: (taskId: string, newName: string) => void;
+  isSelected: boolean;
 }
 
-export function TaskItem({ task, onTaskUpdate, onTaskSelection, onTaskDelete, onTaskRename, isSelected }: TaskItemProps) {
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
-  const [isEditing, setIsEditing] = useState(false)
-  const [editValue, setEditValue] = useState(task.name)
+export function TaskItem({
+  task,
+  onTaskUpdate,
+  onTaskSelection,
+  onTaskDelete,
+  onTaskRename,
+  isSelected,
+}: TaskItemProps) {
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editValue, setEditValue] = useState(task.name);
 
-  const handleDateChange = (field: 'startDate' | 'endDate', value: string) => {
-    onTaskUpdate(task.id, { [field]: value })
-  }
+  const handleDateChange = (field: "startDate" | "endDate", value: string) => {
+    onTaskUpdate(task.id, { [field]: value });
+  };
 
   const handleStoryPointsChange = (value: string) => {
-    const storyPoints = Math.max(0, parseInt(value) || 0)
-    onTaskUpdate(task.id, { storyPoints })
-  }
+    const storyPoints = Math.max(0, parseInt(value) || 0);
+    onTaskUpdate(task.id, { storyPoints });
+  };
 
   const handleRemoveEmployee = (employeeId: number) => {
-    const employee = task.assignedEmployees.find((emp) => emp.id === employeeId)
-    if (!employee) return
+    const employee = task.assignedEmployees.find(
+      (emp) => emp.id === employeeId
+    );
+    if (!employee) return;
 
-    const updatedEmployees = task.assignedEmployees.filter((emp) => emp.id !== employeeId)
-    onTaskUpdate(task.id, { assignedEmployees: updatedEmployees })
-    toast(`${employee.name} dihapus dari "${task.name}"`)
-  }
+    const updatedEmployees = task.assignedEmployees.filter(
+      (emp) => emp.id !== employeeId
+    );
+    onTaskUpdate(task.id, { assignedEmployees: updatedEmployees });
+    toast(`${employee.name} dihapus dari "${task.name}"`);
+  };
 
   const handleDeleteTask = () => {
-    onTaskDelete(task.id)
-    setShowDeleteDialog(false)
-  }
+    onTaskDelete(task.id);
+    setShowDeleteDialog(false);
+  };
 
   const handleStartEdit = () => {
-    setIsEditing(true)
-    setEditValue(task.name)
-  }
+    setIsEditing(true);
+    setEditValue(task.name);
+  };
 
   const handleFinishEdit = () => {
     if (editValue.trim() && editValue.trim() !== task.name) {
-      onTaskRename(task.id, editValue.trim())
+      onTaskRename(task.id, editValue.trim());
     }
-    setIsEditing(false)
-  }
+    setIsEditing(false);
+  };
 
   const handleCancelEdit = () => {
-    setIsEditing(false)
-    setEditValue(task.name)
-  }
+    setIsEditing(false);
+    setEditValue(task.name);
+  };
 
-  const cardClasses = `mb-3 transition-all ${isSelected ? 'ring-2 ring-primary ring-opacity-50 bg-accent/30' : ''}`
+  const cardClasses = `mb-3 transition-all ${
+    isSelected ? "ring-2 ring-primary ring-opacity-50 bg-accent/30" : ""
+  }`;
 
   return (
     <>
-      <Collapsible open={isSelected} onOpenChange={() => onTaskSelection(isSelected ? null : task.id)}>
+      <Collapsible
+        open={isSelected}
+        onOpenChange={() => onTaskSelection(isSelected ? null : task.id)}
+      >
         <Card className={cardClasses}>
           <div className="relative">
             <CollapsibleTrigger className="hover:bg-accent w-full p-4 text-left transition-colors hover:rounded-lg">
               <div className="flex items-center justify-between">
                 <div className="flex min-w-0 flex-1 items-center gap-2">
                   {isSelected ? (
-                    <ChevronDown   className={`h-4 w-4 flex-shrink-0 transform transition-transform duration-300 ${
-    isSelected ? "rotate-90" : ""
-  }`}/>
+                    <ChevronDown
+                      className={`h-4 w-4 flex-shrink-0 transform transition-transform duration-300 ${
+                        isSelected ? "rotate-90" : ""
+                      }`}
+                    />
                   ) : (
-                    <ChevronRight   className={`h-4 w-4 flex-shrink-0 transform transition-transform duration-300 ${
-    isSelected ? "rotate-90" : ""
-  }`}/>
+                    <ChevronRight
+                      className={`h-4 w-4 flex-shrink-0 transform transition-transform duration-300 ${
+                        isSelected ? "rotate-90" : ""
+                      }`}
+                    />
                   )}
 
                   {isEditing ? (
                     <Input
                       value={editValue}
-                      onChange={e => setEditValue(e.target.value)}
+                      onChange={(e) => setEditValue(e.target.value)}
                       autoFocus
                       onBlur={handleFinishEdit}
-                      onKeyDown={e => {
-                        if (e.key === 'Enter') {
-                          handleFinishEdit()
-                        } else if (e.key === 'Escape') {
-                          handleCancelEdit()
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          handleFinishEdit();
+                        } else if (e.key === "Escape") {
+                          handleCancelEdit();
                         }
                       }}
                       className="h-6 max-w-xs flex-1 px-1 text-sm"
-                      onClick={e => e.stopPropagation()}
+                      onClick={(e) => e.stopPropagation()}
                     />
                   ) : (
                     <div className="group flex min-w-0 flex-1 items-center gap-2">
                       <span className="truncate">{task.name}</span>
                       <div
                         className="opacity-0 transition-opacity group-hover:opacity-100"
-                        onClick={e => {
-                          e.stopPropagation()
-                          handleStartEdit()
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleStartEdit();
                         }}
                       >
                         <Edit2 className="h-3 w-3" />
@@ -125,7 +149,9 @@ export function TaskItem({ task, onTaskUpdate, onTaskSelection, onTaskDelete, on
                   )}
 
                   {isSelected && !isEditing && (
-                    <span className="bg-primary text-primary-foreground py-05 flex-shrink-0 rounded px-2 text-xs">Selected</span>
+                    <span className="bg-primary text-primary-foreground py-05 flex-shrink-0 rounded px-2 text-xs">
+                      Selected
+                    </span>
                   )}
                 </div>
 
@@ -138,9 +164,9 @@ export function TaskItem({ task, onTaskUpdate, onTaskSelection, onTaskDelete, on
                   <span>
                     <div
                       className="text-muted-foreground hover:text-destructive p-1 transition-colors"
-                      onClick={e => {
-                        e.stopPropagation()
-                        setShowDeleteDialog(true)
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowDeleteDialog(true);
                       }}
                     >
                       <Trash2 className="h-4 w-4" />
@@ -159,7 +185,9 @@ export function TaskItem({ task, onTaskUpdate, onTaskSelection, onTaskDelete, on
                   <DatePicker
                     disableWeekends
                     value={task.startDate}
-                    onDateChange={value => handleDateChange('startDate', value)}
+                    onDateChange={(value) =>
+                      handleDateChange("startDate", value)
+                    }
                   />
                 </div>
                 <div>
@@ -167,17 +195,19 @@ export function TaskItem({ task, onTaskUpdate, onTaskSelection, onTaskDelete, on
                   <DatePicker
                     disableWeekends
                     value={task.endDate}
-                    onDateChange={value => handleDateChange('endDate', value)}
+                    onDateChange={(value) => handleDateChange("endDate", value)}
                   />
                 </div>
                 <div>
-                  <Label htmlFor={`story-points-${task.id}`}>Story Points</Label>
+                  <Label htmlFor={`story-points-${task.id}`}>
+                    Story Points
+                  </Label>
                   <Input
                     id={`story-points-${task.id}`}
                     type="number"
                     min="0"
-                    value={task.storyPoints || ''}
-                    onChange={e => handleStoryPointsChange(e.target.value)}
+                    value={task.storyPoints || ""}
+                    onChange={(e) => handleStoryPointsChange(e.target.value)}
                     placeholder="0"
                     className="mt-1"
                   />
@@ -188,8 +218,12 @@ export function TaskItem({ task, onTaskUpdate, onTaskSelection, onTaskDelete, on
                 <Label>Assigned Resources</Label>
                 <div className="border-border mt-2 flex min-h-[60px] gap-2 overflow-x-auto rounded border-2 border-dashed p-2 pb-2">
                   {task.assignedEmployees.length > 0 ? (
-                    task.assignedEmployees.map(employee => (
-                      <EmployeeCard key={employee.id} employee={employee} onRemove={handleRemoveEmployee} />
+                    task.assignedEmployees.map((employee) => (
+                      <EmployeeCard
+                        key={employee.id}
+                        employee={employee}
+                        onRemove={handleRemoveEmployee}
+                      />
                     ))
                   ) : (
                     <div className="text-muted-foreground flex flex-1 items-center justify-center text-sm">
@@ -207,7 +241,9 @@ export function TaskItem({ task, onTaskUpdate, onTaskSelection, onTaskDelete, on
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete &ldquo;{task.name}&rdquo;?</AlertDialogTitle>
+            <AlertDialogTitle>
+              Delete &ldquo;{task.name}&rdquo;?
+            </AlertDialogTitle>
             <AlertDialogDescription>
               This action will permanently delete the task and all its data.
               <br />
@@ -226,5 +262,5 @@ export function TaskItem({ task, onTaskUpdate, onTaskSelection, onTaskDelete, on
         </AlertDialogContent>
       </AlertDialog>
     </>
-  )
+  );
 }

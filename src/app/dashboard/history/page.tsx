@@ -1,6 +1,6 @@
-"use client"
+"use client";
 
-import { useMemo, useState } from "react"
+import { useMemo, useState } from "react";
 import {
   ColumnDef,
   flexRender,
@@ -10,70 +10,145 @@ import {
   useReactTable,
   SortingState,
   ColumnFiltersState,
-} from "@tanstack/react-table"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Search, Users, Filter } from "lucide-react"
+} from "@tanstack/react-table";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Search, Users, Filter } from "lucide-react";
 
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from "@/components/ui/dropdown-menu";
 
-import { ProjectRow } from "@/types/project"
-import rawProjects from "@/data/projects.json"
-import { ProjectCategory, ProjectPriority } from "@/types/common"
+import { ProjectRow } from "@/types/projects";
+import rawProjects from "@/data/projects.json";
+import { ProjectCategory, ProjectPriority } from "@/types/common";
 
-const allProjects: ProjectRow[] = rawProjects as ProjectRow[]
-const initialHistory = allProjects // bisa pakai filter kalau history punya kriteria khusus
+const allProjects: ProjectRow[] = rawProjects as ProjectRow[];
+const initialHistory = allProjects; // bisa pakai filter kalau history punya kriteria khusus
 
 // Utils
 const getCategoryColor = (category: ProjectCategory) => {
   switch (category) {
-    case "Small": return "bg-blue-100 text-blue-800"
-    case "Medium": return "bg-green-100 text-green-800"
-    case "Big": return "bg-yellow-100 text-yellow-800"
+    case "Small":
+      return "bg-blue-100 text-blue-800";
+    case "Medium":
+      return "bg-green-100 text-green-800";
+    case "Big":
+      return "bg-yellow-100 text-yellow-800";
   }
-}
+};
 
 const getPriorityColor = (priority: ProjectPriority) => {
   switch (priority) {
-    case "Low": return "bg-green-100 text-green-800"
-    case "Medium": return "bg-yellow-100 text-yellow-800"
-    case "High": return "bg-orange-100 text-orange-800"
-    case "Critical": return "bg-red-100 text-red-800"
+    case "Low":
+      return "bg-green-100 text-green-800";
+    case "Medium":
+      return "bg-yellow-100 text-yellow-800";
+    case "High":
+      return "bg-orange-100 text-orange-800";
+    case "Critical":
+      return "bg-red-100 text-red-800";
   }
-}
+};
 
 export default function HistoryPage() {
-  const [history] = useState<ProjectRow[]>(initialHistory)
+  const [history] = useState<ProjectRow[]>(initialHistory);
 
   // Filter states
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([])
-  const [selectedPriorities, setSelectedPriorities] = useState<string[]>([])
-  const [selectedTeams, setSelectedTeams] = useState<string[]>([])
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [selectedPriorities, setSelectedPriorities] = useState<string[]>([]);
+  const [selectedTeams, setSelectedTeams] = useState<string[]>([]);
 
-  const [sorting, setSorting] = useState<SortingState>([])
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
-  const [globalFilter, setGlobalFilter] = useState("")
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const [globalFilter, setGlobalFilter] = useState("");
 
-  const columns = useMemo<ColumnDef<ProjectRow>[]>(() => [
-    { accessorKey: "code", header: "Project Code", cell: ({ row }) => <div className="font-mono">{row.getValue("code")}</div> },
-    { accessorKey: "name", header: "Name", cell: ({ row }) => <div className="font-medium">{row.getValue("name")}</div> },
-    { accessorKey: "team", header: "Team" },
-    { accessorKey: "category", header: "Category", cell: ({ row }) => <Badge variant="outline" className={getCategoryColor(row.getValue("category"))}>{row.getValue("category")}</Badge> },
-    { accessorKey: "priority", header: "Priority", cell: ({ row }) => <Badge variant="outline" className={getPriorityColor(row.getValue("priority"))}>{row.getValue("priority")}</Badge> },
-    { accessorKey: "crew", header: "Crew", cell: ({ row }) => <div className="flex items-center space-x-1"><Users className="h-4 w-4 text-muted-foreground" /><span>{row.getValue("crew")}</span></div> },
-    { accessorKey: "budget", header: "Budget", cell: ({ row }) => `Rp${(row.getValue("budget") as number).toLocaleString("id-ID")}` },
-    { accessorKey: "startDate", header: "Start Date", cell: ({ row }) => new Date(row.getValue("startDate")).toLocaleDateString("id-ID") },
-    { accessorKey: "endDate", header: "End Date", cell: ({ row }) => new Date(row.getValue("endDate")).toLocaleDateString("id-ID") },
-  ], [])
+  const columns = useMemo<ColumnDef<ProjectRow>[]>(
+    () => [
+      {
+        accessorKey: "code",
+        header: "Project Code",
+        cell: ({ row }) => (
+          <div className="font-mono">{row.getValue("code")}</div>
+        ),
+      },
+      {
+        accessorKey: "name",
+        header: "Name",
+        cell: ({ row }) => (
+          <div className="font-medium">{row.getValue("name")}</div>
+        ),
+      },
+      { accessorKey: "team", header: "Team" },
+      {
+        accessorKey: "category",
+        header: "Category",
+        cell: ({ row }) => (
+          <Badge
+            variant="outline"
+            className={getCategoryColor(row.getValue("category"))}
+          >
+            {row.getValue("category")}
+          </Badge>
+        ),
+      },
+      {
+        accessorKey: "priority",
+        header: "Priority",
+        cell: ({ row }) => (
+          <Badge
+            variant="outline"
+            className={getPriorityColor(row.getValue("priority"))}
+          >
+            {row.getValue("priority")}
+          </Badge>
+        ),
+      },
+      {
+        accessorKey: "crew",
+        header: "Crew",
+        cell: ({ row }) => (
+          <div className="flex items-center space-x-1">
+            <Users className="h-4 w-4 text-muted-foreground" />
+            <span>{row.getValue("crew")}</span>
+          </div>
+        ),
+      },
+      {
+        accessorKey: "budget",
+        header: "Budget",
+        cell: ({ row }) =>
+          `Rp${(row.getValue("budget") as number).toLocaleString("id-ID")}`,
+      },
+      {
+        accessorKey: "startDate",
+        header: "Start Date",
+        cell: ({ row }) =>
+          new Date(row.getValue("startDate")).toLocaleDateString("id-ID"),
+      },
+      {
+        accessorKey: "endDate",
+        header: "End Date",
+        cell: ({ row }) =>
+          new Date(row.getValue("endDate")).toLocaleDateString("id-ID"),
+      },
+    ],
+    []
+  );
 
   const table = useReactTable({
     data: history,
@@ -87,23 +162,43 @@ export default function HistoryPage() {
     getFilteredRowModel: getFilteredRowModel(),
     filterFns: {
       arrIncludesSome: (row, columnId, value) => {
-        if (!value || value.length === 0) return true
-        return value.includes(row.getValue(columnId))
+        if (!value || value.length === 0) return true;
+        return value.includes(row.getValue(columnId));
       },
     },
-  })
+  });
 
   const handleFilterChange =
-    (columnId: string, currentSelection: string[], setter: React.Dispatch<React.SetStateAction<string[]>>) =>
+    (
+      columnId: string,
+      currentSelection: string[],
+      setter: React.Dispatch<React.SetStateAction<string[]>>
+    ) =>
     (value: string, checked: boolean) => {
-      const newSelection = checked ? [...currentSelection, value] : currentSelection.filter((item) => item !== value)
-      setter(newSelection)
-      table.getColumn(columnId)?.setFilterValue(newSelection.length > 0 ? newSelection : undefined)
-    }
+      const newSelection = checked
+        ? [...currentSelection, value]
+        : currentSelection.filter((item) => item !== value);
+      setter(newSelection);
+      table
+        .getColumn(columnId)
+        ?.setFilterValue(newSelection.length > 0 ? newSelection : undefined);
+    };
 
-  const handleCategoryChange = handleFilterChange("category", selectedCategories, setSelectedCategories)
-  const handlePriorityChange = handleFilterChange("priority", selectedPriorities, setSelectedPriorities)
-  const handleTeamChange = handleFilterChange("team", selectedTeams, setSelectedTeams)
+  const handleCategoryChange = handleFilterChange(
+    "category",
+    selectedCategories,
+    setSelectedCategories
+  );
+  const handlePriorityChange = handleFilterChange(
+    "priority",
+    selectedPriorities,
+    setSelectedPriorities
+  );
+  const handleTeamChange = handleFilterChange(
+    "team",
+    selectedTeams,
+    setSelectedTeams
+  );
 
   return (
     <div className="space-y-6 mx-10">
@@ -124,7 +219,9 @@ export default function HistoryPage() {
                   <DropdownMenuCheckboxItem
                     key={cat}
                     checked={selectedCategories.includes(cat)}
-                    onCheckedChange={(checked) => handleCategoryChange(cat, checked)}
+                    onCheckedChange={(checked) =>
+                      handleCategoryChange(cat, checked)
+                    }
                   >
                     {cat}
                   </DropdownMenuCheckboxItem>
@@ -144,7 +241,9 @@ export default function HistoryPage() {
                   <DropdownMenuCheckboxItem
                     key={prio}
                     checked={selectedPriorities.includes(prio)}
-                    onCheckedChange={(checked) => handlePriorityChange(prio, checked)}
+                    onCheckedChange={(checked) =>
+                      handlePriorityChange(prio, checked)
+                    }
                   >
                     {prio}
                   </DropdownMenuCheckboxItem>
@@ -164,7 +263,9 @@ export default function HistoryPage() {
                   <DropdownMenuCheckboxItem
                     key={team}
                     checked={selectedTeams.includes(team)}
-                    onCheckedChange={(checked) => handleTeamChange(team, checked)}
+                    onCheckedChange={(checked) =>
+                      handleTeamChange(team, checked)
+                    }
                   >
                     {team}
                   </DropdownMenuCheckboxItem>
@@ -189,7 +290,7 @@ export default function HistoryPage() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }
 
 const PageHeader = () => (
@@ -199,9 +300,15 @@ const PageHeader = () => (
       <p className="text-muted-foreground">View past project records</p>
     </div>
   </div>
-)
+);
 
-const ProjectsDataTable = ({ table, columns }: { table: any; columns: any[] }) => (
+const ProjectsDataTable = ({
+  table,
+  columns,
+}: {
+  table: any;
+  columns: any[];
+}) => (
   <ScrollArea className="h-[500px]">
     <Table>
       <TableHeader className="sticky top-0 z-10 bg-background shadow-sm">
@@ -210,12 +317,19 @@ const ProjectsDataTable = ({ table, columns }: { table: any; columns: any[] }) =
             {headerGroup.headers.map((header: any) => (
               <TableHead
                 key={header.id}
-                className={header.column.getCanSort() ? "cursor-pointer select-none" : ""}
+                className={
+                  header.column.getCanSort() ? "cursor-pointer select-none" : ""
+                }
                 onClick={header.column.getToggleSortingHandler()}
               >
                 <div className="flex items-center gap-2">
-                  {flexRender(header.column.columnDef.header, header.getContext())}
-                  {{ asc: "▲", desc: "▼" }[header.column.getIsSorted() as string] ?? null}
+                  {flexRender(
+                    header.column.columnDef.header,
+                    header.getContext()
+                  )}
+                  {{ asc: "▲", desc: "▼" }[
+                    header.column.getIsSorted() as string
+                  ] ?? null}
                 </div>
               </TableHead>
             ))}
@@ -243,4 +357,4 @@ const ProjectsDataTable = ({ table, columns }: { table: any; columns: any[] }) =
       </TableBody>
     </Table>
   </ScrollArea>
-)
+);

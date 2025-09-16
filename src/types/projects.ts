@@ -1,5 +1,6 @@
 import { Employee } from "@/types/employee";
 import { ProjectPriority, ProjectCategory, Team } from "@/types/common";
+import { EnumValues } from "zod/v3";
 
 export interface ProjectRow {
   id: number;
@@ -22,7 +23,7 @@ export interface StageRow {
   id: number;
   projectId: number;
   name: string;
-  ordinal: number;  // ordering within project
+  ordinal: number; // ordering within project
   createdAt: string;
   updatedAt: string;
 }
@@ -56,7 +57,7 @@ export type ProjectDraft = {
   startDate: string;
   endDate: string;
   stages: string[];
-}
+};
 
 export interface ProjectStage {
   id: string;
@@ -64,3 +65,39 @@ export interface ProjectStage {
 }
 
 export type ProjectData = Record<string, Task[]>;
+
+export interface ProjectActivity {
+  id: number;
+  activity: string;
+  startDate: string;
+  endDate: string;
+  duration: number;
+  fte: number;
+  role: "SA" | "SE" | "DE" | "" | undefined;
+  subActivities?: ProjectSubActivity[];
+}
+
+export interface ProjectSubActivity {
+  id: number;
+  parentId: number;
+  activity: string;
+  startDate: string;
+  endDate: string;
+  duration: number;
+  fte: number;
+  role: "SA" | "SE" | "DE" | "";
+}
+
+export type EntityType = "activity" | "subactivity";
+export type ModeType = "Add" | "Edit";
+
+export type ActivityAction =
+  | { type: "add-sub"; parent: ProjectActivity }
+  | { type: "edit-activity"; activity: ProjectActivity }
+  | { type: "delete-activity"; id: number }
+  | { type: "edit-sub"; sub: ProjectSubActivity; parent: ProjectActivity }
+  | { type: "delete-sub"; activityId: number; subId: number };
+
+export function createAction<T extends ActivityAction>(action: T): T {
+  return action;
+}

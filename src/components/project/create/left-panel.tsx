@@ -13,22 +13,44 @@ import {
   ContextMenuTrigger,
 } from "../../ui/context-menu";
 import { SheetTrigger } from "../../ui/sheet";
-import { ProjectActivity } from "./type";
+import {
+  ActivityAction,
+  createAction,
+  ProjectActivity,
+  ProjectSubActivity,
+} from "@/types/projects";
+import { Badge } from "@/components/ui/badge";
+
+const ACTIONS = {
+  addSub: (activity: ProjectActivity) =>
+    createAction({ type: "add-sub", parent: activity }),
+
+  editActivity: (activity: ProjectActivity) =>
+    createAction({ type: "edit-activity", activity }),
+
+  deleteActivity: (id: number) => createAction({ type: "delete-activity", id }),
+
+  editSub: (sub: ProjectSubActivity, parent: ProjectActivity) =>
+    createAction({ type: "edit-sub", sub, parent }),
+
+  deleteSub: (activityId: number, subId: number) =>
+    createAction({ type: "delete-sub", activityId, subId }),
+};
+
+const roleColors: Record<"SE" | "DE" | "SA", string> = {
+  SE: "bg-blue-100 text-blue-800",
+  DE: "bg-green-100 text-green-800",
+  SA: "bg-purple-100 text-purple-800",
+};
 
 export function ActivitiesPanel({
   activities,
-  onAddSubActivity,
-  onEditActivity,
-  onDeleteActivity,
-  onDeleteSubActivity,
+  onAction,
   expandedItems,
   onAccordionChange,
 }: {
   activities: ProjectActivity[];
-  onAddSubActivity: (parentId: number | null) => void;
-  onDeleteActivity: (id: number) => void;
-  onEditActivity: (activity: ProjectActivity) => void;
-  onDeleteSubActivity: (activityId: number, subActivityId: number) => void;
+  onAction: (action: ActivityAction) => void;
   expandedItems: string[];
   onAccordionChange: (value: string[]) => void;
 }) {
@@ -44,7 +66,7 @@ export function ActivitiesPanel({
             Start Date
           </div>
           <div className="flex items-center justify-center px-2 h-full">
-            Duration
+            Workload
           </div>
         </div>
 
@@ -72,7 +94,17 @@ export function ActivitiesPanel({
                       ) : (
                         <div className="w-4 mr-2" />
                       )}
-                      {activity.activity}
+                      {activity.activity}{" "}
+                      {activity.role && (
+                        <Badge
+                          variant="outline"
+                          className={`ml-2 text-xs ${
+                            roleColors[activity.role as "SE" | "DE" | "SA"]
+                          }`}
+                        >
+                          {activity.role}
+                        </Badge>
+                      )}
                     </div>
                     <div className="px-2 text-center truncate flex items-center justify-center">
                       {activity.startDate}
@@ -84,26 +116,22 @@ export function ActivitiesPanel({
                 </ContextMenuTrigger>
 
                 <ContextMenuContent>
-                  <SheetTrigger
-                    onClick={() => onAddSubActivity(activity.id)}
-                    asChild
-                  >
-                    <ContextMenuItem>
-                      <Plus className="mr-2 h-4 w-4" />
-                      Add SubActivity
-                    </ContextMenuItem>
-                  </SheetTrigger>
-                  <SheetTrigger
-                    onClick={() => onEditActivity(activity)}
-                    asChild
-                  >
-                    <ContextMenuItem>
-                      <Pencil className="mr-2 h-4 w-4" />
-                      Edit Activity
-                    </ContextMenuItem>
-                  </SheetTrigger>
                   <ContextMenuItem
-                    onClick={() => onDeleteActivity(activity.id)}
+                    onClick={() => onAction(ACTIONS.addSub(activity))}
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add SubActivity
+                  </ContextMenuItem>
+                  <ContextMenuItem
+                    onClick={() => onAction(ACTIONS.editActivity(activity))}
+                  >
+                    <Pencil className="mr-2 h-4 w-4" />
+                    Edit Activity
+                  </ContextMenuItem>
+                  <ContextMenuItem
+                    onClick={() =>
+                      onAction(ACTIONS.deleteActivity(activity.id))
+                    }
                   >
                     <Trash className="mr-2 h-4 w-4" />
                     Delete Activity
@@ -116,38 +144,51 @@ export function ActivitiesPanel({
                 {activity.subActivities &&
                   activity.subActivities.length > 0 && (
                     <div className="divide-y">
-                      {activity.subActivities.map((subActivity) => (
-                        <ContextMenu key={subActivity.id}>
-                          <ContextMenuTrigger>
-                            <div className="grid h-12 divide-x grid-cols-4 text-sm hover:bg-muted/30 border-b bg-gray-25">
-                              <div className="px-2 col-span-2 text-muted-foreground pl-8 truncate flex items-center">
-                                ↳ {subActivity.activity}
+                      {activity.subActivities.map(
+                        (subActivity: ProjectSubActivity) => (
+                          <ContextMenu key={subActivity.id}>
+                            <ContextMenuTrigger>
+                              <div className="grid h-12 divide-x grid-cols-4 text-sm hover:bg-muted/30 border-b bg-gray-25">
+                                <div className="px-2 col-span-2 text-muted-foreground pl-8 truncate flex items-center">
+                                  ↳ {subActivity.activity}
+                                </div>
+                                <div className="px-2 text-center text-muted-foreground truncate flex items-center justify-center">
+                                  {subActivity.startDate}
+                                </div>
+                                <div className="px-2 text-center text-muted-foreground truncate flex items-center justify-center">
+                                  {subActivity.duration} jam
+                                </div>
                               </div>
-                              <div className="px-2 text-center text-muted-foreground truncate flex items-center justify-center">
-                                {subActivity.startDate}
-                              </div>
-                              <div className="px-2 text-center text-muted-foreground truncate flex items-center justify-center">
-                                {subActivity.duration} jam
-                              </div>
-                            </div>
-                          </ContextMenuTrigger>
+                            </ContextMenuTrigger>
 
-                          <ContextMenuContent>
-                            <ContextMenuItem>
-                              <Pencil className="mr-2 h-4 w-4" />
-                              Edit Sub-Activity
-                            </ContextMenuItem>
-                            <ContextMenuItem
-                              onClick={() =>
-                                onDeleteSubActivity(activity.id, subActivity.id)
-                              }
-                            >
-                              <Trash className="mr-2 h-4 w-4" />
-                              Delete Sub-Activity
-                            </ContextMenuItem>
-                          </ContextMenuContent>
-                        </ContextMenu>
-                      ))}
+                            <ContextMenuContent>
+                              <ContextMenuItem
+                                onClick={() =>
+                                  onAction(
+                                    ACTIONS.editSub(subActivity, activity)
+                                  )
+                                }
+                              >
+                                <Pencil className="mr-2 h-4 w-4" />
+                                Edit Sub-Activity
+                              </ContextMenuItem>
+                              <ContextMenuItem
+                                onClick={() =>
+                                  onAction(
+                                    ACTIONS.deleteSub(
+                                      activity.id,
+                                      subActivity.id
+                                    )
+                                  )
+                                }
+                              >
+                                <Trash className="mr-2 h-4 w-4" />
+                                Delete Sub-Activity
+                              </ContextMenuItem>
+                            </ContextMenuContent>
+                          </ContextMenu>
+                        )
+                      )}
                     </div>
                   )}
               </AccordionContent>
