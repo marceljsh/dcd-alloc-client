@@ -365,7 +365,7 @@ export function ActivityForm({
                 name="duration"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Duration (hours)</FormLabel>
+                    <FormLabel>Workload (hours)</FormLabel>
                     <FormControl>
                       <Input
                         type="number"

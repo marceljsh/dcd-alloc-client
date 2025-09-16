@@ -66,7 +66,7 @@ export function ActivitiesPanel({
             Start Date
           </div>
           <div className="flex items-center justify-center px-2 h-full">
-            Duration
+            Workload
           </div>
         </div>
 

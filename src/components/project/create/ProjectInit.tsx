@@ -20,7 +20,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
 
 import { ActivityForm } from "./form";
 import { GanttPanel } from "./gantt";
@@ -31,7 +30,11 @@ import { useProject, useProjectDetails } from "@/hooks/projects/use-project";
 import { projectCategories, projectPriorities, teams } from "@/types/common";
 import { ProjectPlannerSkeleton } from "./project-planner-skeleton";
 
-export function ProjectPlanner() {
+type ProjectPlannerProps = {
+  onNext: () => void;
+};
+
+export function ProjectPlanner({ onNext }: ProjectPlannerProps) {
   const [isLoading, setIsLoading] = useState(true);
   const {
     activities,
@@ -44,8 +47,30 @@ export function ProjectPlanner() {
     openAddActivity,
     setExpandedItems,
     closeForm,
+    resetProject,
     initializeProject,
   } = useProject();
+
+  // Budget handling functions
+  const formatBudgetValue = (value: string) => {
+    const rawValue = value.replace(/\D/g, "");
+    return rawValue ? Number(rawValue).toLocaleString("id-ID") : "";
+  };
+
+  const handleBudgetChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formattedValue = formatBudgetValue(e.target.value);
+    updateBudget(formattedValue);
+  };
+
+  const handleBudgetFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+    const rawValue = e.target.value.replace(/\D/g, "");
+    updateBudget(rawValue);
+  };
+
+  const handleBudgetBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    const formattedValue = formatBudgetValue(e.target.value);
+    updateBudget(formattedValue);
+  };
 
   const {
     projectDetails,
@@ -60,7 +85,7 @@ export function ProjectPlanner() {
     const loadData = async () => {
       await initializeProject(initialProjectData);
       // Simulate loading time for better UX
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      await new Promise((resolve) => setTimeout(resolve, 300));
       setIsLoading(false);
     };
     loadData();
@@ -110,12 +135,20 @@ export function ProjectPlanner() {
           <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
             <div className="space-y-2 md:col-span-4">
               <Label htmlFor="budget">Budget</Label>
-              <Input
-                id="budget"
-                placeholder="Enter budget amount"
-                value={projectDetails.budget}
-                onChange={(e) => updateBudget(e.target.value)}
-              />
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">
+                  Rp
+                </span>
+                <Input
+                  id="budget"
+                  placeholder="1,000,000"
+                  className="pl-9"
+                  value={projectDetails.budget}
+                  onChange={handleBudgetChange}
+                  onFocus={handleBudgetFocus}
+                  onBlur={handleBudgetBlur}
+                />
+              </div>
             </div>
             <div className="space-y-2 col-span-1">
               <Label htmlFor="priority">Priority</Label>
@@ -211,8 +244,33 @@ export function ProjectPlanner() {
           </SheetContent>
         </Sheet>
 
-        <div className="flex justify-end mt-8">
-          <Button className="w-32">Next</Button> 
+        <div className="flex items-center justify-between mt-8 pt-4 border-t">
+          <Button
+            variant="ghost"
+            onClick={() => {
+              resetProject();
+            }}
+            className="text-red-500 hover:text-red-600 hover:bg-red-50"
+          >
+            Reset Form
+          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                // TODO: Implement save draft functionality
+                console.log("Save draft");
+              }}
+            >
+              Save as Draft
+            </Button>
+            <Button
+              onClick={onNext}
+              className="px-8 bg-black hover:bg-gray-800"
+            >
+              Continue
+            </Button>
+          </div>
         </div>
       </div>
     </div>

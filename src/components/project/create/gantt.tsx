@@ -59,6 +59,37 @@ export function GanttPanel({
     };
   };
 
+  if (!data || data.length === 0) {
+    return (
+      <div className="h-full w-full flex flex-col items-center justify-center bg-gray-50/50">
+        <div className="flex flex-col items-center justify-center p-8 text-center">
+          <div className="rounded-full bg-gray-100 p-3 mb-4">
+            <svg
+              className="w-6 h-6 text-gray-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+              />
+            </svg>
+          </div>
+          <h3 className="mb-1 text-sm font-semibold text-gray-900">
+            No activities yet
+          </h3>
+          <p className="text-sm text-gray-500">
+            Get started by adding your first project activity using the "Add
+            Activity" button above.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <ScrollArea className="h-full w-1 flex-1">
       <div>
@@ -85,14 +116,18 @@ export function GanttPanel({
           </div>
 
           <div className="grid divide-x grid-flow-col auto-cols-[50px] place-items-center h-9">
-            {dates.map((date) => (
-              <div
-                key={date.toISOString()}
-                className="text-xs w-full text-center font-medium flex items-center justify-center h-full"
-              >
-                {date.getDate()}
-              </div>
-            ))}
+            {dates.map((date) => {
+              const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+              return (
+                <div
+                  key={date.toISOString()}
+                  className={`text-xs w-full text-center font-medium flex items-center justify-center h-full
+                    ${isWeekend ? "bg-gray-100 text-gray-500" : ""}`}
+                >
+                  {date.getDate()}
+                </div>
+              );
+            })}
           </div>
         </div>
 
@@ -109,7 +144,6 @@ export function GanttPanel({
                 >
                   <AccordionTrigger className="hidden" />
 
-                  {/* Main Activity Row */}
                   <div className="relative border-b h-12">
                     <div
                       className="grid"
@@ -135,7 +169,6 @@ export function GanttPanel({
                     </div>
                   </div>
 
-                  {/* Sub Activities with AccordionContent for smooth transitions */}
                   <AccordionContent className="pb-0">
                     {activity.subActivities &&
                       activity.subActivities.length > 0 && (

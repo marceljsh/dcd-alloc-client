@@ -1,8 +1,13 @@
 "use client";
-import { ProjectPlanner } from "@/components/project/create/add-activity";
+import { useEffect } from "react";
+import { ProjectPlanner } from "@/components/project/create/ProjectInit";
 import { StepIndicator } from "@/components/project/create/step-indicator";
+import SettingRole from "@/components/project/role/SettingRole";
+import { ProjectResults } from "@/components/project/results/ProjectResults";
 import { RoleLevel } from "@/components/ProjectManagement";
 import { Card, CardContent } from "@/components/ui/card";
+import { useProject } from "@/hooks/projects/use-project";
+import { useSidebar } from "@/components/ui/sidebar";
 
 import { ResultCSV } from "@/lib/storage";
 import { ProjectData } from "@/types/projects";
@@ -13,6 +18,13 @@ export default function ProjectCreate() {
   const [projectData, setProjectData] = useState<ProjectData | null>(null);
   const [roleLevels, setRoleLevels] = useState<RoleLevel[]>([]);
   const [estimationResults, setEstimationResults] = useState<ResultCSV[]>([]);
+  const { activities } = useProject();
+  const { setOpen } = useSidebar();
+
+  // Close sidebar when component mounts
+  useEffect(() => {
+    setOpen(false);
+  }, [setOpen]);
 
   const steps = [
     { id: 1, name: "Project Input", description: "Basic project information" },
@@ -27,9 +39,9 @@ export default function ProjectCreate() {
       return;
     }
 
-    if (step === 2 && projectData) {
+    if (step === 2) {
       setCurrentStep(step);
-    } else if (step === 3 && projectData && roleLevels.length > 0) {
+    } else if (step === 3) {
       setCurrentStep(step);
     } else if (
       step === 4 &&
@@ -72,8 +84,22 @@ export default function ProjectCreate() {
       <div className="mb-12">
         {currentStep === 1 && (
           <div>
-            <ProjectPlanner />
+            <ProjectPlanner onNext={() => goToStep(2)} />
           </div>
+        )}
+
+        {currentStep === 2 && (
+          <SettingRole
+            onNext={() => goToStep(3)}
+            onPrevious={() => goToStep(1)}
+          />
+        )}
+
+        {currentStep === 3 && (
+          <ProjectResults
+            onNext={() => goToStep(4)}
+            onPrevious={() => goToStep(2)}
+          />
         )}
       </div>
     </div>

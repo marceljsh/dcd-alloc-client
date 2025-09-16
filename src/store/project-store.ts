@@ -8,14 +8,6 @@ import {
 } from "@/types/projects";
 import { generateDates } from "@/lib/dates";
 
-interface ProjectDetails {
-  name: string;
-  budget: string;
-  team: string;
-  priority: string;
-  category: string;
-}
-
 interface FormState {
   isOpen: boolean;
   type: EntityType;
@@ -27,6 +19,14 @@ interface FormState {
 interface DateRange {
   start: Date;
   end: Date;
+}
+
+interface ProjectDetails {
+  name: string;
+  budget: string;
+  team: string;
+  priority: string;
+  category: string;
 }
 
 interface ProjectState {
@@ -77,7 +77,9 @@ interface ProjectState {
 const calculateDateRange = (activities: ProjectActivity[]): DateRange => {
   if (activities.length === 0) {
     const now = new Date();
-    return { start: now, end: now };
+    const end = new Date(now);
+    end.setDate(end.getDate() + 15);
+    return { start: now, end };
   }
 
   const allDates = activities.flatMap((activity) => {
@@ -93,10 +95,22 @@ const calculateDateRange = (activities: ProjectActivity[]): DateRange => {
     return dates;
   });
 
-  return {
-    start: new Date(Math.min(...allDates.map((d) => d.getTime()))),
-    end: new Date(Math.max(...allDates.map((d) => d.getTime()))),
-  };
+  const start = new Date(Math.min(...allDates.map((d) => d.getTime())));
+  const end = new Date(Math.max(...allDates.map((d) => d.getTime())));
+
+  // Calculate the difference in days
+  const diffDays = Math.ceil(
+    (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)
+  );
+
+  // If difference is less than 30 days, extend the end date to make it 16 days
+  if (diffDays < 30) {
+    const newEnd = new Date(start);
+    newEnd.setDate(start.getDate() + 15); // Add 15 days to make it 16 days inclusive
+    return { start, end: newEnd };
+  }
+
+  return { start, end };
 };
 
 const recalculateParentActivity = (
@@ -264,7 +278,6 @@ export const useProjectStore = create<ProjectState>()(
         state.form.formDetails = details;
       }),
 
-    // UI actions
     setExpandedItems: (items) =>
       set((state) => {
         state.expandedItems = items;
@@ -280,7 +293,6 @@ export const useProjectStore = create<ProjectState>()(
         }
       }),
 
-    // Computed getters
     getDates: () => {
       const { dateRange } = get();
       return generateDates(dateRange.start, dateRange.end);
@@ -301,7 +313,6 @@ export const useProjectStore = create<ProjectState>()(
       return grouped;
     },
 
-    // Utility actions
     initializeProject: (initialData) =>
       set((state) => {
         state.activities = initialData;

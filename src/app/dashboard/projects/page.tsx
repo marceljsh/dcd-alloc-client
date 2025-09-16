@@ -63,7 +63,6 @@ import { AddProjectForm } from "@/components/project/AddProjectForm";
 import ProjectTimeline from "@/components/ProjectTimeline";
 import { useRouter } from "next/navigation";
 
-
 export const PROJECT_CATEGORY_OPTIONS = ["Small", "Medium", "Big"] as const;
 export const PROJECT_PRIORITY_OPTIONS = [
   "Low",
@@ -309,6 +308,11 @@ export default function ProjectsPage() {
     setSelectedTeams
   );
 
+  const handleAddProject = (e: MouseEvent) => {
+    e.preventDefault();
+    router.push("projects/new");
+  };
+
   const handleCloseDialog = () => {
     setActiveDialog(null);
     setSelectedProject(null);
@@ -332,7 +336,7 @@ export default function ProjectsPage() {
   // --- RENDER ---
   return (
     <div className="space-y-6 mx-10">
-      <PageHeader onAddProject={() => setActiveDialog("add")} />
+      <PageHeader onAddProject={handleAddProject} />
       <StatCards stats={stats} />
 
       <Card className="py-4">
@@ -373,17 +377,17 @@ export default function ProjectsPage() {
         isOpen={activeDialog === "timeline"}
         onClose={handleCloseDialog}
       />
-      <AddProjectDialog
-        isOpen={activeDialog === "add"}
-        onClose={handleCloseDialog}
-      />
 
       <Toaster position="top-center" />
     </div>
   );
 }
 
-const PageHeader = ({ onAddProject }: { onAddProject: () => void }) => (
+const PageHeader = ({
+  onAddProject,
+}: {
+  onAddProject: (e: MouseEvent) => void;
+}) => (
   <div className="flex items-center justify-between">
     <div>
       <h1 className="text-3xl font-bold">Projects</h1>
