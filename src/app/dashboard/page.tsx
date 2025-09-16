@@ -81,14 +81,12 @@ const ProjectTable: React.FC<{ filteredProjects: any[] }> = ({ filteredProjects 
 
 const transformDataForCharts = (employees: EmployeeType[], projects: ProjectType[]) => {
   const fteWorkloadData = employees.reduce((acc, emp) => {
-    // Define workload multipliers based on level
     const workloadMultipliers: Record<string, number> = {
       junior: 0.8,
       middle: 1.0,
       senior: 1.2,
     }
 
-    // Extract level from role (assuming format like "Frontend Developer - Senior")
     const level = emp.role.toLowerCase().includes("senior")
       ? "senior"
       : emp.role.toLowerCase().includes("junior")
@@ -98,7 +96,6 @@ const transformDataForCharts = (employees: EmployeeType[], projects: ProjectType
     const baseWorkload = 8 // 1 FTE = 8 hours
     const adjustedWorkload = baseWorkload * workloadMultipliers[level]
 
-    // Calculate project involvement for this employee
     const empProjects = projects.filter((p) => p.team === emp.team)
     const projectHours =
       empProjects.length > 0
@@ -164,7 +161,6 @@ const transformDataForCharts = (employees: EmployeeType[], projects: ProjectType
     return acc
   }, [] as any[])
 
-  // Calculate actual utilization by role based on project assignments
   const roleUtilization = employees.reduce((acc, emp) => {
     const empProjects = projects.filter((p) => p.team === emp.team)
     const totalBudget = empProjects.reduce((sum, p) => sum + p.budget, 0)
@@ -193,7 +189,6 @@ const transformDataForCharts = (employees: EmployeeType[], projects: ProjectType
     return acc
   }, [] as any[])
 
-  // Calculate project distribution by category
   const projectDistribution = projects.reduce((acc, proj) => {
     const existing = acc.find((item) => item.category === proj.category)
     if (existing) {
@@ -205,7 +200,6 @@ const transformDataForCharts = (employees: EmployeeType[], projects: ProjectType
     return acc
   }, [] as any[])
 
-  // Calculate team distribution
   const teamDistribution = projects.reduce((acc, proj) => {
     const existing = acc.find((item) => item.team === proj.team)
     if (existing) {
@@ -250,7 +244,6 @@ const transformDataForCharts = (employees: EmployeeType[], projects: ProjectType
     return result
   })
 
-  // Project timeline analysis
   const projectTimeline = projects.map((proj) => {
     const start = new Date(proj.startDate)
     const end = new Date(proj.endDate)
@@ -273,7 +266,6 @@ const transformDataForCharts = (employees: EmployeeType[], projects: ProjectType
     }
   })
 
-  // Resource allocation over time (monthly)
   const resourceAllocation = Array.from({ length: 12 }, (_, i) => {
     const month = new Date(2024, i).toLocaleString("default", { month: "short" })
     const monthProjects = projects.filter((p) => {
@@ -293,7 +285,6 @@ const transformDataForCharts = (employees: EmployeeType[], projects: ProjectType
     }
   })
 
-  // Team workload distribution
   const teamWorkload = employees.reduce((acc, emp) => {
     const empProjects = projects.filter((p) => p.team === emp.team)
     const totalBudget = empProjects.reduce((sum, p) => sum + p.budget, 0)
@@ -317,7 +308,6 @@ const transformDataForCharts = (employees: EmployeeType[], projects: ProjectType
     return acc
   }, [] as any[])
 
-  // Priority vs Budget analysis
   const priorityBudgetAnalysis = projects.reduce((acc, proj) => {
     const existing = acc.find((item) => item.priority === proj.priority)
     if (existing) {
@@ -337,15 +327,12 @@ const transformDataForCharts = (employees: EmployeeType[], projects: ProjectType
     return acc
   }, [] as any[])
 
-  // Skills distribution (based on role analysis)
   const skillsDistribution = employees.reduce((acc, emp) => {
-  // Ambil role utamanya: Data Engineer / Software Engineer / System Analyst
   let skillCategory = "Other"
   if (emp.role.toLowerCase().includes("data engineer")) skillCategory = "Data Engineer"
   else if (emp.role.toLowerCase().includes("software engineer")) skillCategory = "Software Engineer"
   else if (emp.role.toLowerCase().includes("system analyst")) skillCategory = "System Analyst"
 
-  // Ambil level (Junior, Middle, Senior)
   const level = emp.level || (
   emp.role.toLowerCase().includes("senior")
     ? "Senior"
@@ -401,7 +388,6 @@ export default function Page() {
   const filteredProjects = useMemo(() => {
     let data = projects
 
-    // Filter by date range
     if (dateRange.from && dateRange.to) {
       data = data.filter((p) => {
         const projectStart = new Date(p.startDate)
@@ -414,7 +400,6 @@ export default function Page() {
       })
     }
 
-    // Filter by selected projects
     if (selectedProjects.length > 0) {
       data = data.filter((p) => selectedProjects.includes(p.name))
     }
@@ -425,12 +410,10 @@ export default function Page() {
   const filteredEmployees = useMemo(() => {
     let data = employees
 
-    // Filter by selected roles
     if (selectedRoles.length > 0) {
       data = data.filter((emp) => selectedRoles.includes(emp.role))
     }
 
-    // Filter employees based on projects they're involved in (by team matching)
     if (filteredProjects.length < projects.length) {
       const projectTeams = new Set(filteredProjects.map((p) => p.team))
       data = data.filter((emp) => projectTeams.has(emp.team))
@@ -579,7 +562,7 @@ export default function Page() {
 
     const availableEmployees = activeEmployees.filter((emp) => {
     const empProjects = filteredProjects.filter((p) => p.team === emp.team)
-    return empProjects.length === 0 // artinya belum dialokasikan sama sekali
+    return empProjects.length === 0 
   })
 
     return [
@@ -657,7 +640,6 @@ export default function Page() {
         color: "text-purple-600",
         desc: filteredEmployees
         .reduce((acc, emp) => {
-          // Ambil level dari dataset kalau ada, fallback ke deteksi dari role
           const rawLevel = emp.level
             ? emp.level.toLowerCase()
             : emp.role.toLowerCase().includes("senior")
@@ -713,7 +695,7 @@ export default function Page() {
     <div className="space-y-3 mx-10">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Project Dashboard</h1>
+          <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
           <p className="text-gray-600 mt-1">Monitor project resources, utilization, and budget performance</p>
         </div>
 
@@ -936,15 +918,15 @@ export default function Page() {
                       dataKey="name"
                       tick={{ fontSize: 10 }}
                       textAnchor="end"
-                      height={60}
+                      height={30}
                       tickFormatter={(value: string) => (value.length > 12 ? value.substring(0, 9) + "..." : value)}
                     />
                     <YAxis tick={{ fontSize: 10 }} />
                     <Tooltip
-                      formatter={(value: number, name: string) => [
-                        name === "duration" ? `${value} days` : `${value}%`,
-                        name === "duration" ? "Duration" : "Progress",
-                      ]}
+                      formatter={(value: number, name: string, props) => [
+    props.dataKey === "duration" ? `${value} days` : `${value}%`,
+    props.dataKey === "duration" ? "Duration (days)" : "Progress %",
+  ]}
                     />
                     <Legend verticalAlign="bottom" wrapperStyle={{ fontSize: "12px", marginTop: "8px" }} />
                     <Bar dataKey="duration" fill="#8884d8" name="Duration (days)" />
@@ -971,10 +953,10 @@ export default function Page() {
                     />
                     <YAxis yAxisId="count" orientation="right" tick={{ fontSize: 10 }} />
                     <Tooltip
-                      formatter={(value: number, name: string) => [
-                        name === "avgBudget" ? formatRupiah(value) : `${value} projects`,
-                        name === "avgBudget" ? "Avg Budget" : "Project Count",
-                      ]}
+                      formatter={(value: number, name: string, props) => [
+    props.dataKey === "avgBudget" ? formatRupiah(value) : `${value} projects`,
+    props.dataKey === "avgBudget" ? "Avg Budget" : "Project Count",
+  ]}
                     />
                     <Legend verticalAlign="bottom" wrapperStyle={{ fontSize: "12px", marginTop: "8px" }} />
                     <Bar yAxisId="budget" dataKey="avgBudget" fill="#8884d8" name="Avg Budget" />
@@ -1026,37 +1008,33 @@ export default function Page() {
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-2">
             <Card className="shadow-sm mb">
               <CardHeader className="mt-2">
-                <CardTitle className="text-lg font-semibold text-center">FTE Workload by Role</CardTitle>
+                  <CardTitle className="text-lg font-semibold text-center">FTE Workload by Role</CardTitle>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={240}>
-                  <BarChart data={fteWorkloadData} margin={{ top: 5, right: 5, left: -20, bottom: 2 }}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis
-                      dataKey="role"
-                      tick={{ fontSize: 10 }}
-                      textAnchor="end"
-                      height={30}
-                      tickFormatter={(value: string) => (value.length > 15 ? value.substring(0, 12) + "..." : value)}
-                    />
-                    <YAxis tick={{ fontSize: 10 }} />
-                    <Tooltip
-                      formatter={(value: number, name: string) => [
-                        name === "totalFTE" ? `${value.toFixed(1)} FTE` : `${value.toFixed(0)} hours`,
-                        name === "totalFTE"
-                          ? "Total FTE"
-                          : name === "allocatedHours"
-                            ? "Allocated Hours"
-                            : "Available Hours",
-                      ]}
-                    />
-                    <Legend verticalAlign="bottom" wrapperStyle={{ fontSize: "12px", marginTop: "8px" }} />
-                    <Bar dataKey="totalFTE" fill="#8884d8" name="Total FTE" />
-                    <Bar dataKey="allocatedHours" fill="#82ca9d" name="Allocated Hours" />
-                  </BarChart>
-                </ResponsiveContainer>
+                  <ResponsiveContainer width="100%" height={240}>
+                      <BarChart data={fteWorkloadData} margin={{ top: 5, right: 5, left: -20, bottom: 2 }}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis
+                              dataKey="role"
+                              tick={{ fontSize: 10 }}
+                              textAnchor="end"
+                              height={30}
+                              tickFormatter={(value: string) => (value.length > 15 ? value.substring(0, 12) + "..." : value)}
+                          />
+                          <YAxis tick={{ fontSize: 10 }} />
+                          <Tooltip
+                              formatter={(value: number, name: string) => [
+                                  name === "Total FTE" ? `${value.toFixed(1)} FTE` : `${value.toFixed(0)} hours`,
+                                  name,
+                              ]}
+                          />
+                          <Legend verticalAlign="bottom" wrapperStyle={{ fontSize: "12px", marginTop: "8px" }} />
+                          <Bar dataKey="totalFTE" fill="#8884d8" name="Total FTE" stackId="a" />
+                          <Bar dataKey="allocatedHours" fill="#82ca9d" name="Allocated Hours" stackId="a" />
+                      </BarChart>
+                  </ResponsiveContainer>
               </CardContent>
-            </Card>
+          </Card>
 
             <Card className="shadow-sm">
               <CardHeader className="mt-3">
@@ -1069,11 +1047,8 @@ export default function Page() {
                     <XAxis dataKey="team" tick={{ fontSize: 10 }} />
                     <YAxis tick={{ fontSize: 10 }} />
                     <Tooltip
-                      formatter={(value: number, name: string) => [
-                        `${value.toFixed(1)} hours`,
-                        name === "totalCapacity" ? "Total Capacity" : "Utilized Capacity",
-                      ]}
-                    />
+                    formatter={(value: number, name: string) => [`${value.toFixed(1)} hours`, name]}
+                  />
                     <Legend verticalAlign="bottom" wrapperStyle={{ fontSize: "12px", marginTop: "8px" }}/>
                     <Bar dataKey="totalCapacity" fill="#3b82f6" name="Total Capacity" />
                     <Bar dataKey="utilizedCapacity" fill="#10b981" name="Utilized Capacity" />
@@ -1081,50 +1056,6 @@ export default function Page() {
                 </ResponsiveContainer>
               </CardContent>
             </Card>
-
-            {/* <Card className="shadow-sm">
-              <CardHeader className="mt-3">
-                <CardTitle className="text-lg font-semibold">Employee Distribution by Role</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={220}>
-                  <PieChart margin={{ top: 5, right: 20, left: -10, bottom: 1 }}>
-                    <Pie
-                      className="mx-auto"
-                      data={filteredEmployees.reduce((acc, emp) => {
-                        const existing = acc.find((item) => item.role === emp.role)
-                        if (existing) {
-                          existing.count += 1
-                        } else {
-                          acc.push({ role: emp.role, count: 1 })
-                        }
-                        return acc
-                      }, [] as any[])}
-                      dataKey="count"
-                      nameKey="role"
-                      cx="50%"
-                      cy="50%"
-                      outerRadius={75}
-                      innerRadius={35}
-                    >
-                      {filteredEmployees
-                        .reduce((acc, emp) => {
-                          const existing = acc.find((item) => item.role === emp.role)
-                          if (!existing) {
-                            acc.push({ role: emp.role, count: 1 })
-                          }
-                          return acc
-                        }, [] as any[])
-                        .map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
-                    </Pie>
-                    <Tooltip formatter={(value) => [`${value} employees`, "Count"]} />
-                    <Legend verticalAlign="bottom" wrapperStyle={{ fontSize: "12px", marginTop: "8px" }} />
-                  </PieChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card> */}
           </div>
 
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-2">
@@ -1134,7 +1065,7 @@ export default function Page() {
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={280}>
-                  <BarChart data={teamWorkload} margin={{ top: 5, right: 10, left: 0, bottom: 10 }}>
+                  <BarChart data={teamWorkload} margin={{ top: 5, right: -10, left: -30, bottom: 10 }}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="team" tick={{ fontSize: 10 }} />
                     <YAxis yAxisId="score" orientation="left" tick={{ fontSize: 10 }} />
@@ -1160,7 +1091,7 @@ export default function Page() {
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={280}>
-                  <BarChart data={skillsDistribution} margin={{ top: 5, right: 10, left: 0, bottom: 10 }}>
+                  <BarChart data={skillsDistribution} margin={{ top: 5, right: 10, left: -0, bottom: 10 }}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="skill" tick={{ fontSize: 10 }} />
                     <YAxis tick={{ fontSize: 10 }} />
@@ -1170,7 +1101,7 @@ export default function Page() {
                         name.charAt(0).toUpperCase() + name.slice(1),
                       ]}
                     />
-                    <Legend />
+                    <Legend verticalAlign="bottom" wrapperStyle={{ fontSize: "12px", marginTop: "8px" }}/>
                     <Bar dataKey="junior" stackId="a" fill="#f59e0b" name="Junior" />
                     <Bar dataKey="middle" stackId="a" fill="#10b981" name="Middle" />
                     <Bar dataKey="senior" stackId="a" fill="#3b82f6" name="Senior" />

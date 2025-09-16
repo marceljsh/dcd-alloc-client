@@ -641,13 +641,16 @@ const ProjectDetailDialog = ({
                     <TableCell className="text-sm">{activity.role}</TableCell>
                     <TableCell className="text-sm">{activity.workload} hrs</TableCell>
                     <TableCell>
-                      <div className="flex -space-x-2">
-                        {activity.employees.slice(0, 1).map((emp, i) => {
-                          const colorClass = colors[i % colors.length] // warna berdasarkan index
+                      <div className="flex -space-x-1">
+                        {activity.employees.slice(0, 2).map((emp, i) => {
+                          const colorClass = colors[i % colors.length]
                           return (
-                            <Avatar key={i} className="border border-white">
+                            <Avatar
+                              key={i}
+                              className="h-6 w-6 border-2 border-white shadow-sm hover:scale-105 transition-transform duration-150"
+                            >
                               <AvatarImage src={emp.imageUrl || ""} alt={emp.name} />
-                              <AvatarFallback className={`${colorClass} text-white`}>
+                              <AvatarFallback className={`${colorClass} text-white text-xs font-semibold`}>
                                 {emp.name[0]}
                               </AvatarFallback>
                             </Avatar>
@@ -655,14 +658,15 @@ const ProjectDetailDialog = ({
                         })}
 
                         {activity.employees.length > 2 && (
-                          <Avatar className="border border-white">
-                            <AvatarFallback className="bg-gray-400 text-white">
+                          <Avatar className="h-6 w-6 border-2 border-white bg-gray-300 shadow-sm hover:scale-105 transition-transform duration-150">
+                            <AvatarFallback className="text-[10px] text-gray-700 font-medium">
                               +{activity.employees.length - 2}
                             </AvatarFallback>
                           </Avatar>
                         )}
                       </div>
                     </TableCell>
+
                     <TableCell className="text-sm">{activity.fte}</TableCell>
                     <TableCell className="text-sm">{activity.startDate}</TableCell>
                     <TableCell className="text-sm">{activity.endDate}</TableCell>
