@@ -6,31 +6,34 @@ import ProjectsPage from "../page"
 
 // Mock Next.js router
 jest.mock("next/navigation", () => ({
-  useRouter: jest.fn(() => ({
-    push: jest.fn(),
-    replace: jest.fn(),
-    prefetch: jest.fn(),
-  })),
+  useRouter: jest.fn(),
 }))
 
 // Mock ResizeObserver (Radix ScrollArea / Dialog)
-beforeAll(() => {
-  global.ResizeObserver = class {
-    observe() {}
-    unobserve() {}
-    disconnect() {}
-  }
-})
+class ResizeObserver {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+global.ResizeObserver = ResizeObserver
 
-describe("Projects Page", () => {
+// Mock project data agar menu dan dialog bisa muncul
+const mockProjects = [
+  { code: "P001", name: "Project Alpha" },
+  { code: "P002", name: "Project Beta" },
+]
+
+describe("ProjectsPage", () => {
   test("renders page title and add project button", () => {
-    render(<ProjectsPage />)
+    render(<ProjectsPage initialProjects={mockProjects} />)
+
     expect(screen.getByTestId("page-title")).toHaveTextContent("Projects")
     expect(screen.getByTestId("add-project-button")).toBeInTheDocument()
   })
 
   test("renders statistics cards", () => {
-    render(<ProjectsPage />)
+    render(<ProjectsPage initialProjects={mockProjects} />)
+
     expect(screen.getByTestId("stat-total-projects")).toBeInTheDocument()
     expect(screen.getByTestId("stat-total-budget")).toBeInTheDocument()
     expect(screen.getByTestId("stat-big-projects")).toBeInTheDocument()
@@ -38,7 +41,8 @@ describe("Projects Page", () => {
   })
 
   test("renders project table with rows", () => {
-    render(<ProjectsPage />)
+    render(<ProjectsPage initialProjects={mockProjects} />)
+
     const table = screen.getByTestId("project-table")
     expect(table).toBeInTheDocument()
 
@@ -46,8 +50,8 @@ describe("Projects Page", () => {
     expect(rows.length).toBeGreaterThan(0)
   })
 
-  test("opens menu for a project row", async () => {
-    render(<ProjectsPage />)
+  test("opens project menu and shows actions", async () => {
+    render(<ProjectsPage initialProjects={mockProjects} />)
 
     const menuButtons = screen.getAllByTestId(/menu-button-/)
     await userEvent.click(menuButtons[0])
@@ -55,10 +59,11 @@ describe("Projects Page", () => {
     const menu = within(document.body)
     await menu.findByText(/view details/i)
     await menu.findByText(/view timeline/i)
+    await menu.findByText(/archive/i)
   })
 
   test("opens project detail dialog", async () => {
-    render(<ProjectsPage />)
+    render(<ProjectsPage initialProjects={mockProjects} />)
 
     const menuButtons = screen.getAllByTestId(/menu-button-/)
     await userEvent.click(menuButtons[0])
@@ -67,30 +72,32 @@ describe("Projects Page", () => {
     const viewDetailsBtn = await menu.findByText(/view details/i)
     await userEvent.click(viewDetailsBtn)
 
+    // Tunggu dialog muncul di portal
+    const dialog = within(document.body)
     await waitFor(() => {
-      expect(screen.getByTestId("project-detail-dialog")).toBeInTheDocument()
+      expect(dialog.getByTestId("project-detail-dialog")).toBeInTheDocument()
     })
   })
 
-test("opens project timeline dialog", async () => {
-  render(<ProjectsPage />)
+  test("opens project timeline dialog", async () => {
+    render(<ProjectsPage initialProjects={mockProjects} />)
 
-  // Klik tombol menu (pakai userEvent supaya async)
-  const menuButtons = screen.getAllByTestId(/menu-button-/)
-  await userEvent.click(menuButtons[0])
+    const menuButtons = screen.getAllByTestId(/menu-button-/)
+    await userEvent.click(menuButtons[0])
 
-  // Tunggu menu muncul
-  const viewTimelineBtn = await screen.findByTestId("view-details-timeline")
-  await userEvent.click(viewTimelineBtn)
+    const menu = within(document.body)
+    const viewTimelineBtn = await menu.findByTestId("view-details-timeline")
+    await userEvent.click(viewTimelineBtn)
 
-  // Tunggu dialog muncul
-  await waitFor(() => {
-    expect(screen.getByTestId("timeline-dialog")).toBeInTheDocument()
+    // Tunggu dialog timeline muncul
+    const dialog = within(document.body)
+    await waitFor(() => {
+      expect(dialog.getByTestId("timeline-dialog")).toBeInTheDocument()
+    })
   })
-})
 
   test("add project dialog opens when clicking add project button", async () => {
-    render(<ProjectsPage />)
+    render(<ProjectsPage initialProjects={mockProjects} />)
 
     const addBtn = screen.getByTestId("add-project-button")
     await userEvent.click(addBtn)
