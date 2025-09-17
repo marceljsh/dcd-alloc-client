@@ -181,13 +181,13 @@ export default function ProjectCreation() {
       <div className="max-w-7xl mx-auto space-y-4">
         <div className="space-y-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Create Project</h1>
+            <h1 data-testid="page-title" className="text-3xl font-bold text-gray-900">Create Project</h1>
             <p className="text-gray-600 mt-1">Estimate team size and resource allocation</p>
           </div>
 
           <div className="flex items-center space-x-8">
             {steps.map((step, index) => (
-              <div key={step.id} className="flex items-center">
+              <div data-testid={`step-${step.id}`} key={step.id} className="flex items-center">
                 <div className="flex items-center space-x-3">
                   <div
                     className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
@@ -219,7 +219,7 @@ export default function ProjectCreation() {
                 <TooltipProvider>
                 <Tooltip>
                     <TooltipTrigger asChild>
-                    <div className="text-2xl font-bold text-gray-900">{formatBudgetShort(projectData.totalBudget)}</div>
+                    <div data-testid="card-total-budget" className="text-2xl font-bold text-gray-900">{formatBudgetShort(projectData.totalBudget)}</div>
                     </TooltipTrigger>
                     <TooltipContent>
                     <p>{formatCurrency(projectData.totalBudget)}</p>
@@ -236,7 +236,7 @@ export default function ProjectCreation() {
               <Clock className="h-4 w-4 text-orange-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-gray-900">{projectData.duration}</div>
+              <div data-testid="card-duration" className="text-2xl font-bold text-gray-900">{projectData.duration}</div>
               <p className="text-xs text-gray-500 mb-3">Months</p>
             </CardContent>
           </Card>
@@ -247,7 +247,7 @@ export default function ProjectCreation() {
               <Users className="h-4 w-4 text-purple-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-gray-900">{projectData.teamCount}</div>
+              <div data-testid="card-team-size" className="text-2xl font-bold text-gray-900">{projectData.teamCount}</div>
               <p className="text-xs text-gray-500 mb-3">Team members</p>
             </CardContent>
           </Card>
@@ -258,7 +258,7 @@ export default function ProjectCreation() {
         <TrendingUp className="h-4 w-4 text-cyan-600" />
       </CardHeader>
       <CardContent>
-        <div className="text-2xl font-bold text-gray-900">{totalWorkload} jam</div>
+        <div data-testid="card-total-workload" className="text-2xl font-bold text-gray-900">{totalWorkload} jam</div>
         <p className="mb-3 text-xs text-gray-500">Total Project Hours</p>
       </CardContent>
     </Card>
@@ -269,7 +269,7 @@ export default function ProjectCreation() {
         <Folder className="h-4 w-4 text-indigo-600" />
       </CardHeader>
       <CardContent>
-        <div className="text-2xl font-bold text-gray-900">{projectData.projectCategory}</div>
+        <div data-testid="card-project-category" className="text-2xl font-bold text-gray-900">{projectData.projectCategory}</div>
         <p className="mb-3 text-xs text-gray-500">Project Type</p>
       </CardContent>
     </Card>
@@ -288,7 +288,7 @@ export default function ProjectCreation() {
           <CardContent>
             <div className="space-y-4 mb-3 mt-3">
                 {projectData.teamAllocation.map((team) => (
-                <div key={team.role} className="space-y-3">
+                <div data-testid={`team-role-${team.role.replace(/\s+/g, "-").toLowerCase()}`} key={team.role} className="space-y-3">
                     <h3 className="text-base font-medium text-gray-900 border-b border-gray-200 pb-2">{team.role}</h3>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     {(["junior", "middle", "senior"] as const).map((level) => {
@@ -296,7 +296,7 @@ export default function ProjectCreation() {
                         if (levelData.count === 0) return null;
 
                         return (
-                        <div key={level} className="rounded-lg p-4 border border-black-600">
+                        <div key={level} data-testid={`team-${team.role.replace(/\s+/g, "-").toLowerCase()}-${level}`} className="rounded-lg p-4 border border-black-600">
                             <div className="flex items-center justify-between">
                             <Badge className={`text-xs capitalize ${levelColors[level]}`}>
                             {level}
@@ -344,8 +344,8 @@ export default function ProjectCreation() {
                     </thead>
                     <tbody>
                         {projectData.activities.map((activity, index) => (
-                        <tr key={index} className="border-b border-gray-200 hover:bg-gray-50">
-                            <td className="py-3 px-4 text-gray-900">
+                        <tr key={index} data-testid={`activity-row-${index}`} className="border-b border-gray-200 hover:bg-gray-50">
+                            <td data-testid={`activity-name-${index}`} className="py-3 px-4 text-gray-900">
                             <div className="flex items-center space-x-2">
                                 <span>{activity.name}</span>
                                 <TooltipProvider>
@@ -362,10 +362,10 @@ export default function ProjectCreation() {
                                 </TooltipProvider>
                             </div>
                             </td>
-                            <td className="py-3 px-4 text-gray-600 text-left">{activity.startDate}</td>
-                            <td className="py-3 px-4 text-gray-600 text-left">{activity.endDate}</td>
-                            <td className="py-3 px-4 text-gray-600 text-left">{activity.duration}</td>
-                            <td className="py-3 px-4 font-medium text-black">{formatCurrency(activity.budget)}</td>
+                            <td data-testid={`activity-start-${index}`} className="py-3 px-4 text-gray-600 text-left">{activity.startDate}</td>
+                            <td data-testid={`activity-end-${index}`} className="py-3 px-4 text-gray-600 text-left">{activity.endDate}</td>
+                            <td data-testid={`activity-duration-${index}`} className="py-3 px-4 text-gray-600 text-left">{activity.duration}</td>
+                            <td data-testid={`activity-budget-${index}`} className="py-3 px-4 font-medium text-black">{formatCurrency(activity.budget)}</td>
                         </tr>
                         ))}
                     </tbody>
@@ -376,10 +376,10 @@ export default function ProjectCreation() {
         </Card>
 
         <div className="flex justify-between">
-          <Button variant="outline" onClick={() => setCurrentStep(2)}>
+          <Button data-testid="btn-previous" variant="outline" onClick={() => setCurrentStep(2)}>
             Previous
           </Button>
-          <Button onClick={() => setCurrentStep(4)} className="bg-black">
+          <Button data-testid="btn-continue" onClick={() => setCurrentStep(4)} className="bg-black">
             Continue to Simulation
           </Button>
         </div>

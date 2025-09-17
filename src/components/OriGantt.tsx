@@ -255,7 +255,6 @@ export default function Component({ className, ...props }: React.HTMLAttributes<
              (selectedRoles.length === 0 || selectedRoles.includes(employee.role))
     })
 
-    /* filter employees based on selected roles */
     const filteredEmployees = employees.getValues().filter(employee => selectedRoles.includes(employee.role))
 
     return filteredEmployees.map((employee) => ({
@@ -322,7 +321,7 @@ export default function Component({ className, ...props }: React.HTMLAttributes<
         {/* Project Filter Dropdown */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="gap-1 bg-foreground text-background">
+            <Button data-testid="project-filter-dropdown" variant="outline" className="gap-1 bg-foreground text-background">
               <Filter className="h-4 w-4" />
               Project ({selectedProjectsLabel})
             </Button>
@@ -333,13 +332,16 @@ export default function Component({ className, ...props }: React.HTMLAttributes<
             {projects.getValues().map((project) => (
               <DropdownMenuCheckboxItem
                 key={project.id}
+                data-testid={`project-filter-item-${project.id}`}   // ⬅️ Tambahan
                 checked={selectedProjects.includes(project.id)}
                 onSelect={(e) => e.preventDefault()}
-                onCheckedChange={(checked) => setSelectedProjects(
-                  checked
-                    ? [...selectedProjects, project.id]
-                    : selectedProjects.filter((p) => p !== project.id)
-                )}
+                onCheckedChange={(checked) =>
+                  setSelectedProjects(
+                    checked
+                      ? [...selectedProjects, project.id]
+                      : selectedProjects.filter((p) => p !== project.id)
+                  )
+                }
               >
                 {project.name}
               </DropdownMenuCheckboxItem>
@@ -360,17 +362,20 @@ export default function Component({ className, ...props }: React.HTMLAttributes<
             <DropdownMenuSeparator />
             {roles.map((role) => (
               <DropdownMenuCheckboxItem
-                key={role}
-                checked={selectedRoles.includes(role)}
-                onSelect={(e) => e.preventDefault()}
-                onCheckedChange={(checked) => setSelectedRoles(
+              key={role}
+              data-testid={`role-filter-item-${role.replace(/\s+/g, '-')}`}   // ⬅️ Tambahan
+              checked={selectedRoles.includes(role)}
+              onSelect={(e) => e.preventDefault()}
+              onCheckedChange={(checked) =>
+                setSelectedRoles(
                   checked
                     ? [...selectedRoles, role]
                     : selectedRoles.filter((r) => r !== role)
-                )}
-              >
-                {role}
-              </DropdownMenuCheckboxItem>
+                )
+              }
+            >
+              {role}
+            </DropdownMenuCheckboxItem>
             ))}
           </DropdownMenuContent>
         </DropdownMenu>
@@ -472,11 +477,11 @@ export default function Component({ className, ...props }: React.HTMLAttributes<
                         const rowHeight = Math.max(60, (maxLevel + 1) * 28 + 20)
 
                         return (
-                          <div key={employee.id} style={{ minHeight: `${rowHeight}px` }} className="flex border-b">
+                          <div key={employee.id} data-testid={`employee-row-${employee.id}`} style={{ minHeight: `${rowHeight}px` }} className="flex border-b">
                             {/* Employee Info (left column) - Sticky Left (scrolls vertically) */}
                             <div className="w-64 p-4 border-r flex flex-col justify-center bg-white sticky left-0 z-10">
-                              <div className="font-medium">{employee.name}</div>
-                              <Badge variant="outline" className={`w-fit mt-1 ${getRoleColor(employee.role)}`}>
+                              <div data-testid={`employee-name-${employee.id}`} className="font-medium">{employee.name}</div>
+                              <Badge data-testid={`employee-role-badge-${employee.id}`} variant="outline" className={`w-fit mt-1 ${getRoleColor(employee.role)}`}>
                                 {employee.role}
                               </Badge>
                             </div>
@@ -510,7 +515,7 @@ export default function Component({ className, ...props }: React.HTMLAttributes<
                                   return (
                                     <Tooltip key={task.id}>
                                       <TooltipTrigger asChild>
-                                        <div
+                                        <div data-testid={`task-bar-${task.id}`} 
                                           className={cn(
                                             "absolute h-5 px-1 flex items-center",
                                             "text-white text-xs cursor-pointer transition-all hover:opacity-80",

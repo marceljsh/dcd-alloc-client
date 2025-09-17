@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useMemo, useState,useEffect } from "react"
 import type React from "react"
 import {
   type ColumnDef,
@@ -191,7 +191,7 @@ export default function ProjectsPage() {
           return (
             <DropdownMenu>
               <DropdownMenuTrigger asChild >
-                <Button data-testid="open-menu-project" variant="ghost" className="h-8 w-8 p-0">
+                <Button data-testid={`menu-button-${project.code}`} variant="ghost" className="h-8 w-8 p-0">
                   <span className="sr-only">Open menu</span>
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
@@ -201,8 +201,16 @@ export default function ProjectsPage() {
                 <DropdownMenuItem data-testid="view-details-project" onClick={() => openDialog("detail")}>
                   <Edit className="mr-2 h-4 w-4" /> View Details
                 </DropdownMenuItem>
-                <DropdownMenuItem  onClick={() => openDialog("timeline")}>
-                  <Calendar data-testid="view-timeline-project" className="mr-2 h-4 w-4" /> View Timeline
+                <DropdownMenuItem
+                  data-testid="view-details-timeline"
+                  role="menuitem"
+                  onClick={() => {
+                    setSelectedProject(project);   // pilih project yang ingin ditampilkan
+                    setActiveDialog("timeline");   // buka dialog timeline
+                  }}
+                >
+                  <Calendar className="mr-2 h-4 w-4" />
+                  <span>View Timeline</span> {/* teks utuh agar query byText berhasil */}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem data-testid="archive" className="text-red-400" onClick={() => handleArchive(project)}>
@@ -267,7 +275,7 @@ export default function ProjectsPage() {
 
   // --- RENDER ---
   return (
-    <div className="space-y-6 mx-10">
+    <div className="space-y-6 mx-10" data-testid="projects-page">
       <PageHeader onAddProject={() => setActiveDialog("add")} />
       <StatCards stats={stats} />
 
@@ -303,7 +311,8 @@ export default function ProjectsPage() {
       <ProjectTimelineDialog
         project={selectedProject}
         isOpen={activeDialog === "timeline"}
-        onClose={handleCloseDialog}
+        onClose={() => setActiveDialog(null)}
+        data-testid="timeline-dialog"
       />
       <AddProjectDialog isOpen={activeDialog === "add"} onClose={handleCloseDialog} />
 
@@ -315,10 +324,10 @@ export default function ProjectsPage() {
 const PageHeader = ({ onAddProject }: { onAddProject: () => void }) => (
   <div className="flex items-center justify-between">
     <div>
-      <h1 className="text-3xl font-bold">Projects</h1>
+      <h1 className="text-3xl font-bold" data-testid="page-title">Projects</h1>
       <p className="text-muted-foreground">Manage your projects and track their progress</p>
     </div>
-    <Button onClick={onAddProject}>
+    <Button onClick={onAddProject} data-testid="add-project-button">
       <Plus className="h-4 w-4 mr-2" />
       Add Project
     </Button>
@@ -327,7 +336,7 @@ const PageHeader = ({ onAddProject }: { onAddProject: () => void }) => (
 
 const StatCards = ({ stats }: { stats: any }) => (
   <div className="grid gap-3 md:grid-cols-4">
-    <Card className="py-4 gap-0">
+    <Card className="py-4 gap-0" data-testid="stat-total-projects">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-sm font-medium">Total Projects</CardTitle>
         <Target className="h-4 w-4 text-muted-foreground" />
@@ -337,7 +346,7 @@ const StatCards = ({ stats }: { stats: any }) => (
         <p className="text-xs text-muted-foreground">Things to Do</p>
       </CardContent>
     </Card>
-    <Card className="py-4 gap-0">
+    <Card className="py-4 gap-0" data-testid="stat-total-budget">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-sm font-medium">Total Budget</CardTitle>
         <Users className="h-4 w-4 text-muted-foreground" />
@@ -347,7 +356,7 @@ const StatCards = ({ stats }: { stats: any }) => (
         <p className="text-xs text-muted-foreground">Ready to Spend</p>
       </CardContent>
     </Card>
-    <Card className="py-4 gap-0">
+    <Card className="py-4 gap-0" data-testid="stat-big-projects">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-sm font-medium">Big Sized Projects</CardTitle>
         <Clock className="h-4 w-4 text-muted-foreground" />
@@ -357,7 +366,7 @@ const StatCards = ({ stats }: { stats: any }) => (
         <p className="text-xs text-muted-foreground">of All Projects</p>
       </CardContent>
     </Card>
-    <Card className="py-4 gap-0">
+    <Card className="py-4 gap-0" data-testid="stat-critical-projects">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-sm font-medium">Critical Projects</CardTitle>
         <Target className="h-4 w-4 text-muted-foreground" />
@@ -404,12 +413,13 @@ const TableToolbar = ({
   <CardHeader className="flex flex-row items-center justify-between">
     <CardTitle className="text-xl">Project Portfolio</CardTitle>
     <div className="flex items-center gap-2">
-      <FilterDropdown title="Category" filter={filters.categories} />
-      <FilterDropdown title="Priority" filter={filters.priorities} />
-      <FilterDropdown title="Team" filter={filters.teams} />
+      <FilterDropdown title="Category" filter={filters.categories} data-testid="filter-category" />
+      <FilterDropdown title="Priority" filter={filters.priorities} data-testid="filter-priority" />
+      <FilterDropdown title="Team" filter={filters.teams} data-testid="filter-team"/>
       <div className="relative">
         <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
         <Input
+          data-testid="search-input"
           placeholder="Search projects..."
           value={globalFilter}
           onChange={(e) => setGlobalFilter(e.target.value)}
@@ -422,7 +432,7 @@ const TableToolbar = ({
 
 const ProjectsDataTable = ({ table, columns }: { table: any; columns: any[] }) => (
   <ScrollArea className="h-[500px]">
-    <Table>
+    <Table data-testid="project-table">
       <TableHeader className="sticky top-0 z-10 bg-background shadow-sm">
         {table.getHeaderGroups().map((headerGroup: any) => (
           <TableRow key={headerGroup.id} className="hover:bg-white">
@@ -444,7 +454,7 @@ const ProjectsDataTable = ({ table, columns }: { table: any; columns: any[] }) =
       <TableBody>
         {table.getRowModel().rows?.length ? (
           table.getRowModel().rows.map((row: any) => (
-            <TableRow key={row.id}>
+            <TableRow key={row.id} data-testid={`project-row-${row.original.code}`}>
               {row.getVisibleCells().map((cell: any) => (
                 <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
               ))}
@@ -464,7 +474,7 @@ const ProjectsDataTable = ({ table, columns }: { table: any; columns: any[] }) =
 
 const AddProjectDialog = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => (
   <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-    <DialogContent className="sm:max-w-[425px]">
+    <DialogContent className="sm:max-w-[425px]" data-testid="add-project-dialog">
       <DialogHeader>
         <DialogTitle>Add New Project</DialogTitle>
         <DialogDescription>Create a new project to track progress and manage resources.</DialogDescription>
@@ -519,7 +529,7 @@ const ProjectDetailDialog = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto" data-testid="project-detail-dialog">
         <DialogHeader>
           <DialogTitle className="text-xl font-semibold">{project.name}</DialogTitle>
         </DialogHeader>
@@ -546,7 +556,9 @@ const ProjectDetailDialog = ({
 
             <div className="space-y-1">
               <Label className="text-sm font-medium text-muted-foreground">Start Date</Label>
-              <p className="text-sm">{new Date(project.startDate).toLocaleDateString("en-GB")}</p>
+              <p className="text-sm">
+                {new Date(project.startDate).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}
+              </p>
             </div>
           </div>
 
@@ -563,7 +575,9 @@ const ProjectDetailDialog = ({
 
             <div className="space-y-1">
               <Label className="text-sm font-medium text-muted-foreground">End Date</Label>
-              <p className="text-sm">{new Date(project.endDate).toLocaleDateString("en-GB")}</p>
+              <p className="text-sm">
+                {new Date(project.endDate).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}
+              </p>
             </div>
           </div>
 
@@ -576,7 +590,7 @@ const ProjectDetailDialog = ({
             <div className="space-y-3">
               <Label className="text-sm font-medium text-muted-foreground">Overall Progress</Label>
               <div className="w-full bg-gray-200 rounded-full h-2">
-                <div className="bg-blue-600 h-2 rounded-full transition-all duration-300" style={{ width: "65%" }} />
+                <div className="bg-blue-600 h-2 rounded-full transition-all duration-300" style={{ width: "65%" }} data-testid="progress-bar"/>
               </div>
             </div>
 
@@ -622,7 +636,7 @@ const ProjectDetailDialog = ({
 
           <div className="space-y-3">
             <div className="overflow-x-auto">
-              <Table>
+              <Table data-testid="subactivities-table">
                 <TableHeader>
                   <TableRow>
                     <TableHead className="text-xs">Subactivity</TableHead>
@@ -636,7 +650,7 @@ const ProjectDetailDialog = ({
                 </TableHeader>
                 <TableBody>
                 {subactivities.map((activity, index) => (
-                  <TableRow key={index}>
+                  <TableRow key={index} data-testid={`subactivity-row-${index}`}>
                     <TableCell className="text-sm">{activity.name}</TableCell>
                     <TableCell className="text-sm">{activity.role}</TableCell>
                     <TableCell className="text-sm">{activity.workload} hrs</TableCell>
@@ -687,7 +701,7 @@ const ProjectTimelineDialog = ({ project, isOpen, onClose }: { project: ProjectR
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-7xl">
+      <DialogContent className="sm:max-w-7xl" data-testid="project-timeline-dialog">
         <DialogHeader>
           <DialogTitle>Timeline: {project.name}</DialogTitle>
           <DialogDescription>Visualisasi timeline</DialogDescription>

@@ -79,50 +79,42 @@ const ProjectTable: React.FC<{ filteredProjects: any[] }> = ({ filteredProjects 
   )
 }
 
-const transformDataForCharts = (employees: EmployeeType[], projects: ProjectType[]) => {
-  const fteWorkloadData = employees.reduce((acc, emp) => {
-    const workloadMultipliers: Record<string, number> = {
-      junior: 0.8,
-      middle: 1.0,
-      senior: 1.2,
-    }
+    const transformDataForCharts = (employees: EmployeeType[], projects: ProjectType[]) => {
+      const fteWorkloadData = employees.reduce((acc, emp) => {
+      const workloadMultipliers: Record<string, number> = {
+        junior: 0.8,
+        middle: 1.0,
+        senior: 1.2,
+      }
 
-    const level = emp.role.toLowerCase().includes("senior")
-      ? "senior"
-      : emp.role.toLowerCase().includes("junior")
-        ? "junior"
-        : "middle"
+      // ✅ Gunakan emp.level dari database, fallback ke middle kalau kosong
+      const level = emp.level?.toLowerCase() ?? "middle"
 
-    const baseWorkload = 8 // 1 FTE = 8 hours
-    const adjustedWorkload = baseWorkload * workloadMultipliers[level]
+      const baseWorkload = 8 // 1 FTE = 8 hours
+      const adjustedWorkload = baseWorkload * workloadMultipliers[level]
 
-    const empProjects = projects.filter((p) => p.team === emp.team)
-    const projectHours =
-      empProjects.length > 0
-        ? Math.min(
-            adjustedWorkload * 1.5,
-            empProjects.reduce((sum, p) => sum + p.crew * 2, 0),
-          )
-        : adjustedWorkload * 0.6
+      const empProjects = projects.filter((p) => p.team === emp.team)
+      const projectHours =
+        empProjects.length > 0
+          ? Math.min(
+              adjustedWorkload * 1.5,
+              empProjects.reduce((sum, p) => sum + p.crew * 2, 0),
+            )
+          : adjustedWorkload * 0.6
 
-    const existing = acc.find((item) => item.role === emp.role)
-    if (existing) {
-      existing.totalFTE += adjustedWorkload / 8
-      existing.allocatedHours += projectHours
-      existing.availableHours += adjustedWorkload
-      existing.count += 1
-    } else {
-      acc.push({
-        role: emp.role,
-        totalFTE: adjustedWorkload / 8,
-        allocatedHours: projectHours,
-        availableHours: adjustedWorkload,
-        count: 1,
-        level: level,
-      })
-    }
-    return acc
-  }, [] as any[])
+      const existing = acc.find((item) => item.role === emp.role)
+      if (existing) {
+        existing[level] = (existing[level] || 0) + projectHours
+      } else {
+        acc.push({
+          role: emp.role,
+          junior: level === "junior" ? projectHours : 0,
+          middle: level === "middle" ? projectHours : 0,
+          senior: level === "senior" ? projectHours : 0,
+        })
+      }
+      return acc
+    }, [] as any[])
 
   const fteUtilizationByTeam = employees.reduce((acc, emp) => {
     const level = emp.role.toLowerCase().includes("senior")
@@ -1012,26 +1004,59 @@ export default function Page() {
               </CardHeader>
               <CardContent>
                   <ResponsiveContainer width="100%" height={240}>
-                      <BarChart data={fteWorkloadData} margin={{ top: 5, right: 5, left: -20, bottom: 2 }}>
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis
-                              dataKey="role"
-                              tick={{ fontSize: 10 }}
-                              textAnchor="end"
-                              height={30}
-                              tickFormatter={(value: string) => (value.length > 15 ? value.substring(0, 12) + "..." : value)}
-                          />
-                          <YAxis tick={{ fontSize: 10 }} />
-                          <Tooltip
-                              formatter={(value: number, name: string) => [
-                                  name === "Total FTE" ? `${value.toFixed(1)} FTE` : `${value.toFixed(0)} hours`,
-                                  name,
-                              ]}
-                          />
-                          <Legend verticalAlign="bottom" wrapperStyle={{ fontSize: "12px", marginTop: "8px" }} />
-                          <Bar dataKey="totalFTE" fill="#8884d8" name="Total FTE" stackId="a" />
-                          <Bar dataKey="allocatedHours" fill="#82ca9d" name="Allocated Hours" stackId="a" />
-                      </BarChart>
+                    <BarChart
+                      data={fteWorkloadData}
+                      margin={{ top: 5, right: 5, left: -20, bottom: 2 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis
+                        dataKey="role"
+                        tick={{ fontSize: 10 }}
+                        textAnchor="end"
+                        height={30}
+                        tickFormatter={(value: string) =>
+                          value.length > 15 ? value.substring(0, 12) + "..." : value
+                        }
+                      />
+                      <YAxis tick={{ fontSize: 10 }} />
+                      <Tooltip
+                        content={({ active, payload, label }) => {
+                          if (active && payload && payload.length) {
+                            const total = payload.reduce(
+                              (sum, p) => sum + (p.value as number),
+                              0
+                            )
+                            return (
+                              <div className="bg-white p-2 shadow-md rounded-xl border">
+                                <p className="font-bold">{label}</p>
+                                {payload.map((p) => {
+                                  const value = p.value as number
+                                  const percentage = ((value / total) * 100).toFixed(1)
+                                  return (
+                                    <div key={p.dataKey} className="flex justify-between">
+                                      <span style={{ color: p.color }}>{p.name}</span>
+                                      <span>{`${value.toFixed(1)}h (${percentage}%)`}</span>
+                                    </div>
+                                  )
+                                })}
+                                <div className="border-t mt-1 pt-1 text-sm font-semibold">
+                                  Total: {total.toFixed(1)}h
+                                </div>
+                              </div>
+                            )
+                          }
+                          return null
+                        }}
+                      />
+                      <Legend
+                        verticalAlign="bottom"
+                        wrapperStyle={{ fontSize: "12px", marginTop: "8px" }}
+                      />
+                      {/* Hapus totalFTE, ganti stack per level */}
+                      <Bar dataKey="junior" fill="#a7f3d0" name="Junior" stackId="a" />
+                      <Bar dataKey="middle" fill="#34d399" name="Middle" stackId="a" />
+                      <Bar dataKey="senior" fill="#059669" name="Senior" stackId="a" />
+                    </BarChart>
                   </ResponsiveContainer>
               </CardContent>
           </Card>

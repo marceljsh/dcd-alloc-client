@@ -2,7 +2,6 @@ import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
 import Estimator from "../page";
 
-// Mock komponen anak yang dipanggil di dalam Estimator
 jest.mock("@/components/project/create", () => ({
   ProjectPlanner: ({ onSubmit }: { onSubmit?: (data: any) => void }) => (
     <div data-testid="project-planner">
@@ -56,7 +55,7 @@ jest.mock("lucide-react", () => ({
 }));
 
 describe("Estimator Page", () => {
-  it("renders correctly and shows step 1 initially", () => {
+  it("renders correctly and shows step 1 initially", async () => {
     render(<Estimator />);
     expect(screen.getByText("Create Project")).toBeInTheDocument();
     expect(screen.getByText("Project Input")).toBeInTheDocument();
@@ -70,22 +69,23 @@ describe("Estimator Page", () => {
     expect(screen.getByTestId("role-level-selection")).toBeInTheDocument();
   });
 
-  it("goes to step 3 after submitting role levels", () => {
-    render(<Estimator />);
-    fireEvent.click(screen.getByText("Submit Project"));
-    fireEvent.click(screen.getByText("Submit Role Levels"));
-    expect(screen.getByText("Results")).toBeInTheDocument();
+  it("goes to step 3 after submitting role levels", async () => {
+    const { debug } = render(<Estimator />);
+    fireEvent.click(screen.getByText("Submit Project"));
+    debug();
+    const submitRoleButton = await screen.findByText("Submit Role Levels");
+    fireEvent.click(submitRoleButton);
+    expect(screen.getByText("Results")).toBeInTheDocument();
   });
 
-  it("does not jump to step 3 if projectData is not set", () => {
+  it("does not jump to step 3 if projectData is not set", async () => {
     render(<Estimator />);
     const step3 = screen.getByText("Results");
-    fireEvent.click(step3); // klik step 3 langsung
-    // Tetap di step 1 karena belum ada projectData
+    fireEvent.click(step3); 
     expect(screen.getByTestId("project-planner")).toBeInTheDocument();
   });
 
-  it("allows going back to previous step", () => {
+  it("allows going back to previous step", async () => {
     render(<Estimator />);
     fireEvent.click(screen.getByText("Submit Project"));
     const step1 = screen.getByText("Project Input");
