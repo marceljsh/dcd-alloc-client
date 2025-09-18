@@ -94,32 +94,3 @@ export const useProjectDetails = () => {
     updateProjectDetails,
   };
 };
-
-export const useProjectForm = () => {
-  const { form, closeForm, setFormDetails } = useProjectStore();
-
-  return {
-    ...form,
-    closeForm,
-    setFormDetails,
-  };
-};
-
-export const useProjectActivities = () => {
-  const { activities, expandedItems, setExpandedItems } = useProjectStore();
-
-  return {
-    activities,
-    expandedItems,
-    setExpandedItems,
-  };
-};
-
-export const useProjectDates = () => {
-  const { getDates, getGroupedDates } = useProjectStore();
-
-  return {
-    dates: getDates(),
-    groupedDates: getGroupedDates(),
-  };
-};
