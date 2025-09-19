@@ -1,6 +1,5 @@
 import { Employee } from "@/types/employee";
 import { ProjectPriority, ProjectCategory, Team } from "@/types/common";
-import { EnumValues } from "zod/v3";
 
 export interface ProjectRow {
   id: number;
@@ -86,6 +85,7 @@ export interface ProjectSubActivity {
   duration: number;
   fte: number;
   role: "SA" | "SE" | "DE" | "";
+  excludeLevel?: "none" | "junior" | "middle" | "senior";
 }
 
 export type EntityType = "activity" | "subactivity";

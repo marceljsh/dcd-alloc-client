@@ -3,7 +3,7 @@ import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Crown, Medal, Sparkles, Users } from "lucide-react";
+import { Medal, Users } from "lucide-react";
 import React, { useState } from "react";
 
 type SettingRoleProps = {

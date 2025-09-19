@@ -21,20 +21,20 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-import { ActivityForm } from "./form";
-import { GanttPanel } from "./gantt";
-import { ActivitiesPanel } from "./left-panel";
+import { ActivityForm } from "./ActivityForm";
+import { GanttPanel } from "./Gantt";
+import { ActivitiesPanel } from "./LeftPanel";
 
 import { initialProjectData } from "@/data/projects";
 import { useProject, useProjectDetails } from "@/hooks/projects/use-project";
 import { projectCategories, projectPriorities, teams } from "@/types/common";
-import { ProjectPlannerSkeleton } from "./project-planner-skeleton";
+import { ProjectPlannerSkeleton } from "./ProjectPlannerSkeleton";
 
 type ProjectPlannerProps = {
   onNext: () => void;
 };
 
-export function ProjectPlanner({ onNext }: ProjectPlannerProps) {
+export function ProjectCreatePage({ onNext }: ProjectPlannerProps) {
   const [isLoading, setIsLoading] = useState(true);
   const {
     activities,

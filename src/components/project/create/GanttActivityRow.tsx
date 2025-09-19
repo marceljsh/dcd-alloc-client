@@ -4,7 +4,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { ProjectActivity } from "@/types/projects";
-import { GanttActivityBar } from "./gantt-activity-bar";
+import { GanttActivityBar } from "./GanttActivityBar";
 
 interface GanttActivityRowProps {
   activity: ProjectActivity;

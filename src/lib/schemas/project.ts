@@ -32,6 +32,7 @@ export const activityFormSchema = z
       .int("Duration must be a whole number"),
     calculationMode: z.enum(["auto", "manual"]),
     role: z.enum(["SE", "DE", "SA"]).or(z.literal("")).optional(),
+    excludeLevel: z.enum(["none", "junior", "middle", "senior"]).optional(),
   })
   .refine(
     (data) => {
@@ -86,7 +87,7 @@ export const createSubActivitySchema = (
         )})`,
         path: ["startDate"],
       });
-      return; 
+      return;
     }
 
     if (subEnd > parentEndDate) {

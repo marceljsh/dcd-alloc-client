@@ -1,7 +1,7 @@
 "use client";
 import { useEffect } from "react";
-import { ProjectPlanner } from "@/components/project/create/ProjectInit";
-import { StepIndicator } from "@/components/project/create/step-indicator";
+import { ProjectCreatePage } from "@/components/project/create/ProjectCreatePage";
+import { StepIndicator } from "@/components/project/create/StepIndicator";
 import SettingRole from "@/components/project/role/SettingRole";
 import { ProjectResults } from "@/components/project/results/ProjectResults";
 import { RoleLevel } from "@/components/ProjectManagement";
@@ -84,7 +84,7 @@ export default function ProjectCreate() {
       <div className="mb-12">
         {currentStep === 1 && (
           <div>
-            <ProjectPlanner onNext={() => goToStep(2)} />
+            <ProjectCreatePage onNext={() => goToStep(2)} />
           </div>
         )}
 
