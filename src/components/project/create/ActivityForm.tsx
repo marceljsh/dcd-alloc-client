@@ -1,6 +1,7 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect } from "react";
+import React from "react";
 import { Button } from "@/components/ui/button";
 import {
   SheetClose,
@@ -44,7 +45,11 @@ interface ActivityFormProps {
   parentActivity: ProjectActivity | null;
   formDetails: ProjectActivity | ProjectSubActivity | null;
   mode: ModeType;
-  onSubmit: (entity: ProjectActivity | ProjectSubActivity) => void;
+  activities?: ProjectActivity[];
+  onSubmit: (
+    entity: ProjectActivity | ProjectSubActivity,
+    parent?: ProjectActivity
+  ) => void;
 }
 
 const createActivity = (data: ActivityFormData): ProjectActivity => ({
@@ -104,6 +109,7 @@ export function ActivityForm({
   mode,
   parentActivity,
   formDetails,
+  activities = [],
   onSubmit,
 }: ActivityFormProps) {
   const schema =
@@ -126,6 +132,10 @@ export function ActivityForm({
     "calculationMode",
   ]);
 
+  const [selectedParentId, setSelectedParentId] = React.useState<number | null>(
+    parentActivity ? parentActivity.id : null
+  );
+
   const handleFormSubmit = (data: ActivityFormData) => {
     let entity: ProjectActivity | ProjectSubActivity;
 
@@ -140,14 +150,20 @@ export function ActivityForm({
       if (mode === "Add") {
         entity.duration = 0;
       }
-    } else if (parentActivity) {
-      entity = createSubActivity(data, parentActivity);
+      onSubmit(entity);
     } else {
-      console.error("Cannot create sub-activity without parent activity");
-      return;
+      // Subactivity
+      let parent: ProjectActivity | null = parentActivity;
+      if (!parent && selectedParentId) {
+        parent = activities.find((a) => a.id === selectedParentId) || null;
+      }
+      if (!parent) {
+        console.error("Cannot create sub-activity without parent activity");
+        return;
+      }
+      entity = createSubActivity(data, parent);
+      onSubmit(entity, parent);
     }
-
-    onSubmit(entity);
   };
 
   const handleCancel = () => {
@@ -212,6 +228,31 @@ export function ActivityForm({
         <SheetTitle>{getSheetTitle()}</SheetTitle>
       </SheetHeader>
 
+      {sheetType === "subactivity" &&
+        !parentActivity &&
+        activities.length > 0 && (
+          <div className="px-4 pb-2">
+            <label className="block mb-2 text-sm font-medium">
+              Select Parent Activity
+            </label>
+            <Select
+              value={selectedParentId ? String(selectedParentId) : ""}
+              onValueChange={(val) => setSelectedParentId(Number(val))}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select activity..." />
+              </SelectTrigger>
+              <SelectContent>
+                {activities.map((a) => (
+                  <SelectItem key={a.id} value={String(a.id)}>
+                    {a.activity}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
       <Form {...form}>
         <form
           onSubmit={form.handleSubmit(handleFormSubmit)}
@@ -240,6 +281,77 @@ export function ActivityForm({
                 </FormItem>
               )}
             />
+
+            {/* Date Fields */}
+            <div className="grid grid-cols-2 gap-4 items-start">
+              <FormField
+                control={form.control}
+                name="startDate"
+                render={({ field }) => {
+                  let minDate = undefined;
+                  let maxDate = undefined;
+                  if (sheetType === "subactivity") {
+                    const parent =
+                      parentActivity ||
+                      (selectedParentId
+                        ? activities.find((a) => a.id === selectedParentId)
+                        : undefined);
+                    if (parent) {
+                      minDate = parent.startDate;
+                      maxDate = parent.endDate;
+                    }
+                  }
+                  return (
+                    <FormItem>
+                      <FormLabel>Start Date</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="date"
+                          {...field}
+                          min={minDate}
+                          max={maxDate}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
+              />
+
+              <FormField
+                control={form.control}
+                name="endDate"
+                render={({ field }) => {
+                  let minDate = undefined;
+                  let maxDate = undefined;
+                  if (sheetType === "subactivity") {
+                    const parent =
+                      parentActivity ||
+                      (selectedParentId
+                        ? activities.find((a) => a.id === selectedParentId)
+                        : undefined);
+                    if (parent) {
+                      minDate = parent.startDate;
+                      maxDate = parent.endDate;
+                    }
+                  }
+                  return (
+                    <FormItem>
+                      <FormLabel>End Date</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="date"
+                          {...field}
+                          min={minDate}
+                          max={maxDate}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
+              />
+            </div>
 
             {/* Calculation Mode - Only for new sub-activities */}
             {isCalculationModeVisible && (
@@ -272,39 +384,6 @@ export function ActivityForm({
                 )}
               />
             )}
-
-            {/* Date Fields */}
-            <div className="grid grid-cols-2 gap-4 items-start">
-              <FormField
-                control={form.control}
-                name="startDate"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Start Date</FormLabel>
-                    <FormControl>
-                      <Input type="date" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="endDate"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>
-                      End Date {calculationMode === "manual" && "(optional)"}
-                    </FormLabel>
-                    <FormControl>
-                      <Input type="date" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
 
             {/* Role Field - Only for activities */}
             {isRoleVisible && (

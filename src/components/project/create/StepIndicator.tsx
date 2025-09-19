@@ -24,7 +24,7 @@ export function StepIndicator({
   estimationResults,
 }: StepIndicatorProps) {
   return (
-    <div className="flex items-center justify-between">
+    <div className="flex items-center justify-between px-12">
       {steps.map((step, index) => {
         const isClickable =
           (step.id === 1 ||
@@ -40,10 +40,7 @@ export function StepIndicator({
         const isCompleted = currentStep > step.id;
 
         return (
-          <div
-            key={step.id}
-            className="flex flex-1 items-center"
-          >
+          <div key={step.id} className="flex items-center">
             <div
               className={`flex items-center gap-3 rounded-full px-4 py-2 transition-all duration-200
                 ${
@@ -68,7 +65,7 @@ export function StepIndicator({
                   }`}
                 />
               )}
-              <span className="text-sm font-medium">{step.name}</span>
+              <span className="text-base font-medium">{step.name}</span>
             </div>
 
             {index < steps.length - 1 && (

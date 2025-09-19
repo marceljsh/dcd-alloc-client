@@ -28,9 +28,8 @@ export default function ProjectCreate() {
 
   const steps = [
     { id: 1, name: "Project Input", description: "Basic project information" },
-    { id: 2, name: "Role & Level", description: "Team configuration" },
-    { id: 3, name: "Results", description: "Resource estimation" },
-    { id: 4, name: "Simulation", description: "What-if analysis" },
+    { id: 2, name: "Results", description: "Resource estimation" },
+    { id: 3, name: "Project Assignment", description: "What-if analysis" },
   ];
 
   const goToStep = (step: number) => {
@@ -89,18 +88,13 @@ export default function ProjectCreate() {
         )}
 
         {currentStep === 2 && (
-          <SettingRole
-            onNext={() => goToStep(3)}
-            onPrevious={() => goToStep(1)}
-          />
-        )}
-
-        {currentStep === 3 && (
           <ProjectResults
             onNext={() => goToStep(4)}
             onPrevious={() => goToStep(2)}
           />
         )}
+
+        {currentStep === 3 && <></>}
       </div>
     </div>
   );

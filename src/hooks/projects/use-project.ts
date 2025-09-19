@@ -46,8 +46,15 @@ export const useProject = () => {
     store.closeForm();
   };
 
-  const openAddActivity = () => {
-    store.openForm("activity", "Add");
+  const openAddActivity = (
+    type: "activity" | "subactivity",
+    parent?: ProjectActivity
+  ) => {
+    if (type === "activity") {
+      store.openForm("activity", "Add");
+    } else {
+      store.openForm("subactivity", "Add", parent);
+    }
   };
 
   return {

@@ -29,6 +29,7 @@ import { initialProjectData } from "@/data/projects";
 import { useProject, useProjectDetails } from "@/hooks/projects/use-project";
 import { projectCategories, projectPriorities, teams } from "@/types/common";
 import { ProjectPlannerSkeleton } from "./ProjectPlannerSkeleton";
+import { NewItemButton } from "./NewItemButton";
 
 type ProjectPlannerProps = {
   onNext: () => void;
@@ -191,11 +192,17 @@ export function ProjectCreatePage({ onNext }: ProjectPlannerProps) {
       </Card>
 
       <div>
-        <div className="mb-4 flex">
-          <Button variant="default" onClick={openAddActivity}>
-            <PlusIcon className="mr-2 h-4 w-4" />
-            Add Activity
-          </Button>
+        <div className="mb-4">
+          <NewItemButton
+            onSelect={(type) => {
+              if (type === "subactivity") {
+                // If user is adding subactivity, open form without parent
+                openAddActivity("subactivity");
+              } else {
+                openAddActivity("activity");
+              }
+            }}
+          />
         </div>
 
         <ScrollArea className="border rounded-lg">
@@ -237,6 +244,7 @@ export function ProjectCreatePage({ onNext }: ProjectPlannerProps) {
               sheetType={form.type}
               formDetails={form.formDetails}
               mode={form.mode}
+              activities={activities}
               onSubmit={(entity) =>
                 handleFormSubmit(entity, form.type, form.mode)
               }
