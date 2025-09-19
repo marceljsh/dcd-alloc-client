@@ -32,6 +32,7 @@ export const activityFormSchema = z
       .int("Duration must be a whole number"),
     calculationMode: z.enum(["auto", "manual"]),
     role: z.enum(["SE", "DE", "SA"]).or(z.literal("")).optional(),
+    excludeLevel: z.enum(["none", "junior", "middle", "senior"]).optional(),
   })
   .refine(
     (data) => {
@@ -43,7 +44,7 @@ export const activityFormSchema = z
       return true;
     },
     {
-      message: "End date must be after end date",
+      message: "End date must be after start date",
       path: ["endDate"],
     }
   );
@@ -75,6 +76,18 @@ export const createSubActivitySchema = (
         )})`,
         path: ["startDate"],
       });
+      return;
+    }
+
+    if (subStart > parentEndDate) {
+      ctx.addIssue({
+        code: "custom",
+        message: `Start date cannot be later than the parent activity's end date (${formatDate(
+          parentEndDate
+        )})`,
+        path: ["startDate"],
+      });
+      return;
     }
 
     if (subEnd > parentEndDate) {
@@ -83,6 +96,14 @@ export const createSubActivitySchema = (
         message: `End date cannot be later than the parent activity's end date (${formatDate(
           parentEndDate
         )})`,
+        path: ["endDate"],
+      });
+    }
+
+    if (subEnd < subStart) {
+      ctx.addIssue({
+        code: "custom",
+        message: "End date must be after start date",
         path: ["endDate"],
       });
     }

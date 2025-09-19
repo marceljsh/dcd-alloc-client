@@ -34,18 +34,23 @@ export function DatePicker({ value, onDateChange, className, disableWeekends }: 
         <Button
           variant="outline"
           className={cn(
-            'mt-1 w-full justify-start text-left font-normal',
-            !dateValue && 'text-muted-foreground',
+            "mt-1 w-full justify-start text-left font-normal",
+            !dateValue && "text-muted-foreground",
             className
           )}
         >
           <CalendarIcon className="mr-2 h-4 w-4" />
-          {dateValue ? format(dateValue, 'PPP') : 'Select date'}
+          {dateValue ? format(dateValue, "PPP") : "Select date"}
         </Button>
       </PopoverTrigger>
       <PopoverContent>
-        <Calendar mode="single" selected={dateValue} onSelect={handleSelect} disabled={disabledDays} />
+        <Calendar
+          mode="single"
+          selected={dateValue}
+          onSelect={handleSelect}
+          disabled={disabledDays}
+        />
       </PopoverContent>
     </Popover>
-  )
+  );
 }

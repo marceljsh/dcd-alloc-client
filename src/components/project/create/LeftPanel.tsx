@@ -12,7 +12,6 @@ import {
   ContextMenuItem,
   ContextMenuTrigger,
 } from "../../ui/context-menu";
-import { SheetTrigger } from "../../ui/sheet";
 import {
   ActivityAction,
   createAction,

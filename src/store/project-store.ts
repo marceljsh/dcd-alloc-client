@@ -98,15 +98,13 @@ const calculateDateRange = (activities: ProjectActivity[]): DateRange => {
   const start = new Date(Math.min(...allDates.map((d) => d.getTime())));
   const end = new Date(Math.max(...allDates.map((d) => d.getTime())));
 
-  // Calculate the difference in days
   const diffDays = Math.ceil(
     (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)
   );
 
-  // If difference is less than 30 days, extend the end date to make it 16 days
   if (diffDays < 30) {
     const newEnd = new Date(start);
-    newEnd.setDate(start.getDate() + 15); // Add 15 days to make it 16 days inclusive
+    newEnd.setDate(start.getDate() + 30);
     return { start, end: newEnd };
   }
 
@@ -120,14 +118,6 @@ const recalculateParentActivity = (
     return activity;
   }
 
-  const earliestStart = activity.subActivities.reduce((prev, curr) =>
-    new Date(curr.startDate) < new Date(prev.startDate) ? curr : prev
-  );
-
-  const latestEnd = activity.subActivities.reduce((prev, curr) =>
-    new Date(curr.endDate) > new Date(prev.endDate) ? curr : prev
-  );
-
   const totalDuration = activity.subActivities.reduce(
     (total, sub) => total + sub.duration,
     0
@@ -135,8 +125,6 @@ const recalculateParentActivity = (
 
   return {
     ...activity,
-    startDate: earliestStart.startDate,
-    endDate: latestEnd.endDate,
     duration: totalDuration,
   };
 };
@@ -195,6 +183,11 @@ export const useProjectStore = create<ProjectState>()(
           parent.subActivities.push(subActivity);
           state.activities[parentIndex] = recalculateParentActivity(parent);
           state.dateRange = calculateDateRange(state.activities);
+
+          const activityId = `activity-${subActivity.parentId}`;
+          if (!state.expandedItems.includes(activityId)) {
+            state.expandedItems.push(activityId);
+          }
         }
       }),
 

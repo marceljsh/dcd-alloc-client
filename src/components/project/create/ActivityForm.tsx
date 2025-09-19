@@ -70,6 +70,7 @@ const createSubActivity = (
   fte: data.fte,
   parentId: parent.id,
   role: data.role || "", // Fallback to empty string
+  excludeLevel: data.excludeLevel,
 });
 
 const getDefaultFormValues = (): ActivityFormData => ({
@@ -80,6 +81,7 @@ const getDefaultFormValues = (): ActivityFormData => ({
   duration: 0,
   calculationMode: "auto",
   role: "",
+  excludeLevel: "none",
 });
 
 const mapEntityToFormData = (
@@ -93,6 +95,8 @@ const mapEntityToFormData = (
   duration: entity.duration,
   calculationMode: "auto",
   role: entity.role || "",
+  excludeLevel:
+    "excludeLevel" in entity ? entity.excludeLevel || "none" : "none",
 });
 
 export function ActivityForm({
@@ -144,7 +148,6 @@ export function ActivityForm({
     }
 
     onSubmit(entity);
-    form.reset(getDefaultFormValues());
   };
 
   const handleCancel = () => {
@@ -197,7 +200,8 @@ export function ActivityForm({
     if (formDetails && mode === "Edit") {
       const formData = mapEntityToFormData(formDetails);
       form.reset(formData);
-    } else if (mode === "Add") {
+    } else if (mode === "Add" && !formDetails && !form.formState.isDirty) {
+      // Only reset if form is not dirty (hasn't been filled out yet)
       form.reset(getDefaultFormValues());
     }
   }, [formDetails, mode, sheetType, form]);
@@ -386,6 +390,39 @@ export function ActivityForm({
                         Enter duration manually in hours
                       </FormDescription>
                     )}
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+
+            {/* Exclude Level Field - Only for sub-activities */}
+            {sheetType === "subactivity" && (
+              <FormField
+                control={form.control}
+                name="excludeLevel"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Exclude Level (Optional)</FormLabel>
+                    <FormControl>
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value || "none"}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Select level to exclude" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">No exclusion</SelectItem>
+                          <SelectItem value="junior">Junior</SelectItem>
+                          <SelectItem value="middle">Middle</SelectItem>
+                          <SelectItem value="senior">Senior</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </FormControl>
+                    <FormDescription>
+                      Exclude specific experience level from this task
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
