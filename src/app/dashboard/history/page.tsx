@@ -11,6 +11,14 @@ import {
   SortingState,
   ColumnFiltersState,
 } from "@tanstack/react-table"
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationPrevious,
+  PaginationNext,
+} from "@/components/ui/pagination";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -62,6 +70,7 @@ export default function HistoryPage() {
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [globalFilter, setGlobalFilter] = useState("")
+  const [currentPage, setCurrentPage] = useState(1);
 
   const columns = useMemo<ColumnDef<ProjectRow>[]>(() => [
     { accessorKey: "code", header: "Project Code", cell: ({ row }) => <div className="font-mono">{row.getValue("code")}</div> },
@@ -101,13 +110,27 @@ export default function HistoryPage() {
       table.getColumn(columnId)?.setFilterValue(newSelection.length > 0 ? newSelection : undefined)
     }
 
+  const allFilteredAndSortedRows = table.getSortedRowModel().rows
+  const itemsPerPage = 10
+  const totalPages = Math.ceil(allFilteredAndSortedRows.length / itemsPerPage)
+  const paginatedRows = allFilteredAndSortedRows.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  )
+
+  const handlePageChange = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
+  };
+
+  useMemo(() => setCurrentPage(1), [globalFilter, columnFilters, sorting])
   const handleCategoryChange = handleFilterChange("category", selectedCategories, setSelectedCategories)
   const handlePriorityChange = handleFilterChange("priority", selectedPriorities, setSelectedPriorities)
   const handleTeamChange = handleFilterChange("team", selectedTeams, setSelectedTeams)
 
   return (
     <div className="space-y-6 mx-10">
-      <PageHeader />
       <Card className="py-4">
         <CardHeader className="flex items-center justify-between">
           <CardTitle className="text-xl">History Projects</CardTitle>
@@ -184,24 +207,46 @@ export default function HistoryPage() {
             </div>
           </div>
         </CardHeader>
+
         <CardContent>
-          <ProjectsDataTable table={table} columns={columns} />
+          <ProjectsDataTable table={table} rows={paginatedRows} />
+
+          {/* Pagination */}
+          <div className="mt-4 flex justify-center">
+            <Pagination>
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
+                  />
+                </PaginationItem>
+                {[...Array(totalPages)].map((_, i) => (
+                  <PaginationItem key={i}>
+                    <PaginationLink
+                      isActive={currentPage === i + 1}
+                      onClick={() => handlePageChange(i + 1)}
+                    >
+                      {i + 1}
+                    </PaginationLink>
+                  </PaginationItem>
+                ))}
+                <PaginationItem>
+                  <PaginationNext
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    className={currentPage === totalPages ? "pointer-events-none opacity-50" : ""}
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          </div>
         </CardContent>
       </Card>
     </div>
   )
 }
 
-const PageHeader = () => (
-  <div className="flex items-center justify-between">
-    <div>
-      <h1 className="text-3xl font-bold">History</h1>
-      <p className="text-muted-foreground">View past project records</p>
-    </div>
-  </div>
-)
-
-const ProjectsDataTable = ({ table, columns }: { table: any; columns: any[] }) => (
+const ProjectsDataTable = ({ table, rows }: { table: any; rows: any[] }) => (
   <ScrollArea className="h-[500px]">
     <Table>
       <TableHeader className="sticky top-0 z-10 bg-background shadow-sm">
@@ -223,19 +268,22 @@ const ProjectsDataTable = ({ table, columns }: { table: any; columns: any[] }) =
         ))}
       </TableHeader>
       <TableBody>
-        {table.getRowModel().rows?.length ? (
-          table.getRowModel().rows.map((row: any) => (
-            <TableRow key={row.id}>
-              {row.getVisibleCells().map((cell: any) => (
-                <TableCell key={cell.id}>
-                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                </TableCell>
-              ))}
-            </TableRow>
-          ))
+        {rows?.length ? (
+          rows.map((row: any) => {
+            table.prepareRow?.(row)
+            return (
+              <TableRow key={row.id}>
+                {row.getVisibleCells().map((cell: any) => (
+                  <TableCell key={cell.id}>
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                  </TableCell>
+                ))}
+              </TableRow>
+            )
+          })
         ) : (
           <TableRow>
-            <TableCell colSpan={columns.length} className="h-24 text-center">
+            <TableCell colSpan={table.getAllColumns().length} className="h-24 text-center">
               No history projects.
             </TableCell>
           </TableRow>

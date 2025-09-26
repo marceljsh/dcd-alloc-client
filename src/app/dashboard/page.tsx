@@ -2,9 +2,10 @@
 
 import type React from "react"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useRef } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { startOfWeek, addDays, format } from "date-fns"; // pastikan date-fns diinstall
 import { DateRangePicker } from "@/components/ui/date-range-picker"
 import {
   BarChart,
@@ -18,8 +19,9 @@ import {
   PieChart,
   Pie,
   Cell,
+  LabelList,
 } from "recharts"
-import { Users, DollarSign, AlertTriangle, Target, LayoutGrid, Filter, Calendar, TrendingUp, Clock } from "lucide-react"
+import { Users, DollarSign, AlertTriangle, Target, LayoutGrid, Filter, UserCheck, TrendingUp, Clock } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -30,8 +32,19 @@ import {
 } from "@/components/ui/dropdown-menu"
 
 import { getEmployees, getProjects, type Employee as EmployeeType, type Project as ProjectType } from "@/lib/data"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { backgroundByRole, generateWeeklyUtilization, getUtilizationCellColor } from "@/lib/utils"
+import { Tabs,TabsContent,TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import EmployeeHeatmap from "@/components/employee/EmployeeHeatmap"
 
 const COLORS = ["#8884d8", "#82ca9d", "#ffbb55", "#6366f1", "#f43f5e", "#14b8a6"]
+
+const getProgressColor = (progress: number) => {
+  if (progress >= 70) return "#4ade80" // hijau
+  if (progress >= 40) return "#facc15" // kuning
+  return "#f87171" // merah
+}
 
 const formatRupiah = (amount: number): string => {
   return new Intl.NumberFormat("id-ID", {
@@ -50,71 +63,107 @@ interface SummaryItem {
   desc: { label: string; value: string | number; color?: string }[]
 }
 
+// Helper function for initials
+const initials = (name: string): string => {
+  return name.split(" ").map(n => n[0]).join("").toUpperCase();
+};
+
 const ProjectTable: React.FC<{ filteredProjects: any[] }> = ({ filteredProjects }) => {
   return (
-    <div className="space-y-2">
-      {filteredProjects.slice(0, 5).map((project, index) => (
-        <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded-md">
-          <div className="flex-1">
-            <p className="text-sm font-medium text-gray-900">{project.name}</p>
-            <p className="text-xs text-gray-500">{project.team}</p>
-          </div>
-          <div className="text-right">
-            <p className="text-sm font-medium text-gray-900">{project.crew} crew</p>
-            <span
-              className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                project.priority === "Critical"
-                  ? "bg-red-100 text-red-800"
-                  : project.priority === "High"
-                    ? "bg-orange-100 text-orange-800"
-                    : "bg-green-100 text-green-800"
-              }`}
-            >
-              {project.priority}
-            </span>
-          </div>
-        </div>
-      ))}
+    <div className="space-y-2" data-testid="project-table">
     </div>
   )
 }
 
-    const transformDataForCharts = (employees: EmployeeType[], projects: ProjectType[]) => {
-      const fteWorkloadData = employees.reduce((acc, emp) => {
-      const workloadMultipliers: Record<string, number> = {
-        junior: 0.8,
-        middle: 1.0,
-        senior: 1.2,
-      }
+const weeks = ["W1", "W2", "W3", "W4", "W5", "W6"]
+const heatmapData = ["Junior", "Middle", "Senior"].map((role) => {
+  const roleMembers = getEmployees().filter((emp) => emp.role === role)
+  return {
+    role,
+    weeklyUtilization: weeks.map(() => {
+      const avg =
+        roleMembers.length > 0
+          ? roleMembers.reduce((acc, emp) => acc + emp.utilization, 0) / roleMembers.length
+          : 0
+      return avg
+    }),
+  }
+})
 
-      // ✅ Gunakan emp.level dari database, fallback ke middle kalau kosong
-      const level = emp.level?.toLowerCase() ?? "middle"
+const roleAverages = ["Junior", "Middle", "Senior"].map((role) => {
+const roleMembers = getEmployees().filter((emp) => emp.role === role)
+const avg =
+    roleMembers.length > 0
+      ? roleMembers.reduce((acc, emp) => acc + emp.utilization, 0) / roleMembers.length
+      : 0
+  return { role, average: avg }
+})
 
-      const baseWorkload = 8 // 1 FTE = 8 hours
-      const adjustedWorkload = baseWorkload * workloadMultipliers[level]
+const transformDataForCharts = (employees: EmployeeType[], projects: ProjectType[]) => {
+  // projectTimeline needs to be defined before it's used in productivityTrend
+  const projectTimeline = projects.map((proj) => {
+    const start = new Date(proj.startDate)
+    const end = new Date(proj.endDate)
+    const duration = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
+    const progress =
+      new Date() > end
+        ? 100
+        : Math.max(
+          0,
+          Math.min(100, ((new Date().getTime() - start.getTime()) / (end.getTime() - start.getTime())) * 100),
+        )
 
-      const empProjects = projects.filter((p) => p.team === emp.team)
-      const projectHours =
-        empProjects.length > 0
-          ? Math.min(
-              adjustedWorkload * 1.5,
-              empProjects.reduce((sum, p) => sum + p.crew * 2, 0),
-            )
-          : adjustedWorkload * 0.6
+    return {
+      name: proj.name,
+      duration,
+      progress: Math.round(progress),
+      completed: Math.ceil((duration * progress) / 100), // 🔥 field baru: jumlah hari yg sudah selesai
+      status:
+        new Date() > end
+          ? "Completed"
+          : new Date() < start
+            ? "Upcoming"
+            : "In Progress",
+      budget: proj.budget,
+      crew: proj.crew,
+    }
+  })
 
-      const existing = acc.find((item) => item.role === emp.role)
-      if (existing) {
-        existing[level] = (existing[level] || 0) + projectHours
-      } else {
-        acc.push({
-          role: emp.role,
-          junior: level === "junior" ? projectHours : 0,
-          middle: level === "middle" ? projectHours : 0,
-          senior: level === "senior" ? projectHours : 0,
-        })
-      }
-      return acc
-    }, [] as any[])
+  const fteWorkloadData = employees.reduce((acc, emp) => {
+    const workloadMultipliers: Record<string, number> = {
+      junior: 0.8,
+      middle: 1.0,
+      senior: 1.2,
+    }
+
+    // ✅ Gunakan emp.level dari database, fallback ke middle kalau kosong
+    const level = emp.level?.toLowerCase() ?? "middle"
+
+    const baseWorkload = 8 // 1 FTE = 8 hours
+    const adjustedWorkload = baseWorkload * workloadMultipliers[level]
+
+    const empProjects = projects.filter((p) => p.team === emp.team)
+    const projectHours =
+      empProjects.length > 0
+        ? Math.min(
+          adjustedWorkload * 1.5,
+          empProjects.reduce((sum, p) => sum + p.crew * 2, 0),
+        )
+        : adjustedWorkload * 0.6
+
+    const existing = acc.find((item) => item.role === emp.role)
+    if (existing) {
+      existing[level] = (existing[level] || 0) + projectHours
+    } else {
+      acc.push({
+        role: emp.role,
+        junior: level === "junior" ? projectHours : 0,
+        middle: level === "middle" ? projectHours : 0,
+        senior: level === "senior" ? projectHours : 0,
+      })
+    }
+    return acc
+  }, [] as any[])
 
   const fteUtilizationByTeam = employees.reduce((acc, emp) => {
     const level = emp.role.toLowerCase().includes("senior")
@@ -236,27 +285,12 @@ const ProjectTable: React.FC<{ filteredProjects: any[] }> = ({ filteredProjects 
     return result
   })
 
-  const projectTimeline = projects.map((proj) => {
-    const start = new Date(proj.startDate)
-    const end = new Date(proj.endDate)
-    const duration = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
-    const progress =
-      new Date() > end
-        ? 100
-        : Math.max(
-            0,
-            Math.min(100, ((new Date().getTime() - start.getTime()) / (end.getTime() - start.getTime())) * 100),
-          )
 
-    return {
-      name: proj.name,
-      duration,
-      progress: Math.round(progress),
-      status: new Date() > end ? "Completed" : new Date() < start ? "Upcoming" : "In Progress",
-      budget: proj.budget,
-      crew: proj.crew,
-    }
-  })
+  const stackedData = projectTimeline.map((p) => ({
+    ...p,
+    remaining: p.duration - p.completed,
+  }))
+
 
   const resourceAllocation = Array.from({ length: 12 }, (_, i) => {
     const month = new Date(2024, i).toLocaleString("default", { month: "short" })
@@ -320,35 +354,34 @@ const ProjectTable: React.FC<{ filteredProjects: any[] }> = ({ filteredProjects 
   }, [] as any[])
 
   const skillsDistribution = employees.reduce((acc, emp) => {
-  let skillCategory = "Other"
-  if (emp.role.toLowerCase().includes("data engineer")) skillCategory = "Data Engineer"
-  else if (emp.role.toLowerCase().includes("software engineer")) skillCategory = "Software Engineer"
-  else if (emp.role.toLowerCase().includes("system analyst")) skillCategory = "System Analyst"
+    let skillCategory = "Other"
+    if (emp.role.toLowerCase().includes("data engineer")) skillCategory = "Data Engineer"
+    else if (emp.role.toLowerCase().includes("software engineer")) skillCategory = "Software Engineer"
+    else if (emp.role.toLowerCase().includes("system analyst")) skillCategory = "System Analyst"
 
-  const level = emp.level || (
-  emp.role.toLowerCase().includes("senior")
-    ? "Senior"
-    : emp.role.toLowerCase().includes("junior")
-      ? "Junior"
-      : "Middle"
+    const level = emp.level || (
+      emp.role.toLowerCase().includes("senior")
+        ? "Senior"
+        : emp.role.toLowerCase().includes("junior")
+          ? "Junior"
+          : "Middle"
     )
 
-  const existing = acc.find((item) => item.skill === skillCategory)
-  if (existing) {
-    existing.total++
-    existing[level.toLowerCase()]++
-  } else {
-    acc.push({
-      skill: skillCategory,
-      total: 1,
-      senior: level === "Senior" ? 1 : 0,
-      middle: level === "Middle" ? 1 : 0,
-      junior: level === "Junior" ? 1 : 0,
-    })
-  }
-  return acc
-}, [] as any[]).sort((a, b) => b.total - a.total)
-
+    const existing = acc.find((item) => item.skill === skillCategory)
+    if (existing) {
+      existing.total++
+      existing[level.toLowerCase()]++
+    } else {
+      acc.push({
+        skill: skillCategory,
+        total: 1,
+        senior: level === "Senior" ? 1 : 0,
+        middle: level === "Middle" ? 1 : 0,
+        junior: level === "Junior" ? 1 : 0,
+      })
+    }
+    return acc
+  }, [] as any[]).sort((a, b) => b.total - a.total)
 
   return {
     roleUtilization,
@@ -358,6 +391,7 @@ const ProjectTable: React.FC<{ filteredProjects: any[] }> = ({ filteredProjects 
     fteWorkloadData,
     fteUtilizationByTeam,
     projectTimeline,
+    stackedData, // Make sure to return stackedData
     resourceAllocation,
     teamWorkload,
     priorityBudgetAnalysis,
@@ -368,6 +402,7 @@ const ProjectTable: React.FC<{ filteredProjects: any[] }> = ({ filteredProjects 
 export default function Page() {
   const employees = getEmployees()
   const projects = getProjects()
+  const [searchProject, setSearchProject] = useState("")
 
   const [viewMode, setViewMode] = useState<"projects" | "resources">("projects")
   const [selectedRoles, setSelectedRoles] = useState<string[]>([])
@@ -414,19 +449,59 @@ export default function Page() {
     return data
   }, [employees, selectedRoles, filteredProjects, projects.length])
 
+  const teamDistributionData = useMemo(() => { // Wrap this calculation in useMemo
+    const data = filteredEmployees.reduce((acc, emp) => {
+      const existing = acc.find((item) => item.name === emp.team)
+      if (existing) {
+        existing.value += 1
+      } else {
+        acc.push({ name: emp.team, value: 1 })
+      }
+      return acc
+    }, [] as { name: string; value: number }[])
+
+    // Urutkan dari terbesar → terkecil
+    data.sort((a, b) => b.value - a.value)
+    return data
+  }, [filteredEmployees])
+
+  const PIE_COLORS = ["#6366f1", "#22c55e", "#f59e0b", "#ef4444", "#3b82f6", "#8b5cf6", "#ec4899"] // Rename to avoid conflict with global COLORS
+
   const {
-    roleUtilization,
     projectDistribution,
-    teamDistribution,
-    productivityTrend,
     fteWorkloadData,
     fteUtilizationByTeam,
     projectTimeline,
+    stackedData,
     resourceAllocation,
     teamWorkload,
     priorityBudgetAnalysis,
     skillsDistribution,
   } = useMemo(() => transformDataForCharts(filteredEmployees, filteredProjects), [filteredEmployees, filteredProjects])
+
+  const dateRanges = useMemo(() => {
+    const ranges = []
+    const startDate = new Date()
+    startDate.setDate(startDate.getDate() - 35)
+
+    for (let i = 0; i < 6; i++) {
+      const weekStart = new Date(startDate)
+      weekStart.setDate(startDate.getDate() + (i * 7)) // ✅ Perbaikan pada perhitungan tanggal
+      const weekEnd = new Date(weekStart)
+      weekEnd.setDate(weekStart.getDate() + 6)
+
+      const startLabel = weekStart.toLocaleDateString("en-US", { month: "short", day: "numeric" })
+      const endLabel = weekEnd.toLocaleDateString("en-US", { month: "short", day: "numeric" })
+
+      ranges.push({
+        label: `${startLabel} - ${endLabel}`,
+        start: weekStart,
+        end: weekEnd,
+      })
+    }
+
+    return ranges
+  }, [])
 
   const uniqueRoles = ["All", ...Array.from(new Set(employees.map((emp) => emp.role)))]
   const uniqueProjects = ["All", ...Array.from(new Set(projects.map((proj) => proj.name)))]
@@ -436,7 +511,7 @@ export default function Page() {
     const totalBudget = filteredProjects.reduce((sum, p) => sum + p.budget, 0)
     const avgBudgetPerProject = filteredProjects.length > 0 ? totalBudget / filteredProjects.length : 0
     const highPriorityProjects = filteredProjects.filter((p) => p.priority === "Critical" || p.priority === "High")
-    const completedProjects = filteredProjects.filter((p) => new Date(p.endDate) < new Date())
+    // const completedProjects = filteredProjects.filter((p) => new Date(p.endDate) < new Date()) // Tidak digunakan
 
     return [
       {
@@ -511,24 +586,6 @@ export default function Page() {
           .slice(0, 3)
           .map((proj) => ({ label: proj.name, value: formatRupiah(proj.budget) })),
       },
-      {
-        title: "Completed Projects",
-        value: completedProjects.length.toString(),
-        icon: Calendar,
-        color: "text-gray-600",
-        desc: completedProjects
-          .reduce((acc, proj) => {
-            const existing = acc.find((item) => item.label === proj.category)
-            if (existing) {
-              existing.value = (Number.parseInt(existing.value) + 1).toString()
-            } else {
-              acc.push({ label: proj.category, value: "1" })
-            }
-            return acc
-          }, [] as any[])
-          .sort((a, b) => Number.parseInt(b.value) - Number.parseInt(a.value))
-          .slice(0, 3),
-      },
     ]
   }, [filteredProjects])
 
@@ -537,25 +594,10 @@ export default function Page() {
     const activeEmployees = filteredEmployees.filter((emp) => emp.status === "Active")
     const totalCrewNeeded = filteredProjects.reduce((sum, p) => sum + p.crew, 0)
     const utilizationRate = totalEmployees > 0 ? (totalCrewNeeded / totalEmployees) * 100 : 0
-
-    const totalFTE = filteredEmployees.reduce((sum, emp) => {
-      const level = emp.role.toLowerCase().includes("senior")
-        ? "senior"
-        : emp.role.toLowerCase().includes("junior")
-          ? "junior"
-          : "middle"
-      const workloadMultipliers: Record<string, number> = {
-        junior: 0.8,
-        middle: 1.0,
-        senior: 1.2,
-      }
-      return sum + workloadMultipliers[level]
-    }, 0)
-
     const availableEmployees = activeEmployees.filter((emp) => {
-    const empProjects = filteredProjects.filter((p) => p.team === emp.team)
-    return empProjects.length === 0 
-  })
+      const empProjects = filteredProjects.filter((p) => p.team === emp.team)
+      return empProjects.length === 0
+    })
 
     return [
       {
@@ -583,560 +625,712 @@ export default function Page() {
         color: availableEmployees.length > 0 ? "text-green-600" : "text-red-600",
         desc: availableEmployees
           .reduce((acc, emp) => {
-            const team = emp.team
-            const existing = acc.find((item) => item.label === team)
+            const role = emp.role;
+            const existing = acc.find((item) => item.label === role);
             if (existing) {
-              existing.value = (parseInt(existing.value) + 1).toString()
+              existing.value = (parseInt(existing.value) + 1).toString();
             } else {
-              acc.push({ label: team, value: "1" })
+              acc.push({ label: role, value: "1" });
             }
-            return acc
+            return acc;
           }, [] as any[])
           .sort((a, b) => parseInt(b.value) - parseInt(a.value))
           .slice(0, 3),
       },
       {
         title: "Utilization Rate",
-        value: `${utilizationRate.toFixed(0)}%`,
-        icon: TrendingUp,
-        color: utilizationRate > 100 ? "text-red-600" : utilizationRate < 70 ? "text-yellow-600" : "text-green-600",
-        desc: filteredEmployees
-          .reduce((acc, emp) => {
-            const empProjects = filteredProjects.filter((p) => p.team === emp.team)
-            const empUtilization =
-              empProjects.length > 0
-                ? Math.min(120, (empProjects.reduce((sum, p) => sum + p.crew, 0) / empProjects.length) * 100)
-                : 50
-
-            const existing = acc.find((item) => item.label === emp.team)
-            if (existing) {
-              const currentUtil = Number.parseFloat(existing.value.replace("%", ""))
-              existing.value = `${Math.round((currentUtil + empUtilization) / 2)}%`
-            } else {
-              acc.push({
-                label: emp.team,
-                value: `${Math.round(empUtilization)}%`,
-                color:
-                  empUtilization > 100 ? "text-red-600" : empUtilization < 70 ? "text-yellow-600" : "text-green-600",
-              })
-            }
-            return acc
-          }, [] as any[])
-          .sort((a, b) => Number.parseFloat(b.value.replace("%", "")) - Number.parseFloat(a.value.replace("%", "")))
-          .slice(0, 3),
-      },
-      {
-        title: "Total FTE Capacity",
-        value: `${totalFTE.toFixed(1)} FTE`,
+        value: `${utilizationRate.toFixed(1)}%`,
         icon: Clock,
         color: "text-purple-600",
-        desc: filteredEmployees
-        .reduce((acc, emp) => {
-          const rawLevel = emp.level
-            ? emp.level.toLowerCase()
-            : emp.role.toLowerCase().includes("senior")
-              ? "senior"
-              : emp.role.toLowerCase().includes("junior")
-                ? "junior"
-                : "middle"
+        desc: filteredEmployees.reduce((acc, emp) => {
+          // Menghitung jumlah FTE yang dibutuhkan per tim
+          const empProjects = filteredProjects.filter((p) => p.team === emp.team)
+          const totalCrewNeeded = empProjects.reduce((sum, p) => sum + p.crew, 0)
 
-          const workloadMultipliers: Record<string, number> = {
-            junior: 0.8,
-            middle: 1.0,
-            senior: 1.2,
-          }
-
-          const label = rawLevel.charAt(0).toUpperCase() + rawLevel.slice(1)
-          const existing = acc.find((item) => item.label === label)
+          const existing = acc.find((item) => item.label === emp.team)
 
           if (existing) {
-            existing.value = (parseFloat(existing.value) + workloadMultipliers[rawLevel]).toFixed(1)
+            existing.value = (parseFloat(existing.value) + totalCrewNeeded).toFixed(1)
           } else {
             acc.push({
-              label,
-              value: workloadMultipliers[rawLevel].toFixed(1),
+              label: emp.team,
+              value: totalCrewNeeded.toFixed(1),
             })
           }
           return acc
         }, [] as any[])
         .sort((a, b) => parseFloat(b.value) - parseFloat(a.value))
-        .slice(0, 3)
+        .slice(0, 3),
       },
       {
-        title: "Team Distribution",
-        value: `${new Set(filteredEmployees.map((emp) => emp.team)).size} Teams`,
-        icon: LayoutGrid,
-        color: "text-gray-600",
-        desc: filteredEmployees
+        title: "Top Project Roles",
+        value: filteredEmployees
+          .filter((emp) => new Set(filteredProjects.map((p) => p.team)).has(emp.team))
           .reduce((acc, emp) => {
-            const existing = acc.find((item) => item.label === emp.team)
+            const existing = acc.find((item) => item.label === emp.role);
             if (existing) {
-              existing.value = (Number.parseInt(existing.value) + 1).toString()
+              existing.value = (Number(existing.value) + 1).toString();
             } else {
-              acc.push({ label: emp.team, value: "1" })
+              acc.push({ label: emp.role, value: "1" });
             }
-            return acc
+            return acc;
           }, [] as any[])
-          .sort((a, b) => Number.parseInt(b.value) - Number.parseInt(a.value))
+          .sort((a, b) => Number(b.value) - Number(a.value))[0]?.label || "N/A",
+        icon: UserCheck,
+        color: "text-blue-600",
+        desc: filteredEmployees
+          .filter((emp) => new Set(filteredProjects.map((p) => p.team)).has(emp.team))
+          .reduce((acc, emp) => {
+            const existing = acc.find((item) => item.label === emp.role);
+            if (existing) {
+              existing.value = (Number(existing.value) + 1).toString();
+            } else {
+              acc.push({ label: emp.role, value: "1" });
+            }
+            return acc;
+          }, [] as any[])
+          .sort((a, b) => Number(b.value) - Number(a.value))
           .slice(0, 3),
       },
     ]
   }, [filteredEmployees, filteredProjects])
 
+  // Pindahkan `useMemo` ini ke sini, pada tingkat teratas komponen
+  const overutilizedEmployeesData = useMemo(() => {
+    const overutilizedEmployees = filteredEmployees
+      .filter(emp => emp.utilization > 100)
+      .sort((a, b) => b.utilization - a.utilization);
+      const uniqueRoles = [...new Set(overutilizedEmployees.map(emp => emp.role))].sort();
+
+  // Add a "All" tab for a general view
+  const allRoles = ["All", ...uniqueRoles];
+
+  return { overutilizedEmployees, allRoles };
+  }, [filteredEmployees]);
+
+  const { overutilizedEmployees, allRoles } = overutilizedEmployeesData;
+  const [activeOverutilizedTab, setActiveOverutilizedTab] = useState<string>(allRoles[0]);
+
   return (
     <div className="space-y-3 mx-10">
+      {/* Content will be here */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-gray-600 mt-1">Monitor project resources, utilization, and budget performance</p>
+          <h1 data-testid="dashboard-title" className="text-3xl font-bold text-gray-900">Dashboard</h1>
+          <p data-testid="dashboard-subtitle" className="text-gray-600 mt-1">Monitor project resources, utilization, and budget performance</p>
         </div>
-
         <div className="flex items-center gap-2">
           <span className="text-sm text-gray-600">View:</span>
-          <div className="flex items-center border border-gray-200 rounded-md bg-white">
-            <Button
-              variant={viewMode === "projects" ? "default" : "ghost"}
-              size="sm"
-              onClick={() => setViewMode("projects")}
-              className={`h-8 rounded-r-none border-r ${
-                viewMode === "projects"
-                  ? "bg-black text-white hover:bg-black"
-                  : "bg-white text-gray-700 hover:bg-gray-50"
-              }`}
-            >
-              <LayoutGrid className="mr-1 h-3 w-3" />
-              Projects
-            </Button>
-            <Button
-              variant={viewMode === "resources" ? "default" : "ghost"}
-              size="sm"
-              onClick={() => setViewMode("resources")}
-              className={`h-8 rounded-l-none ${
-                viewMode === "resources"
-                  ? "bg-black text-white hover:bg-black"
-                  : "bg-white text-gray-700 hover:bg-gray-50"
-              }`}
-            >
-              <Users className="mr-1 h-3 w-3" />
-              Resources
-            </Button>
-          </div>
-        </div>
+      <div className="flex items-center border border-gray-200 rounded-md bg-white">
+        <Button
+          variant={viewMode === "projects" ? "default" : "ghost"}
+          size="sm"
+          onClick={() => setViewMode("projects")}
+          data-testid="view-projects-button"
+          className={`h-8 rounded-r-none border-r ${
+            viewMode === "projects"
+              ? "bg-black text-white hover:bg-black"
+              : "bg-white text-gray-700 hover:bg-gray-50"
+          }`}
+        >
+          <LayoutGrid className="mr-1 h-3 w-3" />
+          Projects
+        </Button>
+        <Button
+          variant={viewMode === "resources" ? "default" : "ghost"}
+          size="sm"
+          onClick={() => setViewMode("resources")}
+          data-testid="view-resources-button"
+          className={`h-8 rounded-l-none ${
+            viewMode === "resources"
+              ? "bg-black text-white hover:bg-black"
+              : "bg-white text-gray-700 hover:bg-gray-50"
+          }`}
+        >
+          <Users className="mr-1 h-3 w-3" />
+          Resources
+        </Button>
       </div>
-
-      <div className="flex items-center gap-4 flex-wrap">
-        <DateRangePicker
-          dateRange={dateRange}
-          onDateRangeChange={setDateRange}
-          placeholder={<span className="font-semibold">Period</span>}
-        />
-
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="gap-1 h-10 bg-white">
-              <Filter className="h-4 w-4" />
-              Role ({selectedRoles.length || "All"})
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent className="w-56">
-            <DropdownMenuLabel>Filter by Role</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuCheckboxItem checked={selectedRoles.length === 0} onCheckedChange={() => setSelectedRoles([])}>
-              All Roles
-            </DropdownMenuCheckboxItem>
-            {uniqueRoles.slice(1).map((r) => (
-              <DropdownMenuCheckboxItem
-                key={r}
-                checked={selectedRoles.includes(r)}
-                onCheckedChange={(checked) =>
-                  setSelectedRoles(checked ? [...selectedRoles, r] : selectedRoles.filter((item) => item !== r))
-                }
-              >
-                {r}
-              </DropdownMenuCheckboxItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="gap-1 h-10 bg-white">
-              <Filter className="h-4 w-4" />
-              Project ({selectedProjects.length || "All"})
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent className="w-56">
-            <DropdownMenuLabel>Filter by Project</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuCheckboxItem
-              checked={selectedProjects.length === 0}
-              onCheckedChange={() => setSelectedProjects([])}
-            >
-              All Projects
-            </DropdownMenuCheckboxItem>
-            {uniqueProjects.slice(1).map((p) => (
-              <DropdownMenuCheckboxItem
-                key={p}
-                checked={selectedProjects.includes(p)}
-                onCheckedChange={(checked) =>
-                  setSelectedProjects(
-                    checked ? [...selectedProjects, p] : selectedProjects.filter((item) => item !== p),
-                  )
-                }
-              >
-                {p}
-              </DropdownMenuCheckboxItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-        {(viewMode === "projects" ? projectSummary : resourceSummary).map((item, i) => (
-          <Card key={i} className="shadow-sm hover:shadow-md transition-shadow h-full">
-            <div className="p-2 sm:p-3 lg:p-4 flex flex-col h-full">
-              <CardHeader className="flex items-center justify-between p-0 mb-1 sm:mb-2">
-                <CardTitle className="text-xs font-medium text-gray-600 leading-tight">{item.title}</CardTitle>
-                <item.icon className={`h-4 w-4 ${item.color} flex-shrink-0`} />
-              </CardHeader>
-              <CardContent className="p-0 flex-grow">
-                <p className={`text-base sm:text-lg lg:text-xl font-bold mb-1 ${item.color} leading-tight`}>
-                  {item.value}
-                </p>
-                <ul className="text-xs space-y-0.5">
-                  {item.desc.map((d, idx) => (
-                    <li key={idx} className="flex justify-between items-center gap-1">
-                      <span className="text-gray-600 truncate flex-1 text-xs">{d.label}</span>
-                      <span className={`font-semibold ${d.color || "text-gray-900"} text-xs flex-shrink-0`}>
-                        {d.value}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </CardContent>
-            </div>
-          </Card>
-        ))}
-      </div>
-
-      {viewMode === "projects" ? (
-        <>
-          <div className="grid grid-cols-1 xl:grid-cols-3 gap-2">
-            <Card className="shadow-sm">
-              <CardHeader className="mt-3">
-                <CardTitle className="text-lg font-semibold text-center">Project Distribution by Priority</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={220}>
-                  <PieChart className="mx-px">
-                    <Pie
-                      data={projectDistribution}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={40}
-                      outerRadius={70}
-                      paddingAngle={5}
-                      dataKey="budget"
-                      nameKey="category"
-                    >
-                      {projectDistribution.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                    <Legend verticalAlign="bottom" wrapperStyle={{ fontSize: "12px", marginTop: "8px" }} />
-                  </PieChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-
-            <Card className="shadow-sm">
-              <CardHeader className="mt-3">
-                <CardTitle className="text-lg font-semibold text-center">Project Budget Analysis</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={220}>
-                  <BarChart data={filteredProjects.slice(0, 5)} margin={{ top: 5, right: 10, left: -40, bottom: 10 }}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis
-                      dataKey="name"
-                      tick={{ fontSize: 10 }}
-                      textAnchor="end"
-                      height={30}
-                      tickFormatter={(value: string) => (value.length > 15 ? value.substring(0, 12) + "..." : value)}
-                    />
-                    <YAxis tickFormatter={(value) => `${(value / 1000000).toFixed(1)}M`} tick={{ fontSize: 10 }} />
-                    <Tooltip formatter={(value: number) => [`${formatRupiah(value)}`, "Budget"]} />
-                    <Bar dataKey="budget" fill="#8884d8" name="Budget" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-
-            <Card className="shadow-sm">
-              <CardHeader className="mt-3">
-                <CardTitle className="text-lg font-semibold text-center">Project Crew Allocation</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={220}>
-                  <BarChart data={filteredProjects.slice(0, 6)} margin={{ top: 5, right: 5, left: -40, bottom: 10 }}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis
-                      dataKey="name"
-                      tick={{ fontSize: 10 }}
-                      textAnchor="end"
-                      height={30}
-                      tickFormatter={(value: string) => (value.length > 12 ? value.substring(0, 9) + "..." : value)}
-                    />
-                    <YAxis tick={{ fontSize: 10 }} />
-                    <Tooltip formatter={(value: number) => [`${value} people`, "Crew Required"]} />
-                    <Bar dataKey="crew" fill="#82ca9d" name="Crew Required" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-2">
-            <Card className="shadow-sm">
-              <CardHeader className="mt-3">
-                <CardTitle className="text-lg font-semibold text-center">Project Timeline & Progress</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={280}>
-                  <BarChart data={projectTimeline.slice(0, 8)} margin={{ top: 5, right: 10, left: 0, bottom: 10 }}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis
-                      dataKey="name"
-                      tick={{ fontSize: 10 }}
-                      textAnchor="end"
-                      height={30}
-                      tickFormatter={(value: string) => (value.length > 12 ? value.substring(0, 9) + "..." : value)}
-                    />
-                    <YAxis tick={{ fontSize: 10 }} />
-                    <Tooltip
-                      formatter={(value: number, name: string, props) => [
-    props.dataKey === "duration" ? `${value} days` : `${value}%`,
-    props.dataKey === "duration" ? "Duration (days)" : "Progress %",
-  ]}
-                    />
-                    <Legend verticalAlign="bottom" wrapperStyle={{ fontSize: "12px", marginTop: "8px" }} />
-                    <Bar dataKey="duration" fill="#8884d8" name="Duration (days)" />
-                    <Bar dataKey="progress" fill="#82ca9d" name="Progress %" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-
-            <Card className="shadow-sm">
-              <CardHeader className="mt-3">
-                <CardTitle className="text-lg font-semibold text-center">Priority vs Budget Analysis</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={280}>
-                  <BarChart data={priorityBudgetAnalysis} margin={{ top: 5, right: 10, left: 0, bottom: 10 }}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="priority" tick={{ fontSize: 10 }} />
-                    <YAxis
-                      yAxisId="budget"
-                      orientation="left"
-                      tickFormatter={(value) => `${(value / 1000000).toFixed(1)}M`}
-                      tick={{ fontSize: 10 }}
-                    />
-                    <YAxis yAxisId="count" orientation="right" tick={{ fontSize: 10 }} />
-                    <Tooltip
-                      formatter={(value: number, name: string, props) => [
-    props.dataKey === "avgBudget" ? formatRupiah(value) : `${value} projects`,
-    props.dataKey === "avgBudget" ? "Avg Budget" : "Project Count",
-  ]}
-                    />
-                    <Legend verticalAlign="bottom" wrapperStyle={{ fontSize: "12px", marginTop: "8px" }} />
-                    <Bar yAxisId="budget" dataKey="avgBudget" fill="#8884d8" name="Avg Budget" />
-                    <Bar yAxisId="count" dataKey="count" fill="#82ca9d" name="Project Count" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="grid grid-cols-1 gap-6">
-            <Card className="shadow-sm">
-              <CardHeader className="mt-3">
-                <CardTitle className="text-lg font-semibold text-center">Resource Allocation Timeline</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={resourceAllocation} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="month" tick={{ fontSize: 10 }} />
-                    <YAxis yAxisId="people" orientation="left" tick={{ fontSize: 10 }} />
-                    <YAxis yAxisId="percent" orientation="right" tick={{ fontSize: 10 }} />
-                    <Tooltip
-                        formatter={(value: number, name: string) => {
-                          switch (name) {
-                            case "allocated":
-                              return [`${value} people`, "Allocated"]
-                            case "available":
-                              return [`${value} people`, "Available"]
-                            case "utilization":
-                              return [`${value}%`, "Utilization"]
-                            default:
-                              return [value, name]
-                          }
-                        }}
-                      />
-                    <Legend verticalAlign="bottom" wrapperStyle={{ fontSize: "12px", marginTop: "8px" }} />
-                    <Bar yAxisId="people" dataKey="allocated" fill="#8884d8" name="Allocated" />
-                    <Bar yAxisId="people" dataKey="available" fill="#82ca9d" name="Available" />
-                    <Bar yAxisId="percent" dataKey="utilization" fill="#ffbb55" name="Utilization" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-          </div>
-        </>
-      ) : (
-        <>
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-2">
-            <Card className="shadow-sm mb">
-              <CardHeader className="mt-2">
-                  <CardTitle className="text-lg font-semibold text-center">FTE Workload by Role</CardTitle>
-              </CardHeader>
-              <CardContent>
-                  <ResponsiveContainer width="100%" height={240}>
-                    <BarChart
-                      data={fteWorkloadData}
-                      margin={{ top: 5, right: 5, left: -20, bottom: 2 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis
-                        dataKey="role"
-                        tick={{ fontSize: 10 }}
-                        textAnchor="end"
-                        height={30}
-                        tickFormatter={(value: string) =>
-                          value.length > 15 ? value.substring(0, 12) + "..." : value
-                        }
-                      />
-                      <YAxis tick={{ fontSize: 10 }} />
-                      <Tooltip
-                        content={({ active, payload, label }) => {
-                          if (active && payload && payload.length) {
-                            const total = payload.reduce(
-                              (sum, p) => sum + (p.value as number),
-                              0
-                            )
-                            return (
-                              <div className="bg-white p-2 shadow-md rounded-xl border">
-                                <p className="font-bold">{label}</p>
-                                {payload.map((p) => {
-                                  const value = p.value as number
-                                  const percentage = ((value / total) * 100).toFixed(1)
-                                  return (
-                                    <div key={p.dataKey} className="flex justify-between">
-                                      <span style={{ color: p.color }}>{p.name}</span>
-                                      <span>{`${value.toFixed(1)}h (${percentage}%)`}</span>
-                                    </div>
-                                  )
-                                })}
-                                <div className="border-t mt-1 pt-1 text-sm font-semibold">
-                                  Total: {total.toFixed(1)}h
-                                </div>
-                              </div>
-                            )
-                          }
-                          return null
-                        }}
-                      />
-                      <Legend
-                        verticalAlign="bottom"
-                        wrapperStyle={{ fontSize: "12px", marginTop: "8px" }}
-                      />
-                      {/* Hapus totalFTE, ganti stack per level */}
-                      <Bar dataKey="junior" fill="#a7f3d0" name="Junior" stackId="a" />
-                      <Bar dataKey="middle" fill="#34d399" name="Middle" stackId="a" />
-                      <Bar dataKey="senior" fill="#059669" name="Senior" stackId="a" />
-                    </BarChart>
-                  </ResponsiveContainer>
-              </CardContent>
-          </Card>
-
-            <Card className="shadow-sm">
-              <CardHeader className="mt-3">
-                <CardTitle className="text-lg font-semibold text-center">FTE Utilization by Team</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={240}>
-                  <BarChart data={fteUtilizationByTeam} margin={{ top: 1, right: 10, left: -20, bottom: 10 }}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="team" tick={{ fontSize: 10 }} />
-                    <YAxis tick={{ fontSize: 10 }} />
-                    <Tooltip
-                    formatter={(value: number, name: string) => [`${value.toFixed(1)} hours`, name]}
-                  />
-                    <Legend verticalAlign="bottom" wrapperStyle={{ fontSize: "12px", marginTop: "8px" }}/>
-                    <Bar dataKey="totalCapacity" fill="#3b82f6" name="Total Capacity" />
-                    <Bar dataKey="utilizedCapacity" fill="#10b981" name="Utilized Capacity" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-2">
-            <Card className="shadow-sm">
-              <CardHeader className="mt-3">
-                <CardTitle className="text-lg font-semibold text-center">Team Workload Distribution</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={280}>
-                  <BarChart data={teamWorkload} margin={{ top: 5, right: -10, left: -30, bottom: 10 }}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="team" tick={{ fontSize: 10 }} />
-                    <YAxis yAxisId="score" orientation="left" tick={{ fontSize: 10 }} />
-                    <YAxis yAxisId="people" orientation="right" tick={{ fontSize: 10 }} />
-                    <Tooltip
-                      formatter={(value: number, name: string) => [
-                        name === "workloadScore" ? `${value}%` : `${value}`,
-                        name.charAt(0).toUpperCase() + name.slice(1),
-                      ]}
-                    />
-                    <Legend verticalAlign="bottom" wrapperStyle={{ fontSize: "12px", marginTop: "8px" }} />
-                    <Bar yAxisId="score" dataKey="workloadScore" fill="#8884d8" name="Workload Score %" />
-                    <Bar yAxisId="people" dataKey="employees" fill="#82ca9d" name="Employees" />
-                    <Bar yAxisId="people" dataKey="projects" fill="#ffbb55" name="Projects" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-
-            <Card className="shadow-sm">
-              <CardHeader className="mt-3">
-                <CardTitle className="text-lg font-semibold text-center">Skills Distribution by Level</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={280}>
-                  <BarChart data={skillsDistribution} margin={{ top: 5, right: 10, left: -0, bottom: 10 }}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="skill" tick={{ fontSize: 10 }} />
-                    <YAxis tick={{ fontSize: 10 }} />
-                    <Tooltip
-                      formatter={(value: number, name: string) => [
-                        `${value} people`,
-                        name.charAt(0).toUpperCase() + name.slice(1),
-                      ]}
-                    />
-                    <Legend verticalAlign="bottom" wrapperStyle={{ fontSize: "12px", marginTop: "8px" }}/>
-                    <Bar dataKey="junior" stackId="a" fill="#f59e0b" name="Junior" />
-                    <Bar dataKey="middle" stackId="a" fill="#10b981" name="Middle" />
-                    <Bar dataKey="senior" stackId="a" fill="#3b82f6" name="Senior" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-          </div>
-        </>
-      )}
     </div>
-  )
-}
+  </div>
+
+  <div data-testid="filter-controls" className="flex items-center gap-4 flex-wrap">
+    <DateRangePicker
+      dateRange={dateRange}
+      onDateRangeChange={setDateRange}
+      placeholder={<span className="font-semibold">Period</span>}
+      data-testid="date-range-picker"
+    />
+
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" className="gap-1 h-10 bg-white" data-testid="role-filter-button">
+          <Filter className="h-4 w-4" />
+          Role ({selectedRoles.length || "All"})
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent className="w-56" data-testid="role-filter-dropdown">
+        <DropdownMenuLabel>Filter by Role</DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuCheckboxItem
+          checked={selectedRoles.length === 0}
+          onCheckedChange={() => setSelectedRoles([])}
+          data-testid="role-filter-all-item"
+        >
+          All Roles
+        </DropdownMenuCheckboxItem>
+        {uniqueRoles.slice(1).map((role) => ( // Use uniqueRoles, excluding "All"
+          <DropdownMenuCheckboxItem
+            key={role}
+            checked={selectedRoles.includes(role)}
+            onCheckedChange={(checked) => {
+              setSelectedRoles(
+                checked
+                  ? [...selectedRoles, role]
+                  : selectedRoles.filter((item) => item !== role)
+              );
+            }}
+            data-testid={`role-filter-item-${role.toLowerCase().replace(/\s/g, "-")}`}
+          >
+            {role}
+          </DropdownMenuCheckboxItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" className="gap-1 h-10 bg-white">
+        <Filter className="w-4 h-4" />
+        Project ({selectedProjects.length || "All"})
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent className="w-56" data-testid="project-filter-dropdown">
+        <div className="px-2 py-1">
+          <input
+            type="text"
+            placeholder="Search project..."
+            className="w-full px-2 py-1 border rounded text-sm"
+            value={searchProject}
+            onChange={(e) => setSearchProject(e.target.value)}
+          />
+        </div>
+        <DropdownMenuCheckboxItem
+          onCheckedChange={() => setSelectedProjects([])}
+          data-testid="project-filter-all-item"
+        >
+          All Projects
+        </DropdownMenuCheckboxItem>
+        {uniqueProjects
+          .slice(1)
+          .filter((p) =>
+            p.toLowerCase().includes(searchProject.toLowerCase())
+          )
+          .map((p) => (
+            <DropdownMenuCheckboxItem
+              key={p}
+              checked={selectedProjects.includes(p)}
+              onCheckedChange={(checked) =>
+                setSelectedProjects(
+                  checked
+                    ? [...selectedProjects, p]
+                    : selectedProjects.filter((item) => item !== p)
+                )
+              }
+              data-testid={`project-filter-item-${p.toLowerCase().replace(/\s/g, "-")}`}
+            >
+              {p}
+            </DropdownMenuCheckboxItem>
+          ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+
+  </div>
+
+  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-3" data-testid="summary-cards-container">
+    {(viewMode === "projects" ? projectSummary : resourceSummary).map((item, i) => (
+      <Card key={i} className="shadow-sm hover:shadow-md transition-shadow h-full" data-testid={`summary-card-${item.title.toLowerCase().replace(/\s|\//g, "-")}`}>
+        <div className="p-2 sm:p-3 lg:p-4 flex flex-col h-full">
+          <CardHeader className="flex items-center justify-between p-0 mb-1 sm:mb-2">
+            <CardTitle className="text-xs font-medium text-gray-600 leading-tight" data-testid={`summary-card-title-${i}`}>{item.title}</CardTitle>
+            <item.icon className={`h-4 w-4 ${item.color} flex-shrink-0`} data-testid={`summary-card-icon-${i}`} />
+          </CardHeader>
+          <CardContent className="p-0 flex-grow">
+            <p className={`text-base sm:text-lg lg:text-xl font-bold mb-1 ${item.color} leading-tight`}>
+              {item.value}
+            </p>
+            <ul className="text-xs space-y-0.5" data-testid={`summary-card-desc-list-${i}`}>
+              {item.desc.map((d, idx) => (
+                <li key={idx} className="flex justify-between items-center gap-1">
+                  <span className="text-gray-600 truncate flex-1 text-xs">{d.label}</span>
+                  <span className={`font-semibold ${d.color || "text-gray-900"} text-xs flex-shrink-0`}>
+                    {d.value}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </div>
+      </Card>
+    ))}
+  </div>
+
+  {viewMode === "projects" ? (
+    <div>
+      <ProjectTable filteredProjects={filteredProjects} />
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-2">
+        <Card className="shadow-sm">
+          <CardHeader className="mt-3">
+            <CardTitle className="text-lg font-semibold text-center">
+              Project Budget by Priority
+            </CardTitle>
+          </CardHeader>
+          <CardContent data-testid="chart-project-distribution">
+            <ResponsiveContainer width="100%" height={260}>
+              <PieChart>
+                <Pie
+                  data={projectDistribution}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={30} // ✅ jadikan donut chart
+                  outerRadius={90}
+                  paddingAngle={3}
+                  dataKey="budget"
+                  nameKey="category"
+                  labelLine={false}
+                  label={({ percent }) => `${(percent * 100).toFixed(0)}%`} // ✅ tampilkan persentase di potongan chart
+                  isAnimationActive
+                  animationBegin={300}
+                  animationDuration={1200}
+                >
+                  {projectDistribution.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+
+                <Tooltip
+                  formatter={(value: number, name, props) => {
+                    const total = projectDistribution.reduce((sum, p) => sum + p.budget, 0)
+                    const percentage = ((value / total) * 100).toFixed(1)
+                    return [
+                      `${new Intl.NumberFormat("id-ID", {
+                        style: "currency",
+                        currency: "IDR",
+                        minimumFractionDigits: 0,
+                      }).format(value)} (${percentage}%)`,
+                      props.payload.category,
+                    ]
+                  }}
+                />
+
+                <Legend
+                  layout="horizontal"
+                  verticalAlign="bottom"
+                  align="center"
+                  wrapperStyle={{
+                    fontSize: "12px",
+                    marginTop: "8px",
+                    display: "flex",
+                    flexWrap: "wrap",
+                    justifyContent: "center",
+                  }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-sm">
+          <CardHeader className="mt-3">
+            <CardTitle className="text-lg font-semibold text-center">
+              Project Budget Analysis
+            </CardTitle>
+          </CardHeader>
+          <CardContent data-testid="chart-project-budget-analysis">
+            <ResponsiveContainer
+              width="100%"
+              height={Math.max(220, filteredProjects.slice(0, 5).length * 60)} // ✅ Sesuaikan tinggi chart otomatis
+            >
+              <BarChart
+                data={filteredProjects.slice(0, 5)}
+                margin={{ top: 10, right: -10, left: -30, bottom: 10 }} // ✅ bottom diperbesar untuk label miring
+                barCategoryGap="15%"
+              >
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis
+                  dataKey="name"
+                  interval={0} // ✅ tampilkan semua nama project
+                  tick={{ fontSize: 10 }}
+                  angle={-30} // ✅ putar label agar rapi
+                  textAnchor="end"
+                  height={60} // ✅ beri ruang ekstra
+                  tickFormatter={(value: string) =>
+                    value.length > 15 ? value.substring(0, 12) + "..." : value
+                  }
+                />
+                <YAxis
+                  tickFormatter={(value) => `${(value / 1_000_000).toFixed(1)}M`}
+                  tick={{ fontSize: 10 }}
+                />
+                <Tooltip
+                  formatter={(value: number) => [`${formatRupiah(value)}`, "Budget"]}
+                  labelFormatter={(label) => `Project: ${label}`} // ✅ tampilkan nama lengkap di tooltip
+                />
+                <Bar
+                  dataKey="budget"
+                  fill="#6366f1" // ✅ Warna lebih modern (indigo)
+                  name="Budget"
+                  radius={[6, 6, 0, 0]} // ✅ Rounded corner
+                  isAnimationActive
+                  animationBegin={200}
+                  animationDuration={1200}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-sm">
+          <CardHeader className="mt-3">
+            <CardTitle className="text-lg font-semibold text-center">
+              Project Crew Allocation
+            </CardTitle>
+          </CardHeader>
+          <CardContent data-testid="chart-project-crew-allocation">
+            <ResponsiveContainer
+              width="100%"
+              height={Math.max(220, filteredProjects.slice(0, 5).length * 60)} // ✅ Sesuaikan tinggi otomatis
+            >
+              <BarChart
+                data={filteredProjects.slice(0, 5)}
+                margin={{ top: 10, right: -10, left: -30, bottom: 35 }} // ✅ bottom diperbesar untuk label miring
+                barCategoryGap="15%"
+              >
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis
+                  dataKey="name"
+                  interval={0} // ✅ tampilkan semua nama project
+                  tick={{ fontSize: 10 }}
+                  angle={-30} // ✅ putar label agar rapi
+                  textAnchor="end"
+                  height={35} // ✅ beri ruang ekstra
+                  tickFormatter={(value: string) =>
+                    value.length > 15 ? value.substring(0, 12) + "..." : value
+                  }
+                />
+                <YAxis tick={{ fontSize: 10 }} />
+                <Tooltip
+                  formatter={(value: number) => [`${value} people`, "Crew Required"]}
+                  labelFormatter={(label) => `Project: ${label}`} // ✅ tampilkan nama lengkap project
+                />
+                <Bar
+                  dataKey="crew"
+                  fill="#22c55e" // ✅ warna hijau yang lebih modern (tailwind green-500)
+                  name="Crew Required"
+                  radius={[6, 6, 0, 0]} // ✅ rounded bar
+                  isAnimationActive
+                  animationBegin={200}
+                  animationDuration={1200}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-1 gap-2">
+        <Card className="shadow-md rounded-2xl mt-4">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg font-semibold text-center">
+              Project Timeline & Progress
+            </CardTitle>
+          </CardHeader>
+          <CardContent data-testid="chart-project-timeline">
+            <ResponsiveContainer
+              width="100%"
+              height={Math.max(150, projectTimeline.length * 10)} // lebih proporsional
+            >
+              <BarChart
+                data={projectTimeline}
+                margin={{ top: 20, right: 30, left: 10, bottom: 50 }}
+                barCategoryGap="25%"
+              >
+                <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.3} />
+                <XAxis
+                  dataKey="name"
+                  tick={{ fontSize: 12 }}
+                  interval={0}
+                  angle={-30}
+                  textAnchor="end"
+                  height={60}
+                  tickFormatter={(value: string) =>
+                    value.length > 15 ? value.substring(0, 12) + "..." : value
+                  }
+                />
+                <YAxis tick={{ fontSize: 10 }} />
+                <Tooltip
+                  contentStyle={{
+                    fontSize: 12,
+                    borderRadius: "8px",
+                    boxShadow: "0 2px 6px rgba(0,0,0,0.1)",
+                  }}
+                  formatter={(value: number, name: string, props: any) => [
+                    name === "completed"
+                      ? `${props.payload.progress}% (${value} days)`
+                      : `${value} days remaining`,
+                    name === "completed" ? "Completed" : "Remaining",
+                  ]}
+                  labelFormatter={(label: string) => `Project: ${label}`}
+                />
+
+                {/* Remaining days bar (grey background) */}
+                <Bar
+                  dataKey="remaining"
+                  stackId="a"
+                  fill="#e5e7eb"
+                  radius={[8, 8, 8, 8]}
+                  barSize={60}
+                />
+
+                {/* Completed days bar (colored with progress) */}
+                <Bar
+                  dataKey="completed"
+                  stackId="a"
+                  radius={[8, 8, 8, 8]}
+                  barSize={40}
+                  isAnimationActive
+                  animationBegin={150}
+                  animationDuration={1000}
+                >
+                  {stackedData.map((p, idx) => (
+                    <Cell key={`cell-${idx}`} fill={getProgressColor(p.progress)} />
+                  ))}
+                  <LabelList
+                    dataKey="progress"
+                    position="center"
+                    formatter={(value: number) => `${value}%`}
+                    style={{
+                      fill: "#fff",
+                      fontWeight: "bold",
+                      fontSize: 10,
+                      textShadow: "0 1px 2px rgba(0,0,0,0.6)",
+                    }}
+                  />
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+      </div>
+    </div>
+  ) : (
+    <div>
+      <div className="grid grid-cols-1 xl:grid-cols-3">
+        <Card className="shadow-sm mb col-span-1 xl:col-span-2 mb-3">
+          <CardHeader className="mt-2">
+            <CardTitle className="text-lg font-semibold text-center">
+              Workload by Role
+            </CardTitle>
+          </CardHeader>
+          <CardContent data-testid="chart-fte-workload">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {fteWorkloadData.map((roleData) => {
+                const pieData = [
+                  { name: "Junior", value: roleData.junior },
+                  { name: "Middle", value: roleData.middle },
+                  { name: "Senior", value: roleData.senior },
+                ].filter((item) => item.value > 0);
+
+                return (
+                  <div key={roleData.role}>
+                    <div className="text-center font-medium text-sm mb-1">
+                      {roleData.role}
+                    </div>
+                    <ResponsiveContainer width="100%" height={200}>
+                      <PieChart>
+                        <Pie
+                          data={pieData}
+                          dataKey="value"
+                          nameKey="name"
+                          cx="50%"
+                          cy="45%"
+                          outerRadius={70}
+                          label={({ cx, cy, midAngle, innerRadius, outerRadius, percent }) => {
+                            const radius = innerRadius + (outerRadius - innerRadius) / 2;
+                            const x = cx + radius * Math.cos(-midAngle * (Math.PI / 180));
+                            const y = cy + radius * Math.sin(-midAngle * (Math.PI / 180));
+                            return (
+                              <text
+                                x={x}
+                                y={y}
+                                fill="white"
+                                textAnchor="middle"
+                                dominantBaseline="central"
+                                fontSize={12}
+                                fontWeight="bold"
+                              >
+                                {`${(percent * 100).toFixed(0)}%`}
+                              </text>
+                            );
+                          }}
+                          labelLine={false}
+                        >
+                          {pieData.map((entry, index) => (
+                            <Cell
+                              key={`cell-${index}`}
+                              fill={
+                                entry.name === "Junior"
+                                  ? "#a7f3d0"
+                                  : entry.name === "Middle"
+                                  ? "#34d399"
+                                  : "#059669"
+                              }
+                            />
+                          ))}
+                        </Pie>
+                        <Tooltip />
+                        <Legend
+                          verticalAlign="bottom"
+                          height={0}
+                          iconType="square"
+                          formatter={(value) => <span className="text-sm">{value}</span>}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-sm mb-3">
+          <CardHeader className="mt-3">
+            <CardTitle className="text-lg font-semibold text-center">
+              Team Distribution
+            </CardTitle>
+          </CardHeader>
+          <CardContent data-testid="chart-team-distribution">
+            <ResponsiveContainer width="100%" height={240}>
+              <PieChart>
+                <Pie
+                  data={teamDistributionData}
+                  dataKey="value"
+                  nameKey="name"
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={30}
+                  outerRadius={90}
+                  paddingAngle={2}
+                  labelLine={false}
+                  label={({ percent }) => `${(percent * 100).toFixed(0)}%`}
+                  style={{
+                    fontSize: "14px", // <-- Tambahkan properti style di sini
+                  }}
+                  isAnimationActive
+                  animationBegin={300}
+                  animationDuration={1200}
+                >
+                  {teamDistributionData.map((entry, index) => (
+                    <Cell
+                      className="text-sm"
+                      key={`cell-${index}`}
+                      fill={PIE_COLORS[index % PIE_COLORS.length]} // Gunakan PIE_COLORS
+                    />
+                  ))}
+                </Pie>
+
+                <Tooltip
+                  formatter={(value, name) => [`${value} crew`, name]}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-2">            
+        <Card className="shadow-sm mb-">
+          <CardHeader className="mt-3">
+            <CardTitle className="text-lg font-semibold text-center">
+              Role Distribution by Level
+            </CardTitle>
+          </CardHeader>
+          <CardContent data-testid="chart-skills-distribution">
+            <ResponsiveContainer width="100%" height={280}>
+              <BarChart
+                data={skillsDistribution}
+                margin={{ top: 5, right: 10, left: -0, bottom: 10 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="skill" tick={{ fontSize: 10 }} />
+                <YAxis tick={{ fontSize: 10 }} />
+                <Tooltip
+                  formatter={(value, name) => [
+                    `${value} people`,
+                    String(name).charAt(0).toUpperCase() + String(name).slice(1),
+                  ]}
+                />
+                <Legend
+                  verticalAlign="bottom"
+                  wrapperStyle={{ fontSize: "12px", marginTop: "8px" }}
+                />
+                <Bar dataKey="junior" stackId="a" fill="#f59e0b" name="Junior" />
+                <Bar dataKey="middle" stackId="a" fill="#10b981" name="Middle" />
+                <Bar dataKey="senior" stackId="a" fill="#3b82f6" name="Senior" />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-sm">
+          <CardHeader className="mt-3">
+            <CardTitle className="text-lg font-semibold text-center">Team Workload Distribution</CardTitle>
+          </CardHeader>
+          <CardContent data-testid="chart-team-workload-distribution">
+            <ResponsiveContainer width="100%" height={280}>
+              <BarChart data={teamWorkload} margin={{ top: 5, right: -10, left: -30, bottom: 10 }}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="team" tick={{ fontSize: 10 }} />
+                <YAxis yAxisId="people" orientation="left" tick={{ fontSize: 10 }} />
+                <Tooltip
+                  formatter={(value: number, name: string) => [
+                    `${value}`,
+                    name.charAt(0).toUpperCase() + name.slice(1),
+                  ]}
+                />
+                <Legend verticalAlign="bottom" wrapperStyle={{ fontSize: "12px", marginTop: "8px" }} />
+                <Bar yAxisId="people" dataKey="employees" fill="#82ca9d" name="Employees" />
+                <Bar yAxisId="people" dataKey="projects" fill="#ffbb55" name="Projects" />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+    
+      </div>
+
+      <Card className="shadow-sm mt-2">
+        <CardHeader className="mt-2">
+          <CardTitle className="text-lg font-semibold text-center">
+            Heatmap: Top 5 Utilization by Role
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+        <EmployeeHeatmap
+          employees={filteredEmployees
+            .sort((a, b) => a.team.localeCompare(b.team)) // urutkan by team
+            .slice(0, 5) // ambil 5 teratas
+            .map(emp => ({
+              ...emp,
+              utilization: Math.random() * 100,
+              currentProjects: [],
+              hoursThisWeek: 0,
+            }))}
+        />
+      </CardContent>
+      </Card>
+    </div>
+  )}
+</div>);

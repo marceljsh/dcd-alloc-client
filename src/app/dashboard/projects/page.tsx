@@ -26,6 +26,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationPrevious,
+  PaginationNext,
+} from "@/components/ui/pagination";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Search, Plus, MoreHorizontal, Edit, Trash2, Calendar, Users, Target, Clock, Filter } from "lucide-react"
@@ -106,6 +114,7 @@ export default function ProjectsPage() {
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [globalFilter, setGlobalFilter] = useState("")
+  const [currentPage, setCurrentPage] = useState(1);
 
   const handleArchive = (project: ProjectRow) => {
     const stored = JSON.parse(localStorage.getItem("archivedProjects") || "[]")
@@ -117,77 +126,36 @@ export default function ProjectsPage() {
     router.push("/dashboard/archive")
   }
 
-  const columns = useMemo<ColumnDef<ProjectRow>[]>(
-    () => [
-      {
-        accessorKey: "code",
-        header: "Project Code",
-        cell: ({ row }) => <div className="font-mono">{row.getValue("code")}</div>,
-      },
-      {
-        accessorKey: "name",
-        header: "Name",
-        cell: ({ row }) => <div className="font-medium">{row.getValue("name")}</div>,
-      },
-      { accessorKey: "team", header: "Team", filterFn: "arrIncludesSome" },
-      {
-        accessorKey: "category",
-        header: "Category",
-        cell: ({ row }) => (
-          <Badge variant="outline" className={getCategoryColor(row.getValue("category"))}>
-            {row.getValue("category")}
-          </Badge>
-        ),
-        filterFn: "arrIncludesSome",
-      },
-      {
-        accessorKey: "priority",
-        header: "Priority",
-        cell: ({ row }) => (
-          <Badge variant="outline" className={getPriorityColor(row.getValue("priority"))}>
-            {row.getValue("priority")}
-          </Badge>
-        ),
-        filterFn: "arrIncludesSome",
-      },
-      {
-        accessorKey: "crew",
-        header: "Crew",
-        cell: ({ row }) => (
-          <div className="flex items-center space-x-1">
-            <Users className="h-4 w-4 text-muted-foreground" />
-            <span>{row.getValue("crew")}</span>
-          </div>
-        ),
-      },
-      {
-        accessorKey: "budgetCode",
-        header: "Budget Code",
-        cell: ({ row }) => <div className="font-mono">{row.getValue("budgetCode")}</div>,
-      },
-      {
-        accessorKey: "budget",
-        header: "Budget",
-        cell: ({ row }) => `$${(row.getValue("budget") as number).toLocaleString()}`,
-      },
-      {
-        accessorKey: "startDate",
-        header: "Start Date",
-        cell: ({ row }) => new Date(row.getValue("startDate")).toLocaleDateString("id-ID"),
-      },
-      {
-        accessorKey: "endDate",
-        header: "End Date",
-        cell: ({ row }) => new Date(row.getValue("endDate")).toLocaleDateString("id-ID"),
-      },
-      {
-        id: "actions",
-        cell: ({ row }) => {
-          const project = row.original
-          const openDialog = (dialog: ActiveDialog) => {
-            setSelectedProject(project)
-            setActiveDialog(dialog)
-          }
+  const columns = useMemo<ColumnDef<ProjectRow>[]>(() => [
+    { accessorKey: "code", header: "Project Code", enableGlobalFilter: true,
+      cell: ({ row }) => <div className="font-mono">{row.getValue("code")}</div> },
+    { accessorKey: "name", header: "Name", enableGlobalFilter: true,
+      cell: ({ row }) => <div className="font-medium">{row.getValue("name")}</div> },
+    { accessorKey: "team", header: "Team", filterFn: "arrIncludesSome" },
+    { accessorKey: "category", header: "Category",
+      cell: ({ row }) => <Badge variant="outline" className={getCategoryColor(row.getValue("category"))}>{row.getValue("category")}</Badge>,
+      filterFn: "arrIncludesSome" },
+    { accessorKey: "priority", header: "Priority",
+      cell: ({ row }) => <Badge variant="outline" className={getPriorityColor(row.getValue("priority"))}>{row.getValue("priority")}</Badge>,
+      filterFn: "arrIncludesSome" },
+    { accessorKey: "crew", header: "Crew",
+      cell: ({ row }) => <div className="flex items-center space-x-1"><Users className="h-4 w-4 text-muted-foreground" /><span>{row.getValue("crew")}</span></div> },
+    { accessorKey: "budgetCode", header: "Budget Code", enableGlobalFilter: true,
+      cell: ({ row }) => <div className="font-mono">{row.getValue("budgetCode")}</div> },
+    { accessorKey: "budget", header: "Budget",
+      cell: ({ row }) => `$${(row.getValue("budget") as number).toLocaleString()}` },
+    { accessorKey: "startDate", header: "Start Date",
+      cell: ({ row }) => new Date(row.getValue("startDate")).toLocaleDateString("id-ID") },
+    { accessorKey: "endDate", header: "End Date",
+      cell: ({ row }) => new Date(row.getValue("endDate")).toLocaleDateString("id-ID") },
+    {
+      id: "actions",
+      cell: ({ row }) => {
+        const project = row.original
+        const openDialog = (dialog: ActiveDialog) => {
+          setSelectedProject(project)
+          setActiveDialog(dialog)
+        }
           return (
             <DropdownMenu>
               <DropdownMenuTrigger asChild >
@@ -235,6 +203,13 @@ export default function ProjectsPage() {
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
+    globalFilterFn: (row, columnId, filterValue) => {
+      if (!filterValue) return true
+      const searchable = ["code", "name", "budgetCode"]
+      return searchable.some((key) =>
+        String(row.getValue(key)).toLowerCase().includes(filterValue.toLowerCase())
+      )
+    },
     filterFns: {
       arrIncludesSome: (row, columnId, value) => {
         if (!value || value.length === 0) return true
@@ -242,6 +217,23 @@ export default function ProjectsPage() {
       },
     },
   })
+
+  const allFilteredAndSortedRows = table.getSortedRowModel().rows
+  const itemsPerPage = 10
+  const totalPages = Math.ceil(allFilteredAndSortedRows.length / itemsPerPage)
+  const paginatedRows = allFilteredAndSortedRows.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  )
+
+  const handlePageChange = (page) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
+  };
+
+  useEffect(() => { setCurrentPage(1) }, [globalFilter, columnFilters])
+
   // --- EVENT HANDLERS ---
   const handleFilterChange =
     (columnId: string, currentSelection: string[], setter: React.Dispatch<React.SetStateAction<string[]>>) =>
@@ -275,7 +267,7 @@ export default function ProjectsPage() {
 
   // --- RENDER ---
   return (
-    <div className="space-y-6 mx-10" data-testid="projects-page">
+    <div className="space-y-2 mx-10" data-testid="projects-page">
       <PageHeader onAddProject={() => setActiveDialog("add")} />
       <StatCards stats={stats} />
 
@@ -301,8 +293,47 @@ export default function ProjectsPage() {
             },
           }}
         />
-        <CardContent>
-          <ProjectsDataTable table={table} columns={columns} />
+      <CardContent>
+          <ProjectsDataTable table={table} columns={columns} paginatedRows={paginatedRows} />
+          {totalPages > 1 && (
+            <div className="flex justify-center mt-4">
+              <Pagination>
+                <PaginationContent>
+                  {/* Previous disabled saat halaman pertama */}
+                  <PaginationItem>
+                    <PaginationPrevious
+                        onClick={() => handlePageChange(currentPage - 1)}
+                        aria-disabled={currentPage === 1}
+                        tabIndex={currentPage === 1 ? -1 : undefined}
+                        className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
+                    />
+                  </PaginationItem>
+
+                  {/* Nomor halaman */}
+                  {Array.from({ length: totalPages }).map((_, i) => (
+                    <PaginationItem key={i}>
+                      <PaginationLink
+                        isActive={currentPage === i + 1}
+                        onClick={() => setCurrentPage(i + 1)}
+                      >
+                        {i + 1}
+                      </PaginationLink>
+                    </PaginationItem>
+                  ))}
+
+                  {/* Next disabled saat halaman terakhir */}
+                  <PaginationItem>
+                    <PaginationNext
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    aria-disabled={currentPage === totalPages}
+                    tabIndex={currentPage === totalPages ? -1 : undefined}
+                    className={currentPage === totalPages ? "pointer-events-none opacity-50" : ""}
+                  />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -312,7 +343,6 @@ export default function ProjectsPage() {
         project={selectedProject}
         isOpen={activeDialog === "timeline"}
         onClose={() => setActiveDialog(null)}
-        data-testid="timeline-dialog"
       />
       <AddProjectDialog isOpen={activeDialog === "add"} onClose={handleCloseDialog} />
 
@@ -430,7 +460,7 @@ const TableToolbar = ({
   </CardHeader>
 )
 
-const ProjectsDataTable = ({ table, columns }: { table: any; columns: any[] }) => (
+const ProjectsDataTable = ({ table, columns, paginatedRows }: { table: any; columns: any[]; paginatedRows: any[] }) => (
   <ScrollArea className="h-[500px]">
     <Table data-testid="project-table">
       <TableHeader className="sticky top-0 z-10 bg-background shadow-sm">
@@ -452,19 +482,19 @@ const ProjectsDataTable = ({ table, columns }: { table: any; columns: any[] }) =
         ))}
       </TableHeader>
       <TableBody>
-        {table.getRowModel().rows?.length ? (
-          table.getRowModel().rows.map((row: any) => (
-            <TableRow key={row.id} data-testid={`project-row-${row.original.code}`}>
-              {row.getVisibleCells().map((cell: any) => (
-                <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
+        {paginatedRows?.length ? (
+          paginatedRows.map(row => (
+            <TableRow key={row.id}>
+              {row.getVisibleCells().map(cell => (
+                <TableCell key={cell.id}>
+                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                </TableCell>
               ))}
             </TableRow>
           ))
         ) : (
           <TableRow>
-            <TableCell colSpan={columns.length} className="h-24 text-center">
-              No results.
-            </TableCell>
+            <TableCell colSpan={columns.length} className="h-24 text-center">No results.</TableCell>
           </TableRow>
         )}
       </TableBody>
@@ -534,7 +564,7 @@ const ProjectDetailDialog = ({
           <DialogTitle className="text-xl font-semibold">{project.name}</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-6 py-4">
+        <div className="space-y-2 py-4">
           <div className="grid grid-cols-3 gap-6">
             <div className="space-y-1">
               <Label className="text-sm font-medium text-muted-foreground">Category</Label>

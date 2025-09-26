@@ -137,7 +137,7 @@
   {
     "id": 10,
     "code": "PROJ-IDX-10",
-    "name": "Project-HT2Y9",
+    "name": "HT2Y9",
     "team": "CRM",
     "category": "Medium",
     "priority": "Critical",
@@ -152,7 +152,7 @@
   {
     "id": 11,
     "code": "PROJ-IDX-11",
-    "name": "Project-T8DIH",
+    "name": "T8DIH",
     "team": "RRM",
     "category": "Big",
     "priority": "Medium",
@@ -167,7 +167,7 @@
   {
     "id": 12,
     "code": "PROJ-IDX-12",
-    "name": "Project-VCHPT",
+    "name": "VCHPT",
     "team": "RRM",
     "category": "Big",
     "priority": "Critical",
@@ -182,7 +182,7 @@
   {
     "id": 13,
     "code": "PROJ-IDX-13",
-    "name": "Project-IG71M",
+    "name": "IG71M",
     "team": "CRM",
     "category": "Small",
     "priority": "Medium",
@@ -197,7 +197,7 @@
   {
     "id": 14,
     "code": "PROJ-IDX-14",
-    "name": "Project-C706R",
+    "name": "C706R",
     "team": "CM",
     "category": "Small",
     "priority": "Low",
@@ -212,7 +212,7 @@
   {
     "id": 15,
     "code": "PROJ-IDX-15",
-    "name": "Project-4SI1P",
+    "name": "4SI1P",
     "team": "CRM",
     "category": "Small",
     "priority": "Low",
@@ -227,7 +227,7 @@
   {
     "id": 16,
     "code": "PROJ-IDX-16",
-    "name": "Project-NYAKA",
+    "name": "NYAKA",
     "team": "NCM",
     "category": "Small",
     "priority": "High",
@@ -242,7 +242,7 @@
   {
     "id": 17,
     "code": "PROJ-IDX-17",
-    "name": "Project-16ZAX",
+    "name": "16ZAX",
     "team": "NCM",
     "category": "Big",
     "priority": "Low",
@@ -257,7 +257,7 @@
   {
     "id": 18,
     "code": "PROJ-IDX-18",
-    "name": "Project-ALWGK",
+    "name": "ALWGK",
     "team": "CRM",
     "category": "Medium",
     "priority": "High",
@@ -272,7 +272,7 @@
   {
     "id": 19,
     "code": "PROJ-IDX-19",
-    "name": "Project-WVKOG",
+    "name": "WVKOG",
     "team": "RRM",
     "category": "Small",
     "priority": "Critical",
@@ -287,7 +287,7 @@
   {
     "id": 20,
     "code": "PROJ-IDX-20",
-    "name": "Project-R0HL0",
+    "name": "R0HL0",
     "team": "NCM",
     "category": "Big",
     "priority": "Low",
@@ -302,7 +302,7 @@
   {
     "id": 21,
     "code": "PROJ-IDX-21",
-    "name": "Project-IOTAA",
+    "name": "IOTAA",
     "team": "NCM",
     "category": "Medium",
     "priority": "Medium",
@@ -317,7 +317,7 @@
   {
     "id": 22,
     "code": "PROJ-IDX-22",
-    "name": "Project-05HYB",
+    "name": "05HYB",
     "team": "RRM",
     "category": "Big",
     "priority": "Low",
@@ -332,7 +332,7 @@
   {
     "id": 23,
     "code": "PROJ-IDX-23",
-    "name": "Project-Y3V8B",
+    "name": "Y3V8B",
     "team": "CM",
     "category": "Medium",
     "priority": "Low",
@@ -347,7 +347,7 @@
   {
     "id": 24,
     "code": "PROJ-IDX-24",
-    "name": "Project-7LZFP",
+    "name": "7LZFP",
     "team": "NCM",
     "category": "Medium",
     "priority": "Medium",
@@ -362,7 +362,7 @@
   {
     "id": 25,
     "code": "PROJ-IDX-25",
-    "name": "Project-ZV9UJ",
+    "name": "ZV9UJ",
     "team": "RRM",
     "category": "Medium",
     "priority": "Medium",
@@ -377,7 +377,7 @@
   {
     "id": 26,
     "code": "PROJ-IDX-26",
-    "name": "Project-RYZJQ",
+    "name": "RYZJQ",
     "team": "RRM",
     "category": "Medium",
     "priority": "Low",
@@ -392,7 +392,7 @@
   {
     "id": 27,
     "code": "PROJ-IDX-27",
-    "name": "Project-35RZW",
+    "name": "35RZW",
     "team": "NCM",
     "category": "Small",
     "priority": "Medium",
@@ -407,7 +407,7 @@
   {
     "id": 28,
     "code": "PROJ-IDX-28",
-    "name": "Project-RIIMA",
+    "name": "RIIMA",
     "team": "CM",
     "category": "Big",
     "priority": "High",
@@ -422,7 +422,7 @@
   {
     "id": 29,
     "code": "PROJ-IDX-29",
-    "name": "Project-V5494",
+    "name": "V5494",
     "team": "FRM",
     "category": "Big",
     "priority": "High",
@@ -437,7 +437,7 @@
   {
     "id": 30,
     "code": "PROJ-IDX-30",
-    "name": "Project-9ZV0B",
+    "name": "9ZV0B",
     "team": "NCM",
     "category": "Medium",
     "priority": "Critical",

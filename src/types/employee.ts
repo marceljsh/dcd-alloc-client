@@ -52,5 +52,5 @@ export function createEmployeeRow({ status, ...data }: any): EmployeeRow {
 export interface Employee {
   id: number;
   name: string;
-  role: 'System Analyst' | 'Software Engineer' | 'Data Engineer';
+  role: 'Solution Analyst' | 'Software Engineer' | 'Data Engineer';
 }

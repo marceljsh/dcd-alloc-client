@@ -80,21 +80,17 @@ describe("ProjectsPage", () => {
   })
 
   test("opens project timeline dialog", async () => {
-    render(<ProjectsPage initialProjects={mockProjects} />)
+  render(<ProjectsPage />)
 
-    const menuButtons = screen.getAllByTestId(/menu-button-/)
-    await userEvent.click(menuButtons[0])
+  const menuButtons = await screen.getAllByTestId(/menu-button-/)
+  await userEvent.click(menuButtons[0])
 
-    const menu = within(document.body)
-    const viewTimelineBtn = await menu.findByTestId("view-details-timeline")
-    await userEvent.click(viewTimelineBtn)
+  const viewTimelineBtn = await screen.findByTestId("view-details-timeline")
+  await userEvent.click(viewTimelineBtn)
 
-    // Tunggu dialog timeline muncul
-    const dialog = within(document.body)
-    await waitFor(() => {
-      expect(dialog.getByTestId("timeline-dialog")).toBeInTheDocument()
-    })
-  })
+  const timelineDialog = await screen.findByTestId("project-timeline-dialog")
+  expect(timelineDialog).toBeInTheDocument()
+})
 
   test("add project dialog opens when clicking add project button", async () => {
     render(<ProjectsPage initialProjects={mockProjects} />)

@@ -1,183 +1,193 @@
+// src/components/employee/EmployeeHeatmap.tsx
 import { EmployeeUtilization } from "@/types/employee"
-import { useMemo } from "react"
+import { useMemo, useRef, useState } from "react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { DateRange } from "@/types/common"
-import { backgroundByRole, generateWeeklyUtilization, getUtilizationCellColor } from "@/lib/utils"
+import { backgroundByRole, getUtilizationCellColor } from "@/lib/utils"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { initials } from "@/lib/strings"
+import { Button } from "@/components/ui/button"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
-interface EmployeeByTeamRowsProps {
-  team: string
-  members: EmployeeUtilization[]
-  dateRanges: DateRange[]
+const COL1_WIDTH = 192
+const COL4_WIDTH = 128
+const HEATMAP_COL_MIN = 88
+
+function hashStringToInt(s: string) {
+  let h = 0
+  for (let i = 0; i < s.length; i++) {
+    h = ((h << 5) - h) + s.charCodeAt(i)
+    h |= 0
+  }
+  return Math.abs(h)
 }
 
-function EmployeeByTeamRows({ team, members, dateRanges }: EmployeeByTeamRowsProps) {
-  const utilizationAvg = members.reduce((sum, member) => sum + member.utilization, 0) / members.length
+function generateUtilizationForRange(employee: EmployeeUtilization, dateRanges: DateRange[], viewMode: "week" | "day") {
+  const base = typeof employee.utilization === "number" ? employee.utilization : 0
 
-  return (
-    <>
-    {/* Team Header Row */}
-    <TableRow className="bg-muted/50 hover:bg-muted/70">
-      <TableCell className="font-semibold text-sm">{team}</TableCell>
-      <TableCell className="text-center font-medium"></TableCell>
-      <TableCell className="text-center font-medium"></TableCell>
-      {/* <TableCell className="text-center font-medium">{utilizationAvg.toFixed(1)}%</TableCell> */}
-      <TableCell className="text-center font-medium"></TableCell>
-      {dateRanges.map((_, idx) => {
-        const teamWeeklyTotal = members.reduce((acc, emp) => {
-            const weeklyData = generateWeeklyUtilization(emp, dateRanges)
-            return acc + weeklyData[idx]
-          }, 0)
-        const teamWeeklyAvg = teamWeeklyTotal / members.length
+  return dateRanges.map((range, idx) => {
+    const seedStr = `${employee.id ?? employee.name ?? ""}::${range.start.toISOString()}::${idx}`
+    const seed = hashStringToInt(seedStr)
+    const varianceRange = viewMode === "day" ? 20 : 30
+    const offset = (seed % varianceRange) - Math.floor(varianceRange / 2)
 
-        return (
-          // <TableCell
-          //   key={idx}
-          //   className={`text-center font-medium ${getUtilizationCellColor(teamWeeklyAvg)}`}
-          // >
-          //   {teamWeeklyAvg.toFixed(1)}%
-          // </TableCell>
-          <TableCell key={idx} className="text-center font-medium"></TableCell>
-        )
-      })}
-    </TableRow>
+    let util = base + offset
+    const day = range.start.getDay()
+    if (day === 0 || day === 6) util *= 0.85
 
-    {/* Individual Employee Rows */}
-    {members.map((employee) => {
-      const weeklyUtilization = generateWeeklyUtilization(employee, dateRanges)
-      const totalCapacity = 240 // 40 hours * 6 weeks
-      const utilizedCapacity = (employee.utilization / 100) * totalCapacity
-
-      return (
-        <TableRow key={employee.id} className="hover:bg-muted/30">
-          <TableCell className="pl-6">
-            <div className="flex items-center space-x-2">
-              <Avatar className="h-6 w-6">
-                <AvatarFallback className={`text-xs font-mono text-background ${backgroundByRole(employee.role)}`}>
-                  {initials(employee.name)}
-                </AvatarFallback>
-              </Avatar>
-              <span className="text-sm">{employee.name}</span>
-            </div>
-          </TableCell>
-          <TableCell className="text-center">{totalCapacity.toFixed(1)}</TableCell>
-          <TableCell className="text-center">{utilizedCapacity.toFixed(1)}</TableCell>
-          <TableCell className="text-center">{employee.utilization.toFixed(2)}%</TableCell>
-          {weeklyUtilization.map((utilization, index) => (
-            <TableCell key={index} className={`text-center font-medium ${getUtilizationCellColor(utilization)}`}>
-              {utilization.toFixed(1)}%
-            </TableCell>
-          ))}
-        </TableRow>
-      )
-    })}
-    </>
-  )
+    return Math.max(0, Math.min(150, Number(util)))
+  })
 }
 
-export default function EmployeeHeatmap({ employees }: { employees: EmployeeUtilization[] }) {
+interface EmployeeHeatmapProps {
+  employees: EmployeeUtilization[]
+  selectedStartDate: Date | undefined
+  selectedEndDate: Date | undefined
+}
+
+export default function EmployeeHeatmap({ employees, selectedStartDate, selectedEndDate }: EmployeeHeatmapProps) {
+  const [viewMode, setViewMode] = useState<"week" | "day">("week")
+  const scrollRef = useRef<HTMLDivElement | null>(null)
+
   const dateRanges = useMemo(() => {
-    const ranges = []
-    const startDate = new Date()
-    startDate.setDate(startDate.getDate() - 35)
+    const ranges: DateRange[] = []
+    const start = selectedStartDate ? new Date(selectedStartDate) : new Date()
+    const end = selectedEndDate ? new Date(selectedEndDate) : new Date(
+      start.getTime() + (viewMode === "week"
+        ? 6 * 7 * 24 * 60 * 60 * 1000
+        : 14 * 24 * 60 * 60 * 1000))
 
-    for (let i = 0; i < 6; i++) {
-      const weekStart = new Date(startDate)
-      weekStart.setDate(startDate.getDate() - 35)
-      const weekEnd = new Date(weekStart)
-      weekEnd.setDate(weekStart.getDate() + 6)
+    let current = new Date(start)
+    current.setHours(0, 0, 0, 0)
 
-      const startLabel = weekStart.toLocaleDateString("en-US", { month: "short", day: "numeric" })
-      const endLabel = weekEnd.toLocaleDateString("en-US", { month: "short", day: "numeric" })
-
-      ranges.push({
-        label: `${startLabel} - ${endLabel}`,
-        start: weekStart,
-        end: weekEnd,
-      })
+    if (viewMode === "week") {
+      current.setDate(current.getDate() - current.getDay())
+      while (current.getTime() <= end.getTime()) {
+        const weekStart = new Date(current)
+        const weekEnd = new Date(current)
+        weekEnd.setDate(current.getDate() + 6)
+        ranges.push({
+          label: `${weekStart.toLocaleDateString("en-US", { month: "short", day: "numeric" })} - ${weekEnd.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`,
+          start: weekStart,
+          end: weekEnd
+        })
+        current.setDate(current.getDate() + 7)
+      }
+    } else {
+      while (current.getTime() <= end.getTime()) {
+        const day = new Date(current)
+        ranges.push({
+          label: day.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+          start: day,
+          end: day
+        })
+        current.setDate(current.getDate() + 1)
+      }
     }
-
     return ranges
-  }, [])
-
-  const teams = [...new Set(employees.map((emp) => emp.team))]
+  }, [viewMode, selectedStartDate, selectedEndDate])
 
   return (
-    <div className="space-y-6">
-      <div className="text-sm text-muted-foreground mb-4">
-        Resource Utilization Report - Period: {dateRanges[0]?.label} to {dateRanges[dateRanges.length - 1]?.label}
-      </div>
-
-      {/* Legend */}
-      <div className="flex flex-wrap gap-4 text-xs">
-        <div className="flex items-center gap-2">
-          <div className="w-4 h-4 bg-red-400 rounded"></div>
-          <span>Over-utilization (125%+)</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-4 h-4 bg-red-300 rounded"></div>
-          <span>High utilization (100-124%)</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-4 h-4 bg-green-400 rounded"></div>
-          <span>Good utilization (90-99%)</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-4 h-4 bg-green-300 rounded"></div>
-          <span>Normal utilization (75-89%)</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-4 h-4 bg-yellow-300 rounded"></div>
-          <span>Medium utilization (50-74%)</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-4 h-4 bg-orange-300 rounded"></div>
-          <span>Low utilization (25-49%)</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-4 h-4 bg-gray-200 rounded"></div>
-          <span>Very low utilization (0-24%)</span>
-        </div>
-      </div>
-
-      <div className="overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow className="hover:bg-white">
-              <TableHead className="w-48 font-semibold">Team / Person</TableHead>
-              <TableHead className="text-center font-semibold">
-                Total Available
-                <br />
-                Capacity (Hours)
-              </TableHead>
-              <TableHead className="text-center font-semibold">
-                Utilized
-                <br />
-                Capacity (Hours)
-              </TableHead>
-              <TableHead className="text-center font-semibold">
-                Utilization Rate
-              </TableHead>
-              {dateRanges.map((range, idx) => (
-                <TableHead className="text-center font-semibold min-w-24" key={idx}>
-                  {range.label}
-                </TableHead>
-              ))}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {teams.map((team, idx) => (
-              <EmployeeByTeamRows
-                key={idx}
-                team={team}
-                members={employees.filter((emp) => emp.team === team)}
-                dateRanges={dateRanges}
-              />
-            ))}
-          </TableBody>
-        </Table>
-      </div>
+  <div className="space-y-6">
+    <div className="flex text-sm text-muted-foreground mb-4">
+      Resource Utilization Report - Period: {dateRanges[0]?.label} to {dateRanges[dateRanges.length - 1]?.label}
     </div>
-  )
+
+    {/* Tombol tetap sticky saat scroll horizontal */}
+    <div className="flex sticky top-0 left-0 bg-white z-50 items-center gap-2 mb-4 pb-2">
+      <Button variant={viewMode === "week" ? "default" : "outline"} onClick={() => setViewMode("week")}>
+        View by Week
+      </Button>
+      <Button variant={viewMode === "day" ? "default" : "outline"} onClick={() => setViewMode("day")}>
+        View by Day
+      </Button>
+    </div>
+
+    {/* Scroll container */}
+    <div className="flex border overflow-auto max-h-[70vh]">
+      <Table className="w-max min-w-fit border-collapse">
+        <TableHeader>
+          <TableRow>
+            <TableHead
+              className="sticky left-0 top-0 bg-white z-50 border-r border-b"
+              style={{ minWidth: `${COL1_WIDTH}px` }}
+            >
+              Person
+            </TableHead>
+            <TableHead
+              className="sticky top-0 bg-white z-50 border-r border-b text-center"
+              style={{ left: `${COL1_WIDTH}px`, minWidth: `${COL4_WIDTH}px` }}
+            >
+              Utilization Rate
+            </TableHead>
+            {dateRanges.map((range, idx) => (
+              <TableHead
+                key={idx}
+                className="sticky top-0 bg-white z-40 text-center font-semibold whitespace-nowrap border-b"
+                style={{ minWidth: `${HEATMAP_COL_MIN}px` }}
+              >
+                {range.label}
+              </TableHead>
+            ))}
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {employees.map((employee, empIdx) => {
+            const utilizationData = generateUtilizationForRange(employee, dateRanges, viewMode)
+            const totalCapacity = viewMode === "week" ? 240 : dateRanges.length * 8
+            const utilizedCapacity = ((Number(employee.utilization) || 0) / 100) * totalCapacity
+
+            return (
+              <TableRow key={employee.id ?? empIdx} className="hover:bg-muted/30">
+                <TableCell
+                  className="sticky left-0 bg-white z-10 border-r"
+                  style={{ minWidth: `${COL1_WIDTH}px` }}
+                >
+                  <div className="flex items-center space-x-2">
+                    <Avatar className="h-6 w-6">
+                      <AvatarFallback className={`text-xs font-mono text-background ${backgroundByRole(employee.role)}`}>
+                        {initials(employee.name)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="text-sm">{employee.name}</span>
+                  </div>
+                </TableCell>
+                <TableCell
+                  className="sticky bg-white z-10 border-r text-center"
+                  style={{ left: `${COL1_WIDTH}px`, minWidth: `${COL4_WIDTH}px` }}
+                >
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="cursor-help font-medium">
+                          {(Number(employee.utilization) || 0).toFixed(2)}%
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <div className="text-sm space-y-1">
+                          <div><strong>Total Capacity:</strong> {totalCapacity.toFixed(1)} h</div>
+                          <div><strong>Utilized:</strong> {utilizedCapacity.toFixed(1)} h</div>
+                        </div>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </TableCell>
+                {utilizationData.map((u, i) => (
+                  <TableCell
+                    key={i}
+                    className={`text-center font-medium ${getUtilizationCellColor(u)}`}
+                    style={{ minWidth: `${HEATMAP_COL_MIN}px` }}
+                  >
+                    {u.toFixed(1)}%
+                  </TableCell>
+                ))}
+              </TableRow>
+            )
+          })}
+        </TableBody>
+      </Table>
+    </div>
+  </div>
+)
+
 }

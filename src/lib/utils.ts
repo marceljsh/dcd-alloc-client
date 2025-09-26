@@ -138,6 +138,16 @@ export function generateWeeklyUtilization(employee: EmployeeUtilization, dateRan
   })
 }
 
+export function generateDailyUtilization(employee: EmployeeUtilization, dateRanges: DateRange[]) {
+  return dateRanges.map(() => {
+    const baseUtilization = employee.utilization
+    const variance = (Math.random() - 0.5) * 50 // ±25% variance
+    const dailyUtilization = Math.max(0, Math.min(150, baseUtilization + variance))
+    return Math.round(dailyUtilization)
+  })
+}
+
+
 export function getUtilizationCellColor(utilization: number) {
   if (utilization >= 125) return "bg-red-400 text-white" // Over-utilization (red)
   if (utilization >= 100) return "bg-red-300 text-red-900" // High utilization (light red)

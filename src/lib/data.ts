@@ -2,6 +2,7 @@ import employeesData from "../data/employees.json"
 import projectsData from "../data/projects.json"
 
 export interface Employee {
+  utilization: number
   id: number
   code: string
   name: string

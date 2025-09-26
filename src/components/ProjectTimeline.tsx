@@ -272,7 +272,6 @@ export default function ProjectTimeline() {
                   onDragLeave={() => setDragOverStage(null)}
                   onDrop={() => handleDropToStage(stage.id)}
                 >
-                  {/* Stage Column */}
                   <div className="w-64 px-4 py-3 border-r bg-white sticky left-0 z-20 flex flex-col justify-center">
                     <div className="flex items-center gap-2">
                       <Layers className="h-4 w-4 text-gray-500" />

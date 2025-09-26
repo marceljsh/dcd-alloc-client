@@ -5,12 +5,24 @@ import { CalendarIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { format } from "date-fns"
+import { format, startOfWeek, addDays, startOfQuarter, endOfQuarter } from "date-fns"
 
 interface DateRangePickerProps {
   dateRange: { from: Date | undefined; to: Date | undefined }
   onDateRangeChange: (range: { from: Date | undefined; to: Date | undefined }) => void
   placeholder?: string
+}
+
+export function getWorkdaysRange() {
+  const startMonday = startOfWeek(new Date(), { weekStartsOn: 1 }) // Senin minggu ini
+  return Array.from({ length: 5 }).map((_, idx) => {
+    const day = addDays(startMonday, idx)
+    return {
+      start: day,
+      end: day,
+      label: format(day, "EEE, MMM d"), // Mon, Sep 23
+    }
+  })
 }
 
 export function DateRangePicker({
@@ -20,14 +32,34 @@ export function DateRangePicker({
 }: DateRangePickerProps) {
   const [open, setOpen] = React.useState(false)
 
+  // 🔑 Helper: cek apakah tanggal ada di kuartal & return range kuartal
+  const getQuarterRange = (date: Date) => {
+    return {
+      from: startOfQuarter(date),
+      to: endOfQuarter(date),
+    }
+  }
+
   const handleStartDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const date = e.target.value ? new Date(e.target.value) : undefined
-    onDateRangeChange({ from: date, to: dateRange.to })
+    const selected = e.target.value ? new Date(e.target.value) : undefined
+    if (selected) {
+      // otomatis set dari awal-kuartal ke akhir-kuartal
+      const quarterRange = getQuarterRange(selected)
+      onDateRangeChange(quarterRange)
+    } else {
+      onDateRangeChange({ from: undefined, to: dateRange.to })
+    }
   }
 
   const handleEndDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const date = e.target.value ? new Date(e.target.value) : undefined
-    onDateRangeChange({ from: dateRange.from, to: date })
+    const selected = e.target.value ? new Date(e.target.value) : undefined
+    if (selected) {
+      // otomatis set dari awal-kuartal ke akhir-kuartal
+      const quarterRange = getQuarterRange(selected)
+      onDateRangeChange(quarterRange)
+    } else {
+      onDateRangeChange({ from: dateRange.from, to: undefined })
+    }
   }
 
   const resetSelection = () => {
@@ -43,7 +75,7 @@ export function DateRangePicker({
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button variant="outline" className="w-auto justify-start text-left font-normal h-10 bg-white">
-          <CalendarIcon className="mr-2 h-4 w-4" />
+          <CalendarIcon className="mr-2 h-2 w-4" />
           {dateRange.from ? (
             dateRange.to ? (
               <>
