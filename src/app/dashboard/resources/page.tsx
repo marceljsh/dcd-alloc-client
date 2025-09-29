@@ -265,31 +265,24 @@ export default function ResourcesPage() {
               placeholder={<span className="font-semibold">Period</span>}
               data-testid="date-range-picker"
             />
-            {/* Role Filter */}
             <FilterDropdown
               label="Role"
               options={employeeRoles}
               selected={selectedRoles}
               onChange={handleRoleFilterChange}
             />
-
-            {/* Level Filter */}
             <FilterDropdown
               label="Level"
               options={employeeLevels}
               selected={selectedLevels}
               onChange={handleLevelFilterChange}
             />
-
-            {/* Status Filter */}
             <FilterDropdown
               label="Status"
               options={employmentStatuses}
               selected={selectedStatuses}
               onChange={handleStatusFilterChange}
             />
-
-            {/* Search Input */}
             <div className="relative">
               <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
@@ -299,10 +292,8 @@ export default function ResourcesPage() {
                 className="pl-8"
               />
             </div>
-
           </div>
         </CardHeader>
-
         <CardContent>
               {viewMode === "heatmap" ? (
                   <div className="h-[500px]"> 
@@ -339,7 +330,6 @@ export default function ResourcesPage() {
                     </TableRow>
                   ))}
                 </TableHeader>
-
                 <TableBody>
                 {paginatedRows?.length ? (
                   paginatedRows.map(row => (
@@ -396,21 +386,18 @@ export default function ResourcesPage() {
           </div>
         )}
       </Card>
-
       <EmployeeDetailDialog
         employee={selectedEmployee}
         onClose={() => setSelectedEmployee(null)}
         getRoleColor={getRoleColor}
         initials={initials}
       />
-
       <DeleteEmployeeDialog
         employee={employeeToDelete}
         isOpen={!!employeeToDelete}
         onOpenChange={() => setEmployeeToDelete(null)}
         onDelete={handleDeleteEmployee}
       />
-
       <Toaster theme="light" position="top-center" richColors />
     </div>
   )

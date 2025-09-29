@@ -1,4 +1,3 @@
-// src/components/employee/EmployeeHeatmap.tsx
 import { EmployeeUtilization } from "@/types/employee"
 import { useMemo, useRef, useState } from "react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -92,8 +91,6 @@ export default function EmployeeHeatmap({ employees, selectedStartDate, selected
     <div className="flex text-sm text-muted-foreground mb-4">
       Resource Utilization Report - Period: {dateRanges[0]?.label} to {dateRanges[dateRanges.length - 1]?.label}
     </div>
-
-    {/* Tombol tetap sticky saat scroll horizontal */}
     <div className="flex sticky top-0 left-0 bg-white z-50 items-center gap-2 mb-4 pb-2">
       <Button variant={viewMode === "week" ? "default" : "outline"} onClick={() => setViewMode("week")}>
         View by Week
@@ -102,8 +99,6 @@ export default function EmployeeHeatmap({ employees, selectedStartDate, selected
         View by Day
       </Button>
     </div>
-
-    {/* Scroll container */}
     <div className="flex border overflow-auto max-h-[70vh]">
       <Table className="w-max min-w-fit border-collapse">
         <TableHeader>
@@ -189,5 +184,4 @@ export default function EmployeeHeatmap({ employees, selectedStartDate, selected
     </div>
   </div>
 )
-
 }

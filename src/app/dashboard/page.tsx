@@ -5,7 +5,6 @@ import type React from "react"
 import { useState, useMemo, useRef } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { startOfWeek, addDays, format } from "date-fns"; // pastikan date-fns diinstall
 import { DateRangePicker } from "@/components/ui/date-range-picker"
 import {
   BarChart,
@@ -32,10 +31,6 @@ import {
 } from "@/components/ui/dropdown-menu"
 
 import { getEmployees, getProjects, type Employee as EmployeeType, type Project as ProjectType } from "@/lib/data"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { backgroundByRole, generateWeeklyUtilization, getUtilizationCellColor } from "@/lib/utils"
-import { Tabs,TabsContent,TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import EmployeeHeatmap from "@/components/employee/EmployeeHeatmap"
 
 const COLORS = ["#8884d8", "#82ca9d", "#ffbb55", "#6366f1", "#f43f5e", "#14b8a6"]
@@ -63,7 +58,6 @@ interface SummaryItem {
   desc: { label: string; value: string | number; color?: string }[]
 }
 
-// Helper function for initials
 const initials = (name: string): string => {
   return name.split(" ").map(n => n[0]).join("").toUpperCase();
 };
@@ -90,17 +84,7 @@ const heatmapData = ["Junior", "Middle", "Senior"].map((role) => {
   }
 })
 
-const roleAverages = ["Junior", "Middle", "Senior"].map((role) => {
-const roleMembers = getEmployees().filter((emp) => emp.role === role)
-const avg =
-    roleMembers.length > 0
-      ? roleMembers.reduce((acc, emp) => acc + emp.utilization, 0) / roleMembers.length
-      : 0
-  return { role, average: avg }
-})
-
 const transformDataForCharts = (employees: EmployeeType[], projects: ProjectType[]) => {
-  // projectTimeline needs to be defined before it's used in productivityTrend
   const projectTimeline = projects.map((proj) => {
     const start = new Date(proj.startDate)
     const end = new Date(proj.endDate)
@@ -136,10 +120,9 @@ const transformDataForCharts = (employees: EmployeeType[], projects: ProjectType
       senior: 1.2,
     }
 
-    // ✅ Gunakan emp.level dari database, fallback ke middle kalau kosong
     const level = emp.level?.toLowerCase() ?? "middle"
 
-    const baseWorkload = 8 // 1 FTE = 8 hours
+    const baseWorkload = 8
     const adjustedWorkload = baseWorkload * workloadMultipliers[level]
 
     const empProjects = projects.filter((p) => p.team === emp.team)
@@ -391,7 +374,7 @@ const transformDataForCharts = (employees: EmployeeType[], projects: ProjectType
     fteWorkloadData,
     fteUtilizationByTeam,
     projectTimeline,
-    stackedData, // Make sure to return stackedData
+    stackedData, 
     resourceAllocation,
     teamWorkload,
     priorityBudgetAnalysis,
@@ -449,7 +432,7 @@ export default function Page() {
     return data
   }, [employees, selectedRoles, filteredProjects, projects.length])
 
-  const teamDistributionData = useMemo(() => { // Wrap this calculation in useMemo
+  const teamDistributionData = useMemo(() => { 
     const data = filteredEmployees.reduce((acc, emp) => {
       const existing = acc.find((item) => item.name === emp.team)
       if (existing) {
@@ -460,22 +443,18 @@ export default function Page() {
       return acc
     }, [] as { name: string; value: number }[])
 
-    // Urutkan dari terbesar → terkecil
     data.sort((a, b) => b.value - a.value)
     return data
   }, [filteredEmployees])
 
-  const PIE_COLORS = ["#6366f1", "#22c55e", "#f59e0b", "#ef4444", "#3b82f6", "#8b5cf6", "#ec4899"] // Rename to avoid conflict with global COLORS
+  const PIE_COLORS = ["#6366f1", "#22c55e", "#f59e0b", "#ef4444", "#3b82f6", "#8b5cf6", "#ec4899"] 
 
   const {
     projectDistribution,
     fteWorkloadData,
-    fteUtilizationByTeam,
     projectTimeline,
     stackedData,
-    resourceAllocation,
     teamWorkload,
-    priorityBudgetAnalysis,
     skillsDistribution,
   } = useMemo(() => transformDataForCharts(filteredEmployees, filteredProjects), [filteredEmployees, filteredProjects])
 
@@ -486,7 +465,7 @@ export default function Page() {
 
     for (let i = 0; i < 6; i++) {
       const weekStart = new Date(startDate)
-      weekStart.setDate(startDate.getDate() + (i * 7)) // ✅ Perbaikan pada perhitungan tanggal
+      weekStart.setDate(startDate.getDate() + (i * 7))
       const weekEnd = new Date(weekStart)
       weekEnd.setDate(weekStart.getDate() + 6)
 
@@ -511,7 +490,6 @@ export default function Page() {
     const totalBudget = filteredProjects.reduce((sum, p) => sum + p.budget, 0)
     const avgBudgetPerProject = filteredProjects.length > 0 ? totalBudget / filteredProjects.length : 0
     const highPriorityProjects = filteredProjects.filter((p) => p.priority === "Critical" || p.priority === "High")
-    // const completedProjects = filteredProjects.filter((p) => new Date(p.endDate) < new Date()) // Tidak digunakan
 
     return [
       {
@@ -643,7 +621,6 @@ export default function Page() {
         icon: Clock,
         color: "text-purple-600",
         desc: filteredEmployees.reduce((acc, emp) => {
-          // Menghitung jumlah FTE yang dibutuhkan per tim
           const empProjects = filteredProjects.filter((p) => p.team === emp.team)
           const totalCrewNeeded = empProjects.reduce((sum, p) => sum + p.crew, 0)
 
@@ -695,25 +672,19 @@ export default function Page() {
     ]
   }, [filteredEmployees, filteredProjects])
 
-  // Pindahkan `useMemo` ini ke sini, pada tingkat teratas komponen
   const overutilizedEmployeesData = useMemo(() => {
     const overutilizedEmployees = filteredEmployees
       .filter(emp => emp.utilization > 100)
       .sort((a, b) => b.utilization - a.utilization);
       const uniqueRoles = [...new Set(overutilizedEmployees.map(emp => emp.role))].sort();
 
-  // Add a "All" tab for a general view
   const allRoles = ["All", ...uniqueRoles];
 
   return { overutilizedEmployees, allRoles };
   }, [filteredEmployees]);
 
-  const { overutilizedEmployees, allRoles } = overutilizedEmployeesData;
-  const [activeOverutilizedTab, setActiveOverutilizedTab] = useState<string>(allRoles[0]);
-
   return (
     <div className="space-y-3 mx-10">
-      {/* Content will be here */}
       <div className="flex items-center justify-between">
         <div>
           <h1 data-testid="dashboard-title" className="text-3xl font-bold text-gray-900">Dashboard</h1>
@@ -779,7 +750,7 @@ export default function Page() {
         >
           All Roles
         </DropdownMenuCheckboxItem>
-        {uniqueRoles.slice(1).map((role) => ( // Use uniqueRoles, excluding "All"
+        {uniqueRoles.slice(1).map((role) => (
           <DropdownMenuCheckboxItem
             key={role}
             checked={selectedRoles.includes(role)}
@@ -892,13 +863,13 @@ export default function Page() {
                   data={projectDistribution}
                   cx="50%"
                   cy="50%"
-                  innerRadius={30} // ✅ jadikan donut chart
+                  innerRadius={30}
                   outerRadius={90}
                   paddingAngle={3}
                   dataKey="budget"
                   nameKey="category"
                   labelLine={false}
-                  label={({ percent }) => `${(percent * 100).toFixed(0)}%`} // ✅ tampilkan persentase di potongan chart
+                  label={({ percent }) => `${(percent * 100).toFixed(0)}%`}
                   isAnimationActive
                   animationBegin={300}
                   animationDuration={1200}
@@ -949,21 +920,21 @@ export default function Page() {
           <CardContent data-testid="chart-project-budget-analysis">
             <ResponsiveContainer
               width="100%"
-              height={Math.max(220, filteredProjects.slice(0, 5).length * 60)} // ✅ Sesuaikan tinggi chart otomatis
+              height={Math.max(220, filteredProjects.slice(0, 5).length * 60)} 
             >
               <BarChart
                 data={filteredProjects.slice(0, 5)}
-                margin={{ top: 10, right: -10, left: -30, bottom: 10 }} // ✅ bottom diperbesar untuk label miring
+                margin={{ top: 10, right: -10, left: -30, bottom: 10 }}
                 barCategoryGap="15%"
               >
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis
                   dataKey="name"
-                  interval={0} // ✅ tampilkan semua nama project
+                  interval={0}
                   tick={{ fontSize: 10 }}
-                  angle={-30} // ✅ putar label agar rapi
+                  angle={-30}
                   textAnchor="end"
-                  height={60} // ✅ beri ruang ekstra
+                  height={60} 
                   tickFormatter={(value: string) =>
                     value.length > 15 ? value.substring(0, 12) + "..." : value
                   }
@@ -974,13 +945,13 @@ export default function Page() {
                 />
                 <Tooltip
                   formatter={(value: number) => [`${formatRupiah(value)}`, "Budget"]}
-                  labelFormatter={(label) => `Project: ${label}`} // ✅ tampilkan nama lengkap di tooltip
+                  labelFormatter={(label) => `Project: ${label}`}
                 />
                 <Bar
                   dataKey="budget"
-                  fill="#6366f1" // ✅ Warna lebih modern (indigo)
+                  fill="#6366f1"
                   name="Budget"
-                  radius={[6, 6, 0, 0]} // ✅ Rounded corner
+                  radius={[6, 6, 0, 0]} 
                   isAnimationActive
                   animationBegin={200}
                   animationDuration={1200}
@@ -999,21 +970,21 @@ export default function Page() {
           <CardContent data-testid="chart-project-crew-allocation">
             <ResponsiveContainer
               width="100%"
-              height={Math.max(220, filteredProjects.slice(0, 5).length * 60)} // ✅ Sesuaikan tinggi otomatis
+              height={Math.max(220, filteredProjects.slice(0, 5).length * 60)} 
             >
               <BarChart
                 data={filteredProjects.slice(0, 5)}
-                margin={{ top: 10, right: -10, left: -30, bottom: 35 }} // ✅ bottom diperbesar untuk label miring
+                margin={{ top: 10, right: -10, left: -30, bottom: 35 }}
                 barCategoryGap="15%"
               >
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis
                   dataKey="name"
-                  interval={0} // ✅ tampilkan semua nama project
+                  interval={0}
                   tick={{ fontSize: 10 }}
-                  angle={-30} // ✅ putar label agar rapi
+                  angle={-30}
                   textAnchor="end"
-                  height={35} // ✅ beri ruang ekstra
+                  height={35} 
                   tickFormatter={(value: string) =>
                     value.length > 15 ? value.substring(0, 12) + "..." : value
                   }
@@ -1021,14 +992,13 @@ export default function Page() {
                 <YAxis tick={{ fontSize: 10 }} />
                 <Tooltip
                   formatter={(value: number) => [`${value} people`, "Crew Required"]}
-                  labelFormatter={(label) => `Project: ${label}`} // ✅ tampilkan nama lengkap project
+                  labelFormatter={(label) => `Project: ${label}`} 
                 />
                 <Bar
                   dataKey="crew"
-                  fill="#22c55e" // ✅ warna hijau yang lebih modern (tailwind green-500)
+                  fill="#22c55e" 
                   name="Crew Required"
-                  radius={[6, 6, 0, 0]} // ✅ rounded bar
-                  isAnimationActive
+                  radius={[6, 6, 0, 0]} 
                   animationBegin={200}
                   animationDuration={1200}
                 />
@@ -1049,7 +1019,7 @@ export default function Page() {
           <CardContent data-testid="chart-project-timeline">
             <ResponsiveContainer
               width="100%"
-              height={Math.max(150, projectTimeline.length * 10)} // lebih proporsional
+              height={Math.max(150, projectTimeline.length * 10)}
             >
               <BarChart
                 data={projectTimeline}
@@ -1083,8 +1053,6 @@ export default function Page() {
                   ]}
                   labelFormatter={(label: string) => `Project: ${label}`}
                 />
-
-                {/* Remaining days bar (grey background) */}
                 <Bar
                   dataKey="remaining"
                   stackId="a"
@@ -1092,8 +1060,6 @@ export default function Page() {
                   radius={[8, 8, 8, 8]}
                   barSize={60}
                 />
-
-                {/* Completed days bar (colored with progress) */}
                 <Bar
                   dataKey="completed"
                   stackId="a"
@@ -1227,7 +1193,7 @@ export default function Page() {
                   labelLine={false}
                   label={({ percent }) => `${(percent * 100).toFixed(0)}%`}
                   style={{
-                    fontSize: "14px", // <-- Tambahkan properti style di sini
+                    fontSize: "14px", 
                   }}
                   isAnimationActive
                   animationBegin={300}
@@ -1237,7 +1203,7 @@ export default function Page() {
                     <Cell
                       className="text-sm"
                       key={`cell-${index}`}
-                      fill={PIE_COLORS[index % PIE_COLORS.length]} // Gunakan PIE_COLORS
+                      fill={PIE_COLORS[index % PIE_COLORS.length]} 
                     />
                   ))}
                 </Pie>
@@ -1320,8 +1286,8 @@ export default function Page() {
         <CardContent>
         <EmployeeHeatmap
           employees={filteredEmployees
-            .sort((a, b) => a.team.localeCompare(b.team)) // urutkan by team
-            .slice(0, 5) // ambil 5 teratas
+            .sort((a, b) => a.team.localeCompare(b.team)) 
+            .slice(0, 5) 
             .map(emp => ({
               ...emp,
               utilization: Math.random() * 100,

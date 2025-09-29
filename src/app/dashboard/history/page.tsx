@@ -247,7 +247,7 @@ export default function HistoryPage() {
 }
 
 const ProjectsDataTable = ({ table, rows }: { table: any; rows: any[] }) => (
-  <ScrollArea className="h-[500px]">
+  <ScrollArea className="h-[450px]">
     <Table>
       <TableHeader className="sticky top-0 z-10 bg-background shadow-sm">
         {table.getHeaderGroups().map((headerGroup: any) => (
