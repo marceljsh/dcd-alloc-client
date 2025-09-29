@@ -56,7 +56,7 @@ export function DashboardBreadcrumb() {
             Dashboard
           </a>
         )}
-      </BreadcrumbItem>
+      </BreadcrumbItem>,
     );
 
     // Add remaining segments
@@ -87,7 +87,7 @@ export function DashboardBreadcrumb() {
                 {menuItem.title}
               </a>
             )}
-          </BreadcrumbItem>
+          </BreadcrumbItem>,
         );
       }
     }

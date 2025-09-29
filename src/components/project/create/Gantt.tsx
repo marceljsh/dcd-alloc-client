@@ -5,12 +5,14 @@ import { Accordion } from "@/components/ui/accordion";
 import { GanttHeader } from "./GanttHeader";
 import { GanttActivityRow } from "./GanttActivityRow";
 import GanttNoActivities from "./GanttNoActivity";
+import { FteViewMode } from "./GanttToolbar";
 
 type GanttPanelProps = {
   dates: Date[];
   groupedDates: Record<string, Date[]>;
   data: ProjectActivity[];
   expandedItems: string[];
+  viewMode?: FteViewMode;
 };
 
 export function GanttPanel({
@@ -18,6 +20,7 @@ export function GanttPanel({
   groupedDates,
   data,
   expandedItems,
+  viewMode = "normal",
 }: GanttPanelProps) {
   const windowStart = dates[0];
 
@@ -26,11 +29,11 @@ export function GanttPanel({
     const endDate = new Date(activity.endDate);
 
     const startIndex = dates.findIndex(
-      (date) => date.toDateString() === startDate.toDateString()
+      (date) => date.toDateString() === startDate.toDateString(),
     );
 
     const endIndex = dates.findIndex(
-      (date) => date.toDateString() === endDate.toDateString()
+      (date) => date.toDateString() === endDate.toDateString(),
     );
 
     if (startIndex === -1 || endIndex === -1) {
@@ -39,11 +42,11 @@ export function GanttPanel({
       const activityEndTime = endDate.getTime();
 
       const daysDiff = Math.floor(
-        (activityStartTime - windowStartTime) / (1000 * 60 * 60 * 24)
+        (activityStartTime - windowStartTime) / (1000 * 60 * 60 * 24),
       );
       const duration =
         Math.floor(
-          (activityEndTime - activityStartTime) / (1000 * 60 * 60 * 24)
+          (activityEndTime - activityStartTime) / (1000 * 60 * 60 * 24),
         ) + 1;
 
       return {
@@ -65,6 +68,7 @@ export function GanttPanel({
         activity={activity}
         getGridPosition={getGridPosition}
         datesLength={dates.length}
+        viewMode={viewMode}
       />
     );
   }
@@ -80,7 +84,7 @@ export function GanttPanel({
         <Accordion type="multiple" className="w-full" value={expandedItems}>
           <div className="divide-y">
             {data.map((activity: ProjectActivity) =>
-              renderActivityRow(activity)
+              renderActivityRow(activity),
             )}
           </div>
         </Accordion>

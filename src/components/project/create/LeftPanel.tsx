@@ -13,6 +13,17 @@ import {
   ContextMenuTrigger,
 } from "../../ui/context-menu";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useState } from "react";
+import {
   ActivityAction,
   createAction,
   ProjectActivity,
@@ -53,6 +64,46 @@ export function ActivitiesPanel({
   expandedItems: string[];
   onAccordionChange: (value: string[]) => void;
 }) {
+  const [deleteDialog, setDeleteDialog] = useState<{
+    isOpen: boolean;
+    type: "activity" | "subactivity";
+    activityId?: number;
+    activityName?: string;
+    subActivityId?: number;
+    subActivityName?: string;
+  }>({ isOpen: false, type: "activity" });
+
+  const handleDeleteClick = (
+    type: "activity" | "subactivity",
+    activityId: number,
+    activityName: string,
+    subActivityId?: number,
+    subActivityName?: string,
+  ) => {
+    setDeleteDialog({
+      isOpen: true,
+      type,
+      activityId,
+      activityName,
+      subActivityId,
+      subActivityName,
+    });
+  };
+
+  const handleConfirmDelete = () => {
+    if (deleteDialog.type === "activity" && deleteDialog.activityId) {
+      onAction(ACTIONS.deleteActivity(deleteDialog.activityId));
+    } else if (
+      deleteDialog.type === "subactivity" &&
+      deleteDialog.activityId &&
+      deleteDialog.subActivityId
+    ) {
+      onAction(
+        ACTIONS.deleteSub(deleteDialog.activityId, deleteDialog.subActivityId),
+      );
+    }
+    setDeleteDialog({ isOpen: false, type: "activity" });
+  };
   return (
     <ScrollArea className="h-full w-full">
       <div>
@@ -85,13 +136,22 @@ export function ActivitiesPanel({
               {/* Main Activity Row */}
               <ContextMenu>
                 <ContextMenuTrigger>
-                  <div className="h-12 grid divide-x grid-cols-4 text-sm hover:bg-muted/50 border-b">
+                  <div
+                    className="h-12 grid divide-x grid-cols-4 text-sm hover:bg-muted/50 border-b cursor-pointer"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onAction(ACTIONS.editActivity(activity));
+                    }}
+                  >
                     <div className="px-2 col-span-2 font-medium truncate flex items-center">
                       {activity.subActivities &&
                       activity.subActivities.length > 0 ? (
-                        <AccordionTrigger className="hover:no-underline p-0 mr-2 [&[data-state=open]>svg]:rotate-360   [&[data-state=closed]>svg]:rotate-270"></AccordionTrigger>
+                        <AccordionTrigger
+                          className="hover:no-underline p-1 mr-2 h-6 w-6 [&[data-state=open]>svg]:rotate-360 [&[data-state=closed]>svg]:rotate-270 [&>svg]:h-4 [&>svg]:w-4"
+                          onClick={(e) => e.stopPropagation()}
+                        ></AccordionTrigger>
                       ) : (
-                        <div className="w-4 mr-2" />
+                        <div className="w-6 mr-2" />
                       )}
                       {activity.activity}{" "}
                       {activity.role && (
@@ -129,7 +189,11 @@ export function ActivitiesPanel({
                   </ContextMenuItem>
                   <ContextMenuItem
                     onClick={() =>
-                      onAction(ACTIONS.deleteActivity(activity.id))
+                      handleDeleteClick(
+                        "activity",
+                        activity.id,
+                        activity.activity,
+                      )
                     }
                   >
                     <Trash className="mr-2 h-4 w-4" />
@@ -147,7 +211,15 @@ export function ActivitiesPanel({
                         (subActivity: ProjectSubActivity) => (
                           <ContextMenu key={subActivity.id}>
                             <ContextMenuTrigger>
-                              <div className="grid h-12 divide-x grid-cols-4 text-sm hover:bg-muted/30 border-b bg-gray-25">
+                              <div
+                                className="grid h-12 divide-x grid-cols-4 text-sm hover:bg-muted/30 border-b bg-gray-25 cursor-pointer"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onAction(
+                                    ACTIONS.editSub(subActivity, activity),
+                                  );
+                                }}
+                              >
                                 <div className="px-2 col-span-2 text-muted-foreground pl-8 truncate flex items-center">
                                   ↳ {subActivity.activity}
                                 </div>
@@ -164,7 +236,7 @@ export function ActivitiesPanel({
                               <ContextMenuItem
                                 onClick={() =>
                                   onAction(
-                                    ACTIONS.editSub(subActivity, activity)
+                                    ACTIONS.editSub(subActivity, activity),
                                   )
                                 }
                               >
@@ -173,11 +245,12 @@ export function ActivitiesPanel({
                               </ContextMenuItem>
                               <ContextMenuItem
                                 onClick={() =>
-                                  onAction(
-                                    ACTIONS.deleteSub(
-                                      activity.id,
-                                      subActivity.id
-                                    )
+                                  handleDeleteClick(
+                                    "subactivity",
+                                    activity.id,
+                                    activity.activity,
+                                    subActivity.id,
+                                    subActivity.activity,
                                   )
                                 }
                               >
@@ -186,7 +259,7 @@ export function ActivitiesPanel({
                               </ContextMenuItem>
                             </ContextMenuContent>
                           </ContextMenu>
-                        )
+                        ),
                       )}
                     </div>
                   )}
@@ -195,6 +268,45 @@ export function ActivitiesPanel({
           ))}
         </Accordion>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog
+        open={deleteDialog.isOpen}
+        onOpenChange={(open) =>
+          setDeleteDialog({ ...deleteDialog, isOpen: open })
+        }
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteDialog.type === "activity" ? (
+                <>
+                  This action will permanently delete the activity{" "}
+                  <strong>{deleteDialog.activityName} </strong>
+                  and all its sub-activities. This action cannot be undone.
+                </>
+              ) : (
+                <>
+                  This action will permanently delete the sub-activity{" "}
+                  <strong>{deleteDialog.subActivityName}</strong>. This action
+                  cannot be undone.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDelete}
+              className="bg-red-500 hover:bg-red-600 text-white"
+            >
+              Delete{" "}
+              {deleteDialog.type === "activity" ? "Activity" : "Sub-Activity"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </ScrollArea>
   );
 }

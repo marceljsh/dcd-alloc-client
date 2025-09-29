@@ -1,8 +1,8 @@
-import type { Metadata } from "next"
-import "@/app/globals.css"
-import { SidebarProvider } from "@/components/ui/sidebar"
-import { AppSidebar } from "@/components/AppSidebar"
-import { DashboardBreadcrumb } from "@/components/DashboardBreadcrumb"
+import type { Metadata } from "next";
+import "@/app/globals.css";
+import { SidebarProvider } from "@/components/ui/sidebar";
+import { AppSidebar } from "@/components/AppSidebar";
+import { DashboardBreadcrumb } from "@/components/DashboardBreadcrumb";
 
 export const metadata: Metadata = {
   title: {
@@ -10,12 +10,12 @@ export const metadata: Metadata = {
     default: "Dashboard",
   },
   description: "Created by and for BMRI",
-}
+};
 
 export default function RootLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: React.ReactNode;
 }) {
   return (
     <div id="layout-dashboard" className="flex">
@@ -32,5 +32,5 @@ export default function RootLayout({
         </div>
       </SidebarProvider>
     </div>
-  )
+  );
 }

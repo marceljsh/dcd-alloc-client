@@ -12,7 +12,7 @@ export function Providers({ children }: PropsWithChildren) {
             staleTime: 60 * 1000,
           },
         },
-      })
+      }),
   );
 
   return (

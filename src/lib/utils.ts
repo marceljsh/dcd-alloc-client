@@ -1,7 +1,7 @@
-import { DateRange } from '@/types/common';
-import { EmployeeUtilization } from '@/types/employee';
-import { clsx, type ClassValue } from 'clsx';
-import { twMerge } from 'tailwind-merge';
+import { DateRange } from "@/types/common";
+import { EmployeeUtilization } from "@/types/employee";
+import { clsx, type ClassValue } from "clsx";
+import { twMerge } from "tailwind-merge";
 import {
   addDays,
   format,
@@ -11,7 +11,6 @@ import {
   getDaysInMonth,
 } from "date-fns";
 import { ViewType } from "@/types/timeline-planner";
-
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -36,7 +35,7 @@ export const getDaysArray = (start: Date, daysInWindow: number) =>
 export const getWindowRangeLabel = (
   start: Date,
   daysInWindow: number,
-  viewType: ViewType = "Week"
+  viewType: ViewType = "Week",
 ) => {
   if (viewType === "Month") {
     return format(start, "MMMM yyyy");
@@ -50,7 +49,7 @@ export const getWindowRangeLabel = (
 
 export const getWindowStartForView = (
   currentDate: Date,
-  viewType: ViewType
+  viewType: ViewType,
 ): Date => {
   if (viewType === "Month") {
     return startOfMonth(currentDate);
@@ -60,7 +59,7 @@ export const getWindowStartForView = (
 
 export const getDaysInWindowForView = (
   windowStart: Date,
-  viewType: ViewType
+  viewType: ViewType,
 ): number => {
   if (viewType === "Month") {
     return getDaysInMonth(windowStart);
@@ -72,7 +71,7 @@ export const getTimelinePosition = (
   startDate: string,
   endDate: string,
   windowStart: Date,
-  daysInWindow: number
+  daysInWindow: number,
 ) => {
   const start = parseISO(startDate);
   const end = parseISO(endDate);
@@ -128,22 +127,36 @@ export const toDisplayDate = (iso: string) => {
   }
 };
 
-export function generateWeeklyUtilization(employee: EmployeeUtilization, dateRanges: DateRange[]) {
+export function generateWeeklyUtilization(
+  employee: EmployeeUtilization,
+  dateRanges: DateRange[],
+) {
   return dateRanges.map(() => {
     // Generate realistic utilization percentages
-    const baseUtilization = employee.utilization
-    const variance = (Math.random() - 0.5) * 50 // ±25% variance
-    const weeklyUtilization = Math.max(0, Math.min(150, baseUtilization + variance))
-    return Math.round(weeklyUtilization)
-  })
+    const baseUtilization = employee.utilization;
+    const variance = (Math.random() - 0.5) * 50; // ±25% variance
+    const weeklyUtilization = Math.max(
+      0,
+      Math.min(150, baseUtilization + variance),
+    );
+    return Math.round(weeklyUtilization);
+  });
 }
 
 export function getUtilizationCellColor(utilization: number) {
-  if (utilization >= 125) return "bg-red-400 text-white" // Over-utilization (red)
-  if (utilization >= 100) return "bg-red-300 text-red-900" // High utilization (light red)
-  if (utilization >= 90) return "bg-green-400 text-green-900" // Good utilization (green)
-  if (utilization >= 75) return "bg-green-300 text-green-900" // Normal utilization (light green)
-  if (utilization >= 50) return "bg-yellow-300 text-yellow-900" // Medium utilization (yellow)
-  if (utilization >= 25) return "bg-orange-300 text-orange-900" // Low utilization (orange)
-  return "bg-gray-200 text-gray-700" // Very low utilization (gray)
+  if (utilization >= 125) return "bg-red-400 text-white"; // Over-utilization (red)
+  if (utilization >= 100) return "bg-red-300 text-red-900"; // High utilization (light red)
+  if (utilization >= 90) return "bg-green-400 text-green-900"; // Good utilization (green)
+  if (utilization >= 75) return "bg-green-300 text-green-900"; // Normal utilization (light green)
+  if (utilization >= 50) return "bg-yellow-300 text-yellow-900"; // Medium utilization (yellow)
+  if (utilization >= 25) return "bg-orange-300 text-orange-900"; // Low utilization (orange)
+  return "bg-gray-200 text-gray-700"; // Very low utilization (gray)
 }
+
+export const formatCurrency = (amount: number): string => {
+  return `Rp ${amount.toLocaleString()}`;
+};
+
+export const formatWorkloadHours = (hours: number): string => {
+  return `${hours} jam`;
+};

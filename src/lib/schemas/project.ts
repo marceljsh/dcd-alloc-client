@@ -22,15 +22,14 @@ export const activityFormSchema = z
       .min(0.1, "FTE must be at least 0.1")
       .max(2, "FTE cannot exceed 2.0")
       .refine(
-        (val) => val % 0.1 === 0 || Math.round(val * 10) / 10 === val,
-        "FTE must be in increments of 0.1"
+        (val) => val % 0.25 === 0 || Math.round(val * 10) / 10 === val,
+        "FTE must be in increments of 0.25",
       ),
     duration: z
       .number()
-      .min(1, "Duration must be at least 1 hour")
+      .min(0, "Duration cannot be negative") // Changed from 1 to 0 for activities
       .max(2000, "Duration cannot exceed 2000 hours")
       .int("Duration must be a whole number"),
-    calculationMode: z.enum(["auto", "manual"]),
     role: z.enum(["SE", "DE", "SA"]).or(z.literal("")).optional(),
     excludeLevel: z.enum(["none", "junior", "middle", "senior"]).optional(),
   })
@@ -46,16 +45,64 @@ export const activityFormSchema = z
     {
       message: "End date must be after start date",
       path: ["endDate"],
-    }
+    },
   );
 
 export type ActivityFormData = z.infer<typeof activityFormSchema>;
 
 export const createSubActivitySchema = (
   parentStart: string,
-  parentEnd: string
-) =>
-  activityFormSchema.superRefine((data, ctx) => {
+  parentEnd: string,
+) => {
+  const baseSubActivitySchema = z
+    .object({
+      id: z.number().optional(),
+      activityName: z
+        .string()
+        .min(1, "Activity name is required")
+        .min(3, "Activity name must be at least 3 characters")
+        .max(100, "Activity name must not exceed 100 characters"),
+      startDate: z.string().min(1, "Start date is required"),
+      endDate: z
+        .string()
+        .min(1, "End date is required for auto calculation")
+        .refine((date) => {
+          if (!date) return false;
+          const endDate = new Date(date);
+          return !isNaN(endDate.getTime());
+        }, "Invalid end date format"),
+      fte: z
+        .number()
+        .min(0.1, "FTE must be at least 0.1")
+        .max(2, "FTE cannot exceed 2.0")
+        .refine(
+          (val) => val % 0.25 === 0 || Math.round(val * 10) / 10 === val,
+          "FTE must be in increments of 0.25",
+        ),
+      duration: z
+        .number()
+        .min(1, "Duration must be at least 1 hour") // Sub-activities need minimum 1 hour
+        .max(2000, "Duration cannot exceed 2000 hours")
+        .int("Duration must be a whole number"),
+      role: z.enum(["SE", "DE", "SA"]).or(z.literal("")).optional(),
+      excludeLevel: z.enum(["none", "junior", "middle", "senior"]).optional(),
+    })
+    .refine(
+      (data) => {
+        if (data.endDate && data.startDate) {
+          const startDate = new Date(data.startDate);
+          const endDate = new Date(data.endDate);
+          return endDate > startDate;
+        }
+        return true;
+      },
+      {
+        message: "End date must be after start date",
+        path: ["endDate"],
+      },
+    );
+
+  return baseSubActivitySchema.superRefine((data, ctx) => {
     const subStart = new Date(data.startDate);
     const subEnd = new Date(data.endDate);
     const parentStartDate = new Date(parentStart);
@@ -72,7 +119,7 @@ export const createSubActivitySchema = (
       ctx.addIssue({
         code: "custom",
         message: `Start date cannot be earlier than the parent activity's start date (${formatDate(
-          parentStartDate
+          parentStartDate,
         )})`,
         path: ["startDate"],
       });
@@ -83,7 +130,7 @@ export const createSubActivitySchema = (
       ctx.addIssue({
         code: "custom",
         message: `Start date cannot be later than the parent activity's end date (${formatDate(
-          parentEndDate
+          parentEndDate,
         )})`,
         path: ["startDate"],
       });
@@ -94,7 +141,7 @@ export const createSubActivitySchema = (
       ctx.addIssue({
         code: "custom",
         message: `End date cannot be later than the parent activity's end date (${formatDate(
-          parentEndDate
+          parentEndDate,
         )})`,
         path: ["endDate"],
       });
@@ -108,3 +155,4 @@ export const createSubActivitySchema = (
       });
     }
   });
+};

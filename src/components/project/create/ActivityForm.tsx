@@ -1,7 +1,21 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect } from "react";
+import React from "react";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Pencil, Trash2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   SheetClose,
   SheetContent,
@@ -32,7 +46,7 @@ import {
   EntityType,
   ModeType,
 } from "@/types/projects";
-import { calculateDuration, calculateWorkingDays } from "@/lib/dates";
+import { calculateWorkingDays } from "@/lib/dates";
 import {
   ActivityFormData,
   activityFormSchema,
@@ -44,7 +58,19 @@ interface ActivityFormProps {
   parentActivity: ProjectActivity | null;
   formDetails: ProjectActivity | ProjectSubActivity | null;
   mode: ModeType;
-  onSubmit: (entity: ProjectActivity | ProjectSubActivity) => void;
+  activities?: ProjectActivity[];
+  onSubmit: (
+    entity: ProjectActivity | ProjectSubActivity,
+    parent?: ProjectActivity,
+  ) => void;
+  onEditSubActivity?: (
+    subActivity: ProjectSubActivity,
+    parentActivity: ProjectActivity,
+  ) => void;
+  onDeleteSubActivity?: (
+    parentActivityId: number,
+    subActivityId: number,
+  ) => void;
 }
 
 const createActivity = (data: ActivityFormData): ProjectActivity => ({
@@ -60,7 +86,7 @@ const createActivity = (data: ActivityFormData): ProjectActivity => ({
 
 const createSubActivity = (
   data: ActivityFormData,
-  parent: ProjectActivity
+  parent: ProjectActivity,
 ): ProjectSubActivity => ({
   id: data.id ?? Date.now(),
   activity: data.activityName.trim(),
@@ -79,13 +105,12 @@ const getDefaultFormValues = (): ActivityFormData => ({
   endDate: "",
   fte: 1.0,
   duration: 0,
-  calculationMode: "auto",
   role: "",
   excludeLevel: "none",
 });
 
 const mapEntityToFormData = (
-  entity: ProjectActivity | ProjectSubActivity
+  entity: ProjectActivity | ProjectSubActivity,
 ): ActivityFormData => ({
   id: entity.id,
   activityName: entity.activity,
@@ -93,7 +118,6 @@ const mapEntityToFormData = (
   endDate: entity.endDate,
   fte: entity.fte,
   duration: entity.duration,
-  calculationMode: "auto",
   role: entity.role || "",
   excludeLevel:
     "excludeLevel" in entity ? entity.excludeLevel || "none" : "none",
@@ -104,13 +128,16 @@ export function ActivityForm({
   mode,
   parentActivity,
   formDetails,
+  activities = [],
   onSubmit,
+  onEditSubActivity,
+  onDeleteSubActivity,
 }: ActivityFormProps) {
   const schema =
     sheetType === "subactivity" && parentActivity
       ? createSubActivitySchema(
           parentActivity.startDate,
-          parentActivity.endDate
+          parentActivity.endDate,
         )
       : activityFormSchema;
 
@@ -119,12 +146,29 @@ export function ActivityForm({
     defaultValues: getDefaultFormValues(),
   });
 
-  const watchedFields = form.watch([
-    "startDate",
-    "endDate",
-    "fte",
-    "calculationMode",
-  ]);
+  const watchedFields = form.watch(["startDate", "endDate", "fte", "duration"]);
+
+  const [selectedParentId, setSelectedParentId] = React.useState<number | null>(
+    parentActivity ? parentActivity.id : null,
+  );
+
+  // Track which field was last updated to prevent infinite calculation loops
+  const [lastUpdatedField, setLastUpdatedField] = React.useState<
+    "fte" | "duration" | null
+  >(null);
+  const [isCalculating, setIsCalculating] = React.useState(false);
+
+  // Local state to track subactivities marked for deletion
+  const [deletedSubActivityIds, setDeletedSubActivityIds] = React.useState<
+    number[]
+  >([]);
+
+  // State for delete confirmation dialog
+  const [deleteConfirmation, setDeleteConfirmation] = React.useState<{
+    isOpen: boolean;
+    subActivityId?: number;
+    subActivityName?: string;
+  }>({ isOpen: false });
 
   const handleFormSubmit = (data: ActivityFormData) => {
     let entity: ProjectActivity | ProjectSubActivity;
@@ -133,38 +177,71 @@ export function ActivityForm({
       entity = createActivity(data);
 
       if (mode === "Edit" && formDetails && "subActivities" in formDetails) {
-        (entity as ProjectActivity).subActivities =
-          formDetails.subActivities || [];
+        // Apply deleted subactivities - remove ones marked for deletion
+        const filteredSubActivities = (formDetails.subActivities || []).filter(
+          (sub) => !deletedSubActivityIds.includes(sub.id),
+        );
+        (entity as ProjectActivity).subActivities = filteredSubActivities;
+
+        // Apply actual deletions to store for each deleted subactivity
+        deletedSubActivityIds.forEach((subId) => {
+          onDeleteSubActivity?.(formDetails.id, subId);
+        });
       }
 
       if (mode === "Add") {
         entity.duration = 0;
       }
-    } else if (parentActivity) {
-      entity = createSubActivity(data, parentActivity);
+      onSubmit(entity);
     } else {
-      console.error("Cannot create sub-activity without parent activity");
-      return;
+      // Subactivity
+      let parent: ProjectActivity | null = parentActivity;
+      if (!parent && selectedParentId) {
+        parent = activities.find((a) => a.id === selectedParentId) || null;
+      }
+      if (!parent) {
+        console.error("Cannot create sub-activity without parent activity");
+        return;
+      }
+      entity = createSubActivity(data, parent);
+      onSubmit(entity, parent);
     }
-
-    onSubmit(entity);
   };
 
   const handleCancel = () => {
     form.reset(getDefaultFormValues());
+    // Reset deleted subactivities when canceling
+    setDeletedSubActivityIds([]);
   };
 
-  const calculationMode = form.watch("calculationMode");
+  const handleDeleteSubActivityLocally = (
+    subActivityId: number,
+    subActivityName: string,
+  ) => {
+    setDeleteConfirmation({
+      isOpen: true,
+      subActivityId,
+      subActivityName,
+    });
+  };
+
+  const confirmDeleteSubActivity = () => {
+    if (deleteConfirmation.subActivityId) {
+      setDeletedSubActivityIds((prev) => [
+        ...prev,
+        deleteConfirmation.subActivityId!,
+      ]);
+    }
+    setDeleteConfirmation({ isOpen: false });
+  };
+
   const currentDates = form.watch(["startDate", "endDate"]);
   const workingDays =
     currentDates[0] && currentDates[1]
       ? calculateWorkingDays(currentDates[0], currentDates[1])
       : 0;
 
-  const isFteFieldVisible =
-    sheetType === "subactivity" && calculationMode === "auto";
-  const isCalculationModeVisible =
-    sheetType === "subactivity" && mode !== "Edit";
+  const isFteFieldVisible = sheetType === "subactivity";
   const isDurationVisible = sheetType === "subactivity";
   const isRoleVisible = sheetType === "activity";
 
@@ -180,29 +257,73 @@ export function ActivityForm({
   };
 
   useEffect(() => {
-    const [startDate, endDate, fte, calculationMode] = watchedFields;
+    const [startDate, endDate, fte, duration] = watchedFields;
 
-    if (
-      (calculationMode === "auto" || formDetails) &&
-      startDate &&
-      endDate &&
-      fte
-    ) {
-      const calculatedDuration = calculateDuration(startDate, endDate, fte);
+    // Prevent calculations if already calculating or no dates
+    if (isCalculating || !startDate || !endDate) return;
 
-      if (calculatedDuration > 0) {
-        form.setValue("duration", calculatedDuration, { shouldValidate: true });
+    const workingDays = calculateWorkingDays(startDate, endDate);
+    const totalWorkHours = workingDays * 8; // 8 hours per working day
+
+    if (totalWorkHours <= 0) return;
+
+    // Auto-calculate duration when FTE changes (and FTE was last updated)
+    if (lastUpdatedField === "fte" && fte > 0) {
+      const calculatedDuration = Math.round(totalWorkHours * fte * 10) / 10;
+      if (Math.abs(duration - calculatedDuration) > 0.05) {
+        // Only update if significant difference
+        setIsCalculating(true);
+        form.setValue("duration", calculatedDuration, {
+          shouldValidate: false,
+        });
+        setTimeout(() => {
+          setIsCalculating(false);
+          setLastUpdatedField(null);
+        }, 0);
       }
     }
-  }, [watchedFields, form, formDetails]);
+
+    // Auto-calculate FTE when duration changes (and duration was last updated)
+    else if (lastUpdatedField === "duration" && duration > 0) {
+      const calculatedFte = Math.round((duration / totalWorkHours) * 10) / 10;
+      if (calculatedFte <= 2.0 && Math.abs(fte - calculatedFte) > 0.05) {
+        // Only update if significant difference
+        setIsCalculating(true);
+        form.setValue("fte", calculatedFte, { shouldValidate: false });
+        setTimeout(() => {
+          setIsCalculating(false);
+          setLastUpdatedField(null);
+        }, 0);
+      }
+    }
+
+    // Initial calculation when editing existing data (only once)
+    else if (
+      mode === "Edit" &&
+      formDetails &&
+      fte > 0 &&
+      !lastUpdatedField &&
+      duration === 0
+    ) {
+      const calculatedDuration = Math.round(totalWorkHours * fte * 10) / 10;
+      setIsCalculating(true);
+      form.setValue("duration", calculatedDuration, { shouldValidate: false });
+      setTimeout(() => {
+        setIsCalculating(false);
+      }, 0);
+    }
+  }, [watchedFields, form, formDetails, mode, lastUpdatedField, isCalculating]);
 
   useEffect(() => {
     if (formDetails && mode === "Edit") {
       const formData = mapEntityToFormData(formDetails);
       form.reset(formData);
+      // Reset deleted subactivities when form is opened for editing
+      setDeletedSubActivityIds([]);
     } else if (mode === "Add" && !formDetails && !form.formState.isDirty) {
       // Only reset if form is not dirty (hasn't been filled out yet)
       form.reset(getDefaultFormValues());
+      setDeletedSubActivityIds([]);
     }
   }, [formDetails, mode, sheetType, form]);
 
@@ -211,6 +332,31 @@ export function ActivityForm({
       <SheetHeader>
         <SheetTitle>{getSheetTitle()}</SheetTitle>
       </SheetHeader>
+
+      {sheetType === "subactivity" &&
+        !parentActivity &&
+        activities.length > 0 && (
+          <div className="px-4 pb-2">
+            <label className="block mb-2 text-sm font-medium">
+              Select Parent Activity
+            </label>
+            <Select
+              value={selectedParentId ? String(selectedParentId) : ""}
+              onValueChange={(val) => setSelectedParentId(Number(val))}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select activity..." />
+              </SelectTrigger>
+              <SelectContent>
+                {activities.map((a) => (
+                  <SelectItem key={a.id} value={String(a.id)}>
+                    {a.activity}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
 
       <Form {...form}>
         <form
@@ -241,68 +387,74 @@ export function ActivityForm({
               )}
             />
 
-            {/* Calculation Mode - Only for new sub-activities */}
-            {isCalculationModeVisible && (
-              <FormField
-                control={form.control}
-                name="calculationMode"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Duration Calculation</FormLabel>
-                    <FormControl>
-                      <Select
-                        onValueChange={field.onChange}
-                        value={field.value}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select calculation mode" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="auto">Auto Calculate</SelectItem>
-                          <SelectItem value="manual">Manual Entry</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </FormControl>
-                    <FormDescription>
-                      Auto: Calculate from dates + FTE | Manual: Enter duration
-                      directly
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
-
             {/* Date Fields */}
             <div className="grid grid-cols-2 gap-4 items-start">
               <FormField
                 control={form.control}
                 name="startDate"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Start Date</FormLabel>
-                    <FormControl>
-                      <Input type="date" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
+                render={({ field }) => {
+                  let minDate = undefined;
+                  let maxDate = undefined;
+                  if (sheetType === "subactivity") {
+                    const parent =
+                      parentActivity ||
+                      (selectedParentId
+                        ? activities.find((a) => a.id === selectedParentId)
+                        : undefined);
+                    if (parent) {
+                      minDate = parent.startDate;
+                      maxDate = parent.endDate;
+                    }
+                  }
+                  return (
+                    <FormItem>
+                      <FormLabel>Start Date</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="date"
+                          {...field}
+                          min={minDate}
+                          max={maxDate}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
               />
 
               <FormField
                 control={form.control}
                 name="endDate"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>
-                      End Date {calculationMode === "manual" && "(optional)"}
-                    </FormLabel>
-                    <FormControl>
-                      <Input type="date" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
+                render={({ field }) => {
+                  let minDate = undefined;
+                  let maxDate = undefined;
+                  if (sheetType === "subactivity") {
+                    const parent =
+                      parentActivity ||
+                      (selectedParentId
+                        ? activities.find((a) => a.id === selectedParentId)
+                        : undefined);
+                    if (parent) {
+                      minDate = parent.startDate;
+                      maxDate = parent.endDate;
+                    }
+                  }
+                  return (
+                    <FormItem>
+                      <FormLabel>End Date</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="date"
+                          {...field}
+                          min={minDate}
+                          max={maxDate}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
               />
             </div>
 
@@ -346,11 +498,17 @@ export function ActivityForm({
                     <FormControl>
                       <Input
                         type="number"
-                        step="0.1"
-                        min="0.1"
+                        step="0.25"
+                        min="0.25"
                         max="2.0"
                         {...field}
-                        onChange={(e) => field.onChange(Number(e.target.value))}
+                        onChange={(e) => {
+                          const value = Number(e.target.value);
+                          if (!isCalculating) {
+                            setLastUpdatedField("fte");
+                            field.onChange(value);
+                          }
+                        }}
                       />
                     </FormControl>
                     <FormDescription>
@@ -373,23 +531,32 @@ export function ActivityForm({
                     <FormControl>
                       <Input
                         type="number"
-                        min="1"
+                        step="1"
+                        min="0"
                         max="2000"
                         {...field}
-                        onChange={(e) => field.onChange(Number(e.target.value))}
-                        disabled={calculationMode === "auto" || !!formDetails}
+                        onChange={(e) => {
+                          const value = Number(e.target.value);
+                          if (!isCalculating) {
+                            setLastUpdatedField("duration");
+                            field.onChange(value);
+                          }
+                        }}
                       />
                     </FormControl>
-                    {calculationMode === "auto" ? (
-                      <FormDescription>
-                        Auto-calculated: {workingDays} days × 8 hours ×{" "}
-                        {form.getValues("fte")} FTE = {field.value} hours
-                      </FormDescription>
-                    ) : (
-                      <FormDescription>
-                        Enter duration manually in hours
-                      </FormDescription>
-                    )}
+
+                    <FormDescription>
+                      {workingDays > 0
+                        ? `${workingDays} working days × 8 hours × ${form.getValues(
+                            "fte",
+                          )} FTE = ${
+                            Math.round(
+                              workingDays * 8 * form.getValues("fte") * 10,
+                            ) / 10
+                          } hours (calculated)`
+                        : "Enter dates first to see calculation"}
+                    </FormDescription>
+
                     <FormMessage />
                   </FormItem>
                 )}
@@ -430,6 +597,84 @@ export function ActivityForm({
             )}
           </div>
 
+          {/* Sub-Activities List - Only show when editing an activity that has sub-activities */}
+          {sheetType === "activity" &&
+            formDetails &&
+            "subActivities" in formDetails &&
+            (() => {
+              // Use formDetails directly for consistency (not real-time store data)
+              // Filter out subactivities that are marked for deletion locally
+              const subActivities = (formDetails.subActivities || []).filter(
+                (sub) => !deletedSubActivityIds.includes(sub.id),
+              );
+
+              return subActivities.length > 0 ? (
+                <div className="px-4">
+                  <Card className="py-5">
+                    <CardHeader>
+                      <CardTitle className="text-sm">Sub-Activities</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3 text-sm">
+                      {subActivities.map((subActivity) => (
+                        <div
+                          key={subActivity.id}
+                          className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50"
+                        >
+                          <div className="flex-1">
+                            <div className="font-medium">
+                              {subActivity.activity}
+                            </div>
+                            <div className="text-sm text-muted-foreground flex items-center gap-4">
+                              <span>
+                                {subActivity.startDate} - {subActivity.endDate}
+                              </span>
+                              <span>{subActivity.duration} hours</span>
+                              <span>FTE: {subActivity.fte}</span>
+                              {subActivity.role && (
+                                <Badge variant="outline" className="text-xs">
+                                  {subActivity.role}
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() =>
+                                onEditSubActivity?.(
+                                  subActivity,
+                                  formDetails as ProjectActivity,
+                                )
+                              }
+                              className="h-8 w-8 p-0"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() =>
+                                handleDeleteSubActivityLocally(
+                                  subActivity.id,
+                                  subActivity.activity,
+                                )
+                              }
+                              className="h-8 w-8 p-0 text-red-500 hover:text-red-600 hover:bg-red-50"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </CardContent>
+                  </Card>
+                </div>
+              ) : null;
+            })()}
+
           <SheetFooter className="flex gap-2">
             <Button type="submit" disabled={form.formState.isSubmitting}>
               {form.formState.isSubmitting
@@ -444,6 +689,34 @@ export function ActivityForm({
           </SheetFooter>
         </form>
       </Form>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog
+        open={deleteConfirmation.isOpen}
+        onOpenChange={(open) =>
+          setDeleteConfirmation({ ...deleteConfirmation, isOpen: open })
+        }
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action will remove the sub-activity{" "}
+              <strong>{deleteConfirmation.subActivityName}</strong> from this
+              form. The deletion will be applied when you update the activity.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteSubActivity}
+              className="bg-red-500 hover:bg-red-600 text-white"
+            >
+              Remove Sub-Activity
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </SheetContent>
   );
 }

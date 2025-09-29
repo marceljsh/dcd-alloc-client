@@ -223,7 +223,7 @@ export function AddProjectForm({ onCancel }: { onCancel: () => void }) {
                       field.onChange(
                         e.target.value === ""
                           ? undefined
-                          : Number(e.target.value)
+                          : Number(e.target.value),
                       )
                     }
                   />
@@ -309,7 +309,7 @@ export function AddProjectForm({ onCancel }: { onCancel: () => void }) {
                       if (newStage && !field.value.includes(newStage)) {
                         field.onChange(
                           [...field.value, newStage],
-                          setInputStage("")
+                          setInputStage(""),
                         );
                       }
                     }}
@@ -325,14 +325,14 @@ export function AddProjectForm({ onCancel }: { onCancel: () => void }) {
                     onChange={(newOrder) => field.onChange(newOrder)}
                     onDelete={(name) =>
                       field.onChange(
-                        field.value.filter((stage) => stage !== name)
+                        field.value.filter((stage) => stage !== name),
                       )
                     }
                     onRename={(oldName, newName) =>
                       field.onChange(
                         field.value.map((stage) =>
-                          stage === oldName ? newName : stage
-                        )
+                          stage === oldName ? newName : stage,
+                        ),
                       )
                     }
                   />

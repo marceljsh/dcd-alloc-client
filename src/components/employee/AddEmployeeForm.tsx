@@ -22,7 +22,12 @@ import {
 } from "@/components/ui/select";
 import { useState } from "react";
 import { toast } from "sonner";
-import { employeeLevels, employeeRoles, employmentStatuses, teams } from "@/types/common";
+import {
+  employeeLevels,
+  employeeRoles,
+  employmentStatuses,
+  teams,
+} from "@/types/common";
 
 async function getSignedUploadUrl(args: { path: string; bucket?: string }) {
   const res = await fetch("/api/storage/signed-upload-url", {
@@ -46,7 +51,7 @@ async function uploadViaSignedUrlWithToken(
   bucket: string,
   path: string,
   token: string,
-  file: File
+  file: File,
 ) {
   const { supabase } = await import("@/lib/supabaseClient");
   const { error } = await supabase.storage
@@ -108,7 +113,7 @@ export function AddEmployeeForm({ onSubmit, onCancel }: AddEmployeeFormProps) {
   const [contractFile, setContractFile] = useState<File | null>(null);
 
   async function uploadContractFileIfNeeded(
-    currentStatus: string | undefined
+    currentStatus: string | undefined,
   ): Promise<string | undefined> {
     if (currentStatus !== "Contract" || !contractFile) return undefined;
 

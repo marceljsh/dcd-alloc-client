@@ -40,8 +40,6 @@ export default function RoleAssignmentPage() {
     systemAnalyst: initialRoleConfig,
   });
 
-  
-
   const handleNext = () => {
     console.log("Moving to next step with configuration:", {
       maxTeamSize,
@@ -69,8 +67,8 @@ export default function RoleAssignmentPage() {
             isCompleted
               ? "bg-teal-600 border-teal-600 text-white"
               : isActive
-              ? "bg-teal-600 border-teal-600 text-white"
-              : "border-gray-300 text-gray-400"
+                ? "bg-teal-600 border-teal-600 text-white"
+                : "border-gray-300 text-gray-400"
           }`}
       >
         {isCompleted ? <CheckCircle className="w-4 h-4" /> : step}

@@ -1,112 +1,157 @@
-import { EmployeeUtilization } from "@/types/employee"
-import { useMemo } from "react"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { DateRange } from "@/types/common"
-import { backgroundByRole, generateWeeklyUtilization, getUtilizationCellColor } from "@/lib/utils"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { initials } from "@/lib/strings"
+import { EmployeeUtilization } from "@/types/employee";
+import { useMemo } from "react";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { DateRange } from "@/types/common";
+import {
+  backgroundByRole,
+  generateWeeklyUtilization,
+  getUtilizationCellColor,
+} from "@/lib/utils";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { initials } from "@/lib/strings";
 
 interface EmployeeByTeamRowsProps {
-  team: string
-  members: EmployeeUtilization[]
-  dateRanges: DateRange[]
+  team: string;
+  members: EmployeeUtilization[];
+  dateRanges: DateRange[];
 }
 
-function EmployeeByTeamRows({ team, members, dateRanges }: EmployeeByTeamRowsProps) {
-  const utilizationAvg = members.reduce((sum, member) => sum + member.utilization, 0) / members.length
+function EmployeeByTeamRows({
+  team,
+  members,
+  dateRanges,
+}: EmployeeByTeamRowsProps) {
+  const utilizationAvg =
+    members.reduce((sum, member) => sum + member.utilization, 0) /
+    members.length;
 
   return (
     <>
-    {/* Team Header Row */}
-    <TableRow className="bg-muted/50 hover:bg-muted/70">
-      <TableCell className="font-semibold text-sm">{team}</TableCell>
-      <TableCell className="text-center font-medium"></TableCell>
-      <TableCell className="text-center font-medium"></TableCell>
-      {/* <TableCell className="text-center font-medium">{utilizationAvg.toFixed(1)}%</TableCell> */}
-      <TableCell className="text-center font-medium"></TableCell>
-      {dateRanges.map((_, idx) => {
-        const teamWeeklyTotal = members.reduce((acc, emp) => {
-            const weeklyData = generateWeeklyUtilization(emp, dateRanges)
-            return acc + weeklyData[idx]
-          }, 0)
-        const teamWeeklyAvg = teamWeeklyTotal / members.length
+      {/* Team Header Row */}
+      <TableRow className="bg-muted/50 hover:bg-muted/70">
+        <TableCell className="font-semibold text-sm">{team}</TableCell>
+        <TableCell className="text-center font-medium"></TableCell>
+        <TableCell className="text-center font-medium"></TableCell>
+        {/* <TableCell className="text-center font-medium">{utilizationAvg.toFixed(1)}%</TableCell> */}
+        <TableCell className="text-center font-medium"></TableCell>
+        {dateRanges.map((_, idx) => {
+          const teamWeeklyTotal = members.reduce((acc, emp) => {
+            const weeklyData = generateWeeklyUtilization(emp, dateRanges);
+            return acc + weeklyData[idx];
+          }, 0);
+          const teamWeeklyAvg = teamWeeklyTotal / members.length;
+
+          return (
+            // <TableCell
+            //   key={idx}
+            //   className={`text-center font-medium ${getUtilizationCellColor(teamWeeklyAvg)}`}
+            // >
+            //   {teamWeeklyAvg.toFixed(1)}%
+            // </TableCell>
+            <TableCell
+              key={idx}
+              className="text-center font-medium"
+            ></TableCell>
+          );
+        })}
+      </TableRow>
+
+      {/* Individual Employee Rows */}
+      {members.map((employee) => {
+        const weeklyUtilization = generateWeeklyUtilization(
+          employee,
+          dateRanges,
+        );
+        const totalCapacity = 240; // 40 hours * 6 weeks
+        const utilizedCapacity = (employee.utilization / 100) * totalCapacity;
 
         return (
-          // <TableCell
-          //   key={idx}
-          //   className={`text-center font-medium ${getUtilizationCellColor(teamWeeklyAvg)}`}
-          // >
-          //   {teamWeeklyAvg.toFixed(1)}%
-          // </TableCell>
-          <TableCell key={idx} className="text-center font-medium"></TableCell>
-        )
-      })}
-    </TableRow>
-
-    {/* Individual Employee Rows */}
-    {members.map((employee) => {
-      const weeklyUtilization = generateWeeklyUtilization(employee, dateRanges)
-      const totalCapacity = 240 // 40 hours * 6 weeks
-      const utilizedCapacity = (employee.utilization / 100) * totalCapacity
-
-      return (
-        <TableRow key={employee.id} className="hover:bg-muted/30">
-          <TableCell className="pl-6">
-            <div className="flex items-center space-x-2">
-              <Avatar className="h-6 w-6">
-                <AvatarFallback className={`text-xs font-mono text-background ${backgroundByRole(employee.role)}`}>
-                  {initials(employee.name)}
-                </AvatarFallback>
-              </Avatar>
-              <span className="text-sm">{employee.name}</span>
-            </div>
-          </TableCell>
-          <TableCell className="text-center">{totalCapacity.toFixed(1)}</TableCell>
-          <TableCell className="text-center">{utilizedCapacity.toFixed(1)}</TableCell>
-          <TableCell className="text-center">{employee.utilization.toFixed(2)}%</TableCell>
-          {weeklyUtilization.map((utilization, index) => (
-            <TableCell key={index} className={`text-center font-medium ${getUtilizationCellColor(utilization)}`}>
-              {utilization.toFixed(1)}%
+          <TableRow key={employee.id} className="hover:bg-muted/30">
+            <TableCell className="pl-6">
+              <div className="flex items-center space-x-2">
+                <Avatar className="h-6 w-6">
+                  <AvatarFallback
+                    className={`text-xs font-mono text-background ${backgroundByRole(employee.role)}`}
+                  >
+                    {initials(employee.name)}
+                  </AvatarFallback>
+                </Avatar>
+                <span className="text-sm">{employee.name}</span>
+              </div>
             </TableCell>
-          ))}
-        </TableRow>
-      )
-    })}
+            <TableCell className="text-center">
+              {totalCapacity.toFixed(1)}
+            </TableCell>
+            <TableCell className="text-center">
+              {utilizedCapacity.toFixed(1)}
+            </TableCell>
+            <TableCell className="text-center">
+              {employee.utilization.toFixed(2)}%
+            </TableCell>
+            {weeklyUtilization.map((utilization, index) => (
+              <TableCell
+                key={index}
+                className={`text-center font-medium ${getUtilizationCellColor(utilization)}`}
+              >
+                {utilization.toFixed(1)}%
+              </TableCell>
+            ))}
+          </TableRow>
+        );
+      })}
     </>
-  )
+  );
 }
 
-export default function EmployeeHeatmap({ employees }: { employees: EmployeeUtilization[] }) {
+export default function EmployeeHeatmap({
+  employees,
+}: {
+  employees: EmployeeUtilization[];
+}) {
   const dateRanges = useMemo(() => {
-    const ranges = []
-    const startDate = new Date()
-    startDate.setDate(startDate.getDate() - 35)
+    const ranges = [];
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - 35);
 
     for (let i = 0; i < 6; i++) {
-      const weekStart = new Date(startDate)
-      weekStart.setDate(startDate.getDate() - 35)
-      const weekEnd = new Date(weekStart)
-      weekEnd.setDate(weekStart.getDate() + 6)
+      const weekStart = new Date(startDate);
+      weekStart.setDate(startDate.getDate() - 35);
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekStart.getDate() + 6);
 
-      const startLabel = weekStart.toLocaleDateString("en-US", { month: "short", day: "numeric" })
-      const endLabel = weekEnd.toLocaleDateString("en-US", { month: "short", day: "numeric" })
+      const startLabel = weekStart.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+      });
+      const endLabel = weekEnd.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+      });
 
       ranges.push({
         label: `${startLabel} - ${endLabel}`,
         start: weekStart,
         end: weekEnd,
-      })
+      });
     }
 
-    return ranges
-  }, [])
+    return ranges;
+  }, []);
 
-  const teams = [...new Set(employees.map((emp) => emp.team))]
+  const teams = [...new Set(employees.map((emp) => emp.team))];
 
   return (
     <div className="space-y-6">
       <div className="text-sm text-muted-foreground mb-4">
-        Resource Utilization Report - Period: {dateRanges[0]?.label} to {dateRanges[dateRanges.length - 1]?.label}
+        Resource Utilization Report - Period: {dateRanges[0]?.label} to{" "}
+        {dateRanges[dateRanges.length - 1]?.label}
       </div>
 
       {/* Legend */}
@@ -145,7 +190,9 @@ export default function EmployeeHeatmap({ employees }: { employees: EmployeeUtil
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-white">
-              <TableHead className="w-48 font-semibold">Team / Person</TableHead>
+              <TableHead className="w-48 font-semibold">
+                Team / Person
+              </TableHead>
               <TableHead className="text-center font-semibold">
                 Total Available
                 <br />
@@ -160,7 +207,10 @@ export default function EmployeeHeatmap({ employees }: { employees: EmployeeUtil
                 Utilization Rate
               </TableHead>
               {dateRanges.map((range, idx) => (
-                <TableHead className="text-center font-semibold min-w-24" key={idx}>
+                <TableHead
+                  className="text-center font-semibold min-w-24"
+                  key={idx}
+                >
                   {range.label}
                 </TableHead>
               ))}
@@ -179,5 +229,5 @@ export default function EmployeeHeatmap({ employees }: { employees: EmployeeUtil
         </Table>
       </div>
     </div>
-  )
+  );
 }
