@@ -1,47 +1,81 @@
-"use client"
+"use client";
 
-import { useState, useTransition } from "react"
-import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Toaster } from "@/components/ui/sonner"
-import Image from "next/image"
-import { toast } from "sonner"
-import { Eye, EyeClosed, UserPlus } from "lucide-react"
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Toaster } from "@/components/ui/sonner";
+import Image from "next/image";
+import { toast } from "sonner";
+import { Eye, EyeClosed, UserPlus } from "lucide-react";
+import Link from "next/link";
 
 export default function SignInPage() {
-  const router = useRouter()
-  const [isPending, startTransition] = useTransition()
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [showPassword, setShowPassword] = useState(false)
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
+    e.preventDefault();
 
-    if (isSubmitting) return // Prevent double submission
+    if (isSubmitting) return;
 
-    setIsSubmitting(true)
+    setIsSubmitting(true);
 
-    const loginPromise = new Promise<void>((resolve) => {
-      setTimeout(() => {
-        resolve()
-      }, 2000)
-    })
+    const formData = new FormData(e.currentTarget);
+    const email = formData.get("email") as string;
+    const password = formData.get("password") as string;
+
+    const isDevelopment = process.env.NODE_ENV === "development";
+    console.log(process.env.NODE_ENV);
+
+    const loginPromise = new Promise<void>((resolve, reject) => {
+      if (isDevelopment) {
+        setTimeout(() => {
+          if (email && password) {
+            resolve();
+          } else {
+            reject(new Error("Please fill in all fields"));
+          }
+        }, 500);
+      } else {
+        setTimeout(() => {
+          const isValidEmail = email && email.includes("@bankmandiri.co.id");
+          const isValidPassword = password && password.length >= 8;
+
+          if (!isValidEmail) {
+            reject(new Error("Please use a valid Bank Mandiri email address"));
+          } else if (!isValidPassword) {
+            reject(new Error("Password must be at least 8 characters long"));
+          } else {
+            resolve();
+          }
+        }, 2000);
+      }
+    });
 
     toast.promise(loginPromise, {
-      loading: 'Signing you in...',
+      loading: isDevelopment
+        ? "Quick sign in..."
+        : "Authenticating securely...",
       success: () => {
         startTransition(() => {
-          router.push('/dashboard')
-        })
-        return 'Signed in successfully!'
+          router.push("/dashboard");
+        });
+        return isDevelopment
+          ? "Signed in (dev mode)!"
+          : "Signed in successfully!";
       },
-      error: 'Something went wrong. Try again.',
-    })
-  }
+      error: (error) => {
+        setIsSubmitting(false);
+        return error.message || "Something went wrong. Try again.";
+      },
+    });
+  };
 
-  const isDisabled = isSubmitting || isPending
+  const isDisabled = isSubmitting || isPending;
 
   return (
     <div className="bg-background flex min-h-svh flex-col items-center justify-center gap-6 p-6 md:p-10">
@@ -50,14 +84,25 @@ export default function SignInPage() {
           <form onSubmit={handleSubmit}>
             <div className="flex flex-col gap-6">
               <div className="flex flex-col items-center gap-2">
-                <a href="/" className="flex flex-col items-center gap-2 font-medium">
+                <Link
+                  href="/"
+                  className="flex flex-col items-center gap-2 font-medium"
+                >
                   <div className="flex size-8 items-center justify-center rounded-md">
-                    <Image src="/bmri-icon.png" alt="BMRI Icon" width={32} height={32} />
+                    <Image
+                      src="/bmri-icon.png"
+                      alt="BMRI Icon"
+                      width={32}
+                      height={32}
+                    />
                   </div>
-                </a>
+                </Link>
                 <h1 className="text-xl font-bold">Welcome to DCD</h1>
                 <div className="text-center text-sm">
-                  Don&apos;t have an account? <a href="#" className="underline underline-offset-4">Sign up</a>
+                  Don&apos;t have an account?{" "}
+                  <a href="#" className="underline underline-offset-4">
+                    Sign up
+                  </a>
                 </div>
               </div>
 
@@ -66,6 +111,7 @@ export default function SignInPage() {
                   <Label htmlFor="email">Email</Label>
                   <Input
                     id="email"
+                    name="email"
                     required
                     type="email"
                     placeholder="example@bankmandiri.co.id"
@@ -79,6 +125,7 @@ export default function SignInPage() {
                   <div className="relative">
                     <Input
                       id="password"
+                      name="password"
                       required
                       type={showPassword ? "text" : "password"}
                       placeholder="••••••••"
@@ -87,22 +134,35 @@ export default function SignInPage() {
                     />
                     <button
                       type="button"
-                      onClick={() => setShowPassword(prev => !prev)}
+                      onClick={() => setShowPassword((prev) => !prev)}
                       className="absolute right-2 top-1/2 -translate-y-1/2 text-sm text-muted-foreground hover:underline"
-                      aria-label={showPassword ? "Hide password" : "Show password"}
+                      aria-label={
+                        showPassword ? "Hide password" : "Show password"
+                      }
                     >
-                      {showPassword ? <Eye className="h-4 w-4" /> : <EyeClosed className="h-4 w-4" />}
+                      {showPassword ? (
+                        <Eye className="h-4 w-4" />
+                      ) : (
+                        <EyeClosed className="h-4 w-4" />
+                      )}
                     </button>
                   </div>
 
                   <div className="w-full flex justify-end">
-                    <a href="#" className="text-sm underline underline-offset-4">
+                    <a
+                      href="#"
+                      className="text-sm underline underline-offset-4"
+                    >
                       Forgot password?
                     </a>
                   </div>
                 </div>
 
-                <Button type="submit" disabled={isDisabled} className="w-full bg-sky-900 hover:bg-sky-700">
+                <Button
+                  type="submit"
+                  disabled={isDisabled}
+                  className="w-full bg-sky-900 hover:bg-sky-700"
+                >
                   {isDisabled ? "Signing in..." : "Sign In"}
                 </Button>
               </div>
@@ -111,7 +171,11 @@ export default function SignInPage() {
                   Or
                 </span>
               </div>
-              <Button variant="outline" type="button" className="w-full bg-zinc-900 hover:bg-zinc-700 hover:text-white text-white">
+              <Button
+                variant="outline"
+                type="button"
+                className="w-full bg-zinc-900 hover:bg-zinc-700 hover:text-white text-white"
+              >
                 <UserPlus className="mr-2 h-4 w-4" />
                 Sign Up
               </Button>
@@ -121,5 +185,5 @@ export default function SignInPage() {
       </div>
       <Toaster theme="light" position="bottom-center" richColors />
     </div>
-  )
+  );
 }

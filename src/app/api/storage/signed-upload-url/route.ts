@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
     if (!path || typeof path !== "string") {
       return NextResponse.json(
         { error: "Missing or invalid 'path'" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
     if (!supabaseUrl || !serviceKey) {
       return NextResponse.json(
         { error: "Server storage is not configured. Missing SUPABASE envs." },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
     if (error || !data) {
       return NextResponse.json(
         { error: error?.message || "Failed to create signed URL" },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
   } catch (err: any) {
     return NextResponse.json(
       { error: err?.message || "Unexpected server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

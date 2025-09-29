@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    template: 'DCD | %s', // %s will be replaced by the page-specific title
-    default: 'DCD', // Default title if no specific page title is provided
+    template: "DCD | %s", // %s will be replaced by the page-specific title
+    default: "DCD", // Default title if no specific page title is provided
   },
   description: "Created by and for BMRI",
 };
@@ -27,7 +27,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body id="layout-root" className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+      <body
+        id="layout-root"
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+      >
         {children}
       </body>
     </html>

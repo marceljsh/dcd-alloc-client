@@ -47,10 +47,10 @@ export function StepIndicator({
                   isActive
                     ? "bg-primary text-primary-foreground shadow-md"
                     : isCompleted
-                    ? "text-primary hover:bg-primary/10"
-                    : isClickable
-                    ? "text-muted-foreground hover:bg-muted/50"
-                    : "cursor-not-allowed text-muted-foreground/50"
+                      ? "text-primary hover:bg-primary/10"
+                      : isClickable
+                        ? "text-muted-foreground hover:bg-muted/50"
+                        : "cursor-not-allowed text-muted-foreground/50"
                 }`}
               onClick={() => isClickable && onStepClick(step.id)}
             >

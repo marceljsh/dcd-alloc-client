@@ -1,9 +1,15 @@
-import { Employee } from '@/types/employee';
-import { Card } from '@/components/ui/card';
-import { Avatar } from '@/components/ui/avatar';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { initials } from '@/lib/strings';
-import { backgroundByRole } from '@/lib/utils';
+import { Employee } from "@/types/employee";
+import { Card } from "@/components/ui/card";
+import { Avatar } from "@/components/ui/avatar";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { initials } from "@/lib/strings";
+import { backgroundByRole } from "@/lib/utils";
 
 interface EmployeeListProps {
   employees: Employee[];
@@ -20,7 +26,11 @@ interface EmployeeItemProps {
   onAssignEmployee: (taskId: string, employee: Employee) => void;
 }
 
-function EmployeeItem({ employee, selectedTaskId, onAssignEmployee }: EmployeeItemProps) {
+function EmployeeItem({
+  employee,
+  selectedTaskId,
+  onAssignEmployee,
+}: EmployeeItemProps) {
   const handleClick = () => {
     if (selectedTaskId) {
       onAssignEmployee(selectedTaskId, employee);
@@ -30,13 +40,17 @@ function EmployeeItem({ employee, selectedTaskId, onAssignEmployee }: EmployeeIt
   return (
     <Card
       className={`cursor-pointer p-3 transition-all scale-95 ${
-        selectedTaskId ? 'hover:bg-accent border-primary/20 shadow-sm hover:scale-100' : 'hover:bg-accent/50 cursor-default'
+        selectedTaskId
+          ? "hover:bg-accent border-primary/20 shadow-sm hover:scale-100"
+          : "hover:bg-accent/50 cursor-default"
       }`}
       onClick={handleClick}
     >
       <div className="flex items-center gap-3">
         <Avatar className="h-10 w-10">
-          <div className={`${backgroundByRole(employee.role)} text-primary-foreground flex h-full w-full items-center justify-center font-mono`}>
+          <div
+            className={`${backgroundByRole(employee.role)} text-primary-foreground flex h-full w-full items-center justify-center font-mono`}
+          >
             {initials(employee.name)}
           </div>
         </Avatar>
@@ -50,7 +64,12 @@ function EmployeeItem({ employee, selectedTaskId, onAssignEmployee }: EmployeeIt
 }
 
 export function EmployeeList({
-  employees, selectedTaskId, roleFilter, onRoleFilterChange, uniqueRoles, onAssignEmployee
+  employees,
+  selectedTaskId,
+  roleFilter,
+  onRoleFilterChange,
+  uniqueRoles,
+  onAssignEmployee,
 }: EmployeeListProps) {
   return (
     <div className="space-y-3 h-[67vh] flex flex-col">
@@ -71,10 +90,10 @@ export function EmployeeList({
             <SelectValue placeholder="Select Role" />
           </SelectTrigger>
           <SelectContent>
-            {uniqueRoles.map(role => (
+            {uniqueRoles.map((role) => (
               <SelectItem key={role} value={role}>
                 <span className="font-mono">
-                  {role === 'all' ? 'All Roles' : role}
+                  {role === "all" ? "All Roles" : role}
                 </span>
               </SelectItem>
             ))}
@@ -84,14 +103,15 @@ export function EmployeeList({
 
       <div className="bg-muted text-muted-foreground rounded p-3 text-sm">
         <p>
-          💡 <strong>Tip:</strong> Click on employees to assign them to the selected task.
+          💡 <strong>Tip:</strong> Click on employees to assign them to the
+          selected task.
         </p>
       </div>
 
       {/* Employee List → satu scroll */}
       <div className="flex-1 overflow-x-hidden overflow-y-auto pr-1 space-y-2">
         {employees.length > 0 ? (
-          employees.map(employee => (
+          employees.map((employee) => (
             <EmployeeItem
               key={employee.id}
               employee={employee}
@@ -115,5 +135,5 @@ export function EmployeeList({
         )}
       </div>
     </div>
-  )
+  );
 }

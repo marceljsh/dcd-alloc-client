@@ -112,7 +112,7 @@ export default function ProjectsPage() {
   const router = useRouter();
   const [activeDialog, setActiveDialog] = useState<ActiveDialog>(null);
   const [selectedProject, setSelectedProject] = useState<ProjectRow | null>(
-    null
+    null,
   );
 
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
@@ -120,7 +120,7 @@ export default function ProjectsPage() {
   const [selectedTeams, setSelectedTeams] = useState<string[]>([]);
 
   const [projects, setProjects] = useState<ProjectRow[]>(
-    () => rawProjects as ProjectRow[]
+    () => rawProjects as ProjectRow[],
   );
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
@@ -130,7 +130,7 @@ export default function ProjectsPage() {
     const stored = JSON.parse(localStorage.getItem("archivedProjects") || "[]");
     localStorage.setItem(
       "archivedProjects",
-      JSON.stringify([...stored, project])
+      JSON.stringify([...stored, project]),
     );
 
     setProjects((prev) => prev.filter((p) => p.code !== project.code));
@@ -254,7 +254,7 @@ export default function ProjectsPage() {
         },
       },
     ],
-    []
+    [],
   );
 
   const table = useReactTable({
@@ -279,7 +279,7 @@ export default function ProjectsPage() {
     (
       columnId: string,
       currentSelection: string[],
-      setter: React.Dispatch<React.SetStateAction<string[]>>
+      setter: React.Dispatch<React.SetStateAction<string[]>>,
     ) =>
     (value: string, checked: boolean) => {
       const newSelection = checked
@@ -295,17 +295,17 @@ export default function ProjectsPage() {
   const handleCategoryChange = handleFilterChange(
     "category",
     selectedCategories,
-    setSelectedCategories
+    setSelectedCategories,
   );
   const handlePriorityChange = handleFilterChange(
     "priority",
     selectedPriorities,
-    setSelectedPriorities
+    setSelectedPriorities,
   );
   const handleTeamChange = handleFilterChange(
     "team",
     selectedTeams,
-    setSelectedTeams
+    setSelectedTeams,
   );
 
   const handleAddProject = (e: MouseEvent) => {
@@ -330,7 +330,7 @@ export default function ProjectsPage() {
           projects.length
         : 0,
     }),
-    [projects]
+    [projects],
   );
 
   // --- RENDER ---
@@ -535,7 +535,7 @@ const ProjectsDataTable = ({
                 <div className="flex items-center gap-2">
                   {flexRender(
                     header.column.columnDef.header,
-                    header.getContext()
+                    header.getContext(),
                   )}
                   {{ asc: "▲", desc: "▼" }[
                     header.column.getIsSorted() as string

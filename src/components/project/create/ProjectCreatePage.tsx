@@ -6,12 +6,22 @@ import {
   ResizablePanel,
   ResizableHandle,
 } from "@/components/ui/resizable";
-import { PlusIcon } from "lucide-react";
 import { Button } from "../../ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "../../ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import {
   Select,
   SelectContent,
@@ -24,6 +34,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ActivityForm } from "./ActivityForm";
 import { GanttPanel } from "./Gantt";
 import { ActivitiesPanel } from "./LeftPanel";
+import { GanttToolbar, FteViewMode } from "./GanttToolbar";
 
 import { initialProjectData } from "@/data/projects";
 import { useProject, useProjectDetails } from "@/hooks/projects/use-project";
@@ -37,6 +48,8 @@ type ProjectPlannerProps = {
 
 export function ProjectCreatePage({ onNext }: ProjectPlannerProps) {
   const [isLoading, setIsLoading] = useState(true);
+  const [viewMode, setViewMode] = useState<FteViewMode>("normal");
+  const [showResetDialog, setShowResetDialog] = useState(false);
   const {
     activities,
     form,
@@ -192,7 +205,7 @@ export function ProjectCreatePage({ onNext }: ProjectPlannerProps) {
       </Card>
 
       <div>
-        <div className="mb-4">
+        <div className="mb-4 flex items-center justify-between">
           <NewItemButton
             onSelect={(type) => {
               if (type === "subactivity") {
@@ -203,6 +216,7 @@ export function ProjectCreatePage({ onNext }: ProjectPlannerProps) {
               }
             }}
           />
+          <GanttToolbar viewMode={viewMode} onViewModeChange={setViewMode} />
         </div>
 
         <ScrollArea className="border rounded-lg">
@@ -225,6 +239,7 @@ export function ProjectCreatePage({ onNext }: ProjectPlannerProps) {
                   groupedDates={groupedDates}
                   data={activities}
                   expandedItems={expandedItems}
+                  viewMode={viewMode}
                 />
               </ResizablePanel>
             </ResizablePanelGroup>
@@ -248,20 +263,56 @@ export function ProjectCreatePage({ onNext }: ProjectPlannerProps) {
               onSubmit={(entity) =>
                 handleFormSubmit(entity, form.type, form.mode)
               }
+              onEditSubActivity={(subActivity, parentActivity) =>
+                handleAction({
+                  type: "edit-sub",
+                  parent: parentActivity,
+                  sub: subActivity,
+                })
+              }
+              onDeleteSubActivity={(parentActivityId, subActivityId) =>
+                handleAction({
+                  type: "delete-sub",
+                  activityId: parentActivityId,
+                  subId: subActivityId,
+                })
+              }
             />
           </SheetContent>
         </Sheet>
 
         <div className="flex items-center justify-between mt-8 pt-4 border-t">
-          <Button
-            variant="ghost"
-            onClick={() => {
-              resetProject();
-            }}
-            className="text-red-500 hover:text-red-600 hover:bg-red-50"
-          >
-            Reset Form
-          </Button>
+          <AlertDialog open={showResetDialog} onOpenChange={setShowResetDialog}>
+            <AlertDialogTrigger asChild>
+              <Button
+                variant="ghost"
+                className="text-red-500 hover:text-red-600 hover:bg-red-50"
+              >
+                Reset Form
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This action will permanently delete all project data and
+                  activities. This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => {
+                    resetProject();
+                    setShowResetDialog(false);
+                  }}
+                  className="bg-red-500 hover:bg-red-600 text-white"
+                >
+                  Reset Form
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
           <div className="flex items-center gap-2">
             <Button
               variant="outline"

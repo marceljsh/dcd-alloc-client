@@ -13,12 +13,14 @@ interface GanttActivityRowProps {
     end: number;
   };
   datesLength: number;
+  viewMode?: "normal" | "fte-visualization";
 }
 
 export function GanttActivityRow({
   activity,
   getGridPosition,
   datesLength,
+  viewMode = "normal",
 }: GanttActivityRowProps) {
   const position = getGridPosition(activity);
 
@@ -35,6 +37,8 @@ export function GanttActivityRow({
         startPosition={position.start}
         endPosition={position.end}
         datesLength={datesLength}
+        fte={activity.fte}
+        viewMode={viewMode}
       />
 
       <AccordionContent className="pb-0">
@@ -55,6 +59,8 @@ export function GanttActivityRow({
                     endPosition={subPosition.end}
                     datesLength={datesLength}
                     isSubActivity={true}
+                    fte={subActivity.fte}
+                    viewMode={viewMode}
                   />
                 </div>
               );

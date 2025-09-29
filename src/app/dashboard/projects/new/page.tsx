@@ -2,7 +2,6 @@
 import { useEffect } from "react";
 import { ProjectCreatePage } from "@/components/project/create/ProjectCreatePage";
 import { StepIndicator } from "@/components/project/create/StepIndicator";
-import SettingRole from "@/components/project/role/SettingRole";
 import { ProjectResults } from "@/components/project/results/ProjectResults";
 import { RoleLevel } from "@/components/ProjectManagement";
 import { Card, CardContent } from "@/components/ui/card";
@@ -11,46 +10,98 @@ import { useSidebar } from "@/components/ui/sidebar";
 
 import { ResultCSV } from "@/lib/storage";
 import { ProjectData } from "@/types/projects";
-import { useState } from "react";
+import { useState, useCallback } from "react";
+import ProjectAssignment from "@/components/project/assignment/ProjectAssignment";
 
 export default function ProjectCreate() {
   const [currentStep, setCurrentStep] = useState(1);
   const [projectData, setProjectData] = useState<ProjectData | null>(null);
   const [roleLevels, setRoleLevels] = useState<RoleLevel[]>([]);
   const [estimationResults, setEstimationResults] = useState<ResultCSV[]>([]);
-  const { activities } = useProject();
+
+  // Get project data from store - this will persist across steps
+  const { activities, projectDetails } = useProject();
   const { setOpen } = useSidebar();
 
-  // Close sidebar when component mounts
   useEffect(() => {
     setOpen(false);
   }, [setOpen]);
 
+  // Debug log to track activities data
+  useEffect(() => {
+    console.log("Current step:", currentStep);
+    console.log("Activities data:", activities);
+    console.log("Project details:", projectDetails);
+  }, [currentStep, activities, projectDetails]);
+
   const steps = [
     { id: 1, name: "Project Input", description: "Basic project information" },
     { id: 2, name: "Results", description: "Resource estimation" },
-    { id: 3, name: "Project Assignment", description: "What-if analysis" },
+    { id: 3, name: "Project Assignment", description: "Team assignment" },
   ];
 
-  const goToStep = (step: number) => {
-    if (step <= currentStep) {
-      setCurrentStep(step);
-      return;
-    }
+  // Enhanced goToStep function with data validation and persistence
+  const goToStep = useCallback(
+    async (step: number) => {
+      console.log(`Attempting to go to step ${step}`);
 
-    if (step === 2) {
-      setCurrentStep(step);
-    } else if (step === 3) {
-      setCurrentStep(step);
-    } else if (
-      step === 4 &&
-      projectData &&
-      roleLevels.length > 0 &&
-      estimationResults.length > 0
-    ) {
-      setCurrentStep(step);
-    }
-  };
+      // Allow going back to previous steps
+      if (step <= currentStep) {
+        setCurrentStep(step);
+        return;
+      }
+
+      // Validate data before proceeding to next step
+      if (step === 2) {
+        // Check if we have activities and project details
+        if (activities.length === 0) {
+          console.warn("No activities found, cannot proceed to step 2");
+          // You can show a toast notification here
+          return;
+        }
+
+        if (!projectDetails.name.trim()) {
+          console.warn("Project name is required");
+          return;
+        }
+
+        // TODO: Save project data to backend using axios/TanStack Query
+        // const projectPayload = {
+        //   projectDetails,
+        //   activities,
+        // };
+        // await saveProjectDraft(projectPayload);
+
+        setCurrentStep(step);
+      } else if (step === 3) {
+        // TODO: Generate estimation results using backend API
+        // const estimationPayload = {
+        //   activities,
+        //   projectDetails,
+        // };
+        // const results = await generateEstimation(estimationPayload);
+        // setEstimationResults(results);
+
+        setCurrentStep(step);
+      } else if (step === 4) {
+        // Final validation before completing
+        if (activities.length === 0) {
+          console.warn("Cannot complete project without activities");
+          return;
+        }
+
+        // TODO: Save final project using axios
+        // await saveProject({
+        //   projectDetails,
+        //   activities,
+        //   assignments: assignmentData
+        // });
+
+        setCurrentStep(step);
+      }
+    },
+    [currentStep, activities, projectDetails],
+  );
 
   return (
     <div className="space-y-6 mx-10">
@@ -89,12 +140,23 @@ export default function ProjectCreate() {
 
         {currentStep === 2 && (
           <ProjectResults
-            onNext={() => goToStep(4)}
-            onPrevious={() => goToStep(2)}
+            teamComposition={[]} // TODO: Generate from activities data
+            activities={activities.map((activity) => ({
+              id: activity.id,
+              name: activity.activity,
+              date_range: `${activity.startDate} - ${activity.endDate}`,
+            }))}
+            onNext={() => goToStep(3)}
+            onPrevious={() => goToStep(1)}
           />
         )}
 
-        {currentStep === 3 && <></>}
+        {currentStep === 3 && (
+          <ProjectAssignment
+            onPrevious={() => goToStep(2)}
+            onNext={() => goToStep(4)}
+          />
+        )}
       </div>
     </div>
   );

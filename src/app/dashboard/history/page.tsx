@@ -147,7 +147,7 @@ export default function HistoryPage() {
           new Date(row.getValue("endDate")).toLocaleDateString("id-ID"),
       },
     ],
-    []
+    [],
   );
 
   const table = useReactTable({
@@ -172,7 +172,7 @@ export default function HistoryPage() {
     (
       columnId: string,
       currentSelection: string[],
-      setter: React.Dispatch<React.SetStateAction<string[]>>
+      setter: React.Dispatch<React.SetStateAction<string[]>>,
     ) =>
     (value: string, checked: boolean) => {
       const newSelection = checked
@@ -187,17 +187,17 @@ export default function HistoryPage() {
   const handleCategoryChange = handleFilterChange(
     "category",
     selectedCategories,
-    setSelectedCategories
+    setSelectedCategories,
   );
   const handlePriorityChange = handleFilterChange(
     "priority",
     selectedPriorities,
-    setSelectedPriorities
+    setSelectedPriorities,
   );
   const handleTeamChange = handleFilterChange(
     "team",
     selectedTeams,
-    setSelectedTeams
+    setSelectedTeams,
   );
 
   return (
@@ -325,7 +325,7 @@ const ProjectsDataTable = ({
                 <div className="flex items-center gap-2">
                   {flexRender(
                     header.column.columnDef.header,
-                    header.getContext()
+                    header.getContext(),
                   )}
                   {{ asc: "▲", desc: "▼" }[
                     header.column.getIsSorted() as string
