@@ -259,12 +259,16 @@ export default function ResourcesPage() {
 
           <div className="flex items-center gap-2">
 
-            <DateRangePicker
-              dateRange={dateRange}
-              onDateRangeChange={setDateRange}
-              placeholder={<span className="font-semibold">Period</span>}
-              data-testid="date-range-picker"
-            />
+
+           {viewMode === "heatmap" ? (
+               <DateRangePicker
+                 dateRange={dateRange}
+                 onDateRangeChange={setDateRange}
+                 placeholder={<span className="font-semibold">Period</span>}
+                 data-testid="date-range-picker"
+               />
+             ) : null}
+
             <FilterDropdown
               label="Role"
               options={employeeRoles}
@@ -296,20 +300,16 @@ export default function ResourcesPage() {
         </CardHeader>
         <CardContent>
               {viewMode === "heatmap" ? (
-                  <div className="h-[500px]"> 
-                    <div className="min-w-fit">
-                      <div className="w-[1000px] overflow-x-auto overflow-y-auto relative">
-                        <EmployeeHeatmap 
-                          employees={filteredEmployees.map(emp => ({
-                            ...emp,
-                            utilization: Math.random() * 100,
-                            currentProjects: [],
-                            hoursThisWeek: 0,
-                          }))}
-                        />
-                      </div>
-                    </div>
-                  </div>
+                <div className="relative rounded-md">
+                  <EmployeeHeatmap 
+                    employees={filteredEmployees.map(emp => ({
+                      ...emp,
+                      utilization: Math.random() * 100,
+                      currentProjects: [],
+                      hoursThisWeek: 0,
+                    }))}
+                  />
+                </div>
               )  : (
               <Table>
                 <TableHeader className="sticky top-0 z-10 bg-background shadow-sm">

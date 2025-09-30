@@ -1280,7 +1280,7 @@ export default function Page() {
       <Card className="shadow-sm mt-2">
         <CardHeader className="mt-2">
           <CardTitle className="text-lg font-semibold text-center">
-            Heatmap: Top 5 Utilization by Role
+            Top 5 Utilization by Role
           </CardTitle>
         </CardHeader>
         <CardContent>

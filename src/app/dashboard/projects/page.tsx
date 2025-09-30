@@ -234,7 +234,6 @@ export default function ProjectsPage() {
 
   useEffect(() => { setCurrentPage(1) }, [globalFilter, columnFilters])
 
-  // --- EVENT HANDLERS ---
   const handleFilterChange =
     (columnId: string, currentSelection: string[], setter: React.Dispatch<React.SetStateAction<string[]>>) =>
     (value: string, checked: boolean) => {

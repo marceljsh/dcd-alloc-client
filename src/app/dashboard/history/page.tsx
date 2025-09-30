@@ -59,6 +59,15 @@ const getPriorityColor = (priority: ProjectPriority) => {
   }
 }
 
+const PageHeader = ({ onAddProject }: { onAddProject: () => void }) => (
+  <div className="flex items-center justify-between mb-6">
+    <div>
+      <h1 className="text-3xl font-bold" data-testid="page-title">History</h1>
+      <p className="text-muted-foreground">Manage your last projects and track their result</p>
+    </div>
+  </div>
+)
+
 export default function HistoryPage() {
   const [history] = useState<ProjectRow[]>(initialHistory)
 
@@ -131,11 +140,11 @@ export default function HistoryPage() {
 
   return (
     <div className="space-y-6 mx-10">
+      <PageHeader onAddProject={() => {}} />
       <Card className="py-4">
         <CardHeader className="flex items-center justify-between">
           <CardTitle className="text-xl">History Projects</CardTitle>
           <div className="flex gap-2 items-center">
-            {/* --- Category Filter --- */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" className="flex items-center gap-2">
@@ -155,7 +164,6 @@ export default function HistoryPage() {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            {/* --- Priority Filter --- */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" className="flex items-center gap-2">
