@@ -74,7 +74,6 @@ export interface ProjectActivity {
   startDate: string;
   endDate: string;
   workload: number;
-  role: "SA" | "SE" | "DE";
   subActivities?: ProjectSubActivity[];
 }
 
@@ -87,6 +86,7 @@ export interface ProjectSubActivity {
   workload: number;
   fte: number;
   minimumLevel: "junior" | "middle" | "senior";
+  role: "SA" | "SE" | "DE";
 }
 
 export type EntityType = "activity" | "subactivity";

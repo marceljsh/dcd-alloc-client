@@ -67,7 +67,6 @@ export function ProjectCreatePage({ onNext }: ProjectPlannerProps) {
     initializeProject,
   } = useProject();
 
-  // Budget handling functions
   const formatBudgetValue = (value: string) => {
     const rawValue = value.replace(/\D/g, "");
     return rawValue ? Number(rawValue).toLocaleString("id-ID") : "";
@@ -98,14 +97,21 @@ export function ProjectCreatePage({ onNext }: ProjectPlannerProps) {
   } = useProjectDetails();
 
   useEffect(() => {
-    const loadData = async () => {
+    setIsLoading(true);
+
+    const loadDataFromLocal = async () => {
       await initializeProject(initialProjectData);
-      // Simulate loading time for better UX
       await new Promise((resolve) => setTimeout(resolve, 300));
       setIsLoading(false);
     };
-    loadData();
-  }, [initializeProject]);
+
+    if (activities.length === 0) {
+      loadDataFromLocal();
+    } else {
+      setIsLoading(false);
+    }
+    
+  }, [initializeProject, activities.length]);
 
   if (isLoading) {
     return <ProjectPlannerSkeleton />;

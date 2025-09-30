@@ -19,7 +19,6 @@ export default function ProjectCreate() {
   const [roleLevels, setRoleLevels] = useState<RoleLevel[]>([]);
   const [estimationResults, setEstimationResults] = useState<ResultCSV[]>([]);
 
-  // Get project data from store - this will persist across steps
   const { activities, projectDetails } = useProject();
   const { setOpen } = useSidebar();
 
@@ -40,23 +39,18 @@ export default function ProjectCreate() {
     { id: 3, name: "Project Assignment", description: "Team assignment" },
   ];
 
-  // Enhanced goToStep function with data validation and persistence
   const goToStep = useCallback(
     async (step: number) => {
       console.log(`Attempting to go to step ${step}`);
 
-      // Allow going back to previous steps
       if (step <= currentStep) {
         setCurrentStep(step);
         return;
       }
 
-      // Validate data before proceeding to next step
       if (step === 2) {
-        // Check if we have activities and project details
         if (activities.length === 0) {
           console.warn("No activities found, cannot proceed to step 2");
-          // You can show a toast notification here
           return;
         }
 

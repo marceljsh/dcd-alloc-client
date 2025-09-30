@@ -22,7 +22,6 @@ export const activityFormSchema = z
       .min(0, "Workload cannot be negative")
       .max(2000, "Duration cannot exceed 2000 hours")
       .int("Duration must be a whole number"),
-    role: z.enum(["SE", "DE", "SA"], "Role is required"),
   })
   .refine(
     (data) => {
@@ -62,6 +61,7 @@ export const subActivityFormSchema = z
       .min(0, "Workload cannot be negative")
       .max(2000, "Duration cannot exceed 2000 hours")
       .int("Duration must be a whole number"),
+    role: z.enum(["SE", "DE", "SA"], "Role is required"),
     minimumLevel: z.enum(["junior", "middle", "senior"]),
     parentID: z.uuid(),
   })
