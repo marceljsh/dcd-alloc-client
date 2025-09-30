@@ -18,17 +18,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div id="layout-dashboard" className="flex">
+    <div id="layout-dashboard" className="flex h-screen">
       <SidebarProvider>
         <AppSidebar />
-        <div
-          id="wrapped-dashboard-child"
-          className="flex flex-1 flex-col gap-4 overflow-hidden bg-background"
-        >
+        <div className="flex flex-1 flex-col overflow-hidden bg-background">
           <header className="flex h-16 shrink-0 items-center gap-2 px-4 border-b">
             <DashboardBreadcrumb />
           </header>
-          <main>{children}</main>
+          <main className="flex-1 overflow-y-auto px-4 pt-4">
+            {children}
+          </main>
         </div>
       </SidebarProvider>
     </div>

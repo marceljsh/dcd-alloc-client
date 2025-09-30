@@ -339,11 +339,11 @@ export default function ProjectsPage() {
 
   // --- RENDER ---
   return (
-    <div className="space-y-6 mx-10">
+    <div className="flex flex-col h-full space-y-6 mx-10">
       <PageHeader onAddProject={handleAddProject} />
       <StatCards stats={stats} />
 
-      <Card className="py-4">
+      <Card className="flex-1 flex flex-col py-4 min-h-0">
         <TableToolbar
           globalFilter={globalFilter}
           setGlobalFilter={setGlobalFilter}
@@ -365,7 +365,7 @@ export default function ProjectsPage() {
             },
           }}
         />
-        <CardContent>
+        <CardContent className="flex-1 overflow-hidden">
           <ProjectsDataTable table={table} columns={columns} />
         </CardContent>
       </Card>
@@ -376,11 +376,13 @@ export default function ProjectsPage() {
         isOpen={activeDialog === "detail"}
         onClose={handleCloseDialog}
       />
-      <ProjectTimelineDialog
-        project={selectedProject}
-        isOpen={activeDialog === "timeline"}
-        onClose={handleCloseDialog}
-      />
+      {selectedProject && (
+        <ProjectTimelineDialog
+          project={selectedProject}
+          isOpen={activeDialog === "timeline"}
+          onClose={handleCloseDialog}
+        />
+      )}
 
       <Toaster position="top-center" />
     </div>
@@ -523,7 +525,7 @@ const ProjectsDataTable = ({
   table: any;
   columns: any[];
 }) => (
-  <ScrollArea className="h-[500px]">
+  <ScrollArea className="h-full">
     <Table>
       <TableHeader className="sticky top-0 z-10 bg-background shadow-sm">
         {table.getHeaderGroups().map((headerGroup: any) => (

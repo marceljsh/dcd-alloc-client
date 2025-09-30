@@ -17,9 +17,8 @@ export default function SignInPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-
     if (isSubmitting) return;
 
     setIsSubmitting(true);
@@ -28,48 +27,42 @@ export default function SignInPage() {
     const email = formData.get("email") as string;
     const password = formData.get("password") as string;
 
-    const isDevelopment = process.env.NODE_ENV === "development";
-    console.log(process.env.NODE_ENV);
+    const loginPromise = async () => {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/sign-in`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
+      });
 
-    const loginPromise = new Promise<void>((resolve, reject) => {
-      if (isDevelopment) {
-        setTimeout(() => {
-          if (email && password) {
-            resolve();
-          } else {
-            reject(new Error("Please fill in all fields"));
-          }
-        }, 500);
-      } else {
-        setTimeout(() => {
-          const isValidEmail = email && email.includes("@bankmandiri.co.id");
-          const isValidPassword = password && password.length >= 8;
-
-          if (!isValidEmail) {
-            reject(new Error("Please use a valid Bank Mandiri email address"));
-          } else if (!isValidPassword) {
-            reject(new Error("Password must be at least 8 characters long"));
-          } else {
-            resolve();
-          }
-        }, 2000);
+      if (!res.ok) {
+        const msg = await res.text();
+        throw new Error(msg || "Failed to sign in");
       }
-    });
 
-    toast.promise(loginPromise, {
-      loading: isDevelopment
-        ? "Quick sign in..."
-        : "Authenticating securely...",
+      const response = await res.json();
+      const token = response.data.token;
+
+      if (!token) {
+        throw new Error("No token returned from server");
+      }
+
+      // simpan token di localStorage atau cookie (sesuai kebutuhan auth-mu)
+      localStorage.setItem("token", token);
+    };
+
+    toast.promise(loginPromise(), {
+      loading: "Signing in...",
       success: () => {
         startTransition(() => {
           router.push("/dashboard");
         });
-        return isDevelopment
-          ? "Signed in (dev mode)!"
-          : "Signed in successfully!";
+        return "Signed in successfully!";
       },
       error: (error) => {
         setIsSubmitting(false);
+        console.log(error.message)
         return error.message || "Something went wrong. Try again.";
       },
     });
@@ -115,7 +108,7 @@ export default function SignInPage() {
                     required
                     type="email"
                     placeholder="example@bankmandiri.co.id"
-                    defaultValue="marcel@bankmandiri.co.id"
+                    defaultValue="albert@bankmandiri.co.id"
                   />
 
                   <div className="flex justify-between">
@@ -129,7 +122,7 @@ export default function SignInPage() {
                       required
                       type={showPassword ? "text" : "password"}
                       placeholder="••••••••"
-                      defaultValue="password123"
+                      defaultValue="password_albert"
                       className="pr-20"
                     />
                     <button
