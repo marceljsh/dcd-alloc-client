@@ -394,7 +394,9 @@ const generateDaysInMonth = (monthName, year) => {
   return Array.from({ length: daysInMonth }, (_, i) => {
     const day = i + 1;
     return {
-      date: `${year}-${String(monthIndex + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`,
+      date: `${year}-${String(monthIndex + 1).padStart(2, "0")}-${String(
+        day
+      ).padStart(2, "0")}`,
       dayLabel: `${day}`,
       "Software Engineer": Math.floor(Math.random() * 100),
       "Data Engineer": Math.floor(Math.random() * 100),
@@ -403,7 +405,23 @@ const generateDaysInMonth = (monthName, year) => {
   });
 };
 
-function ProjectTable({ filteredProjects }) {
+type ProjectTableProps = {
+  project: string;
+  req: number;
+  alloc: number;
+  util: number;
+  priority: string;
+  category: string;
+  role: string;
+  budget: number;
+  actual: number;
+}[];
+
+function ProjectTable({
+  filteredProjects,
+}: {
+  filteredProjects: ProjectTableProps;
+}) {
   const [currentPage, setCurrentPage] = useState(1);
   const [sortConfig, setSortConfig] = useState({
     key: "project",
@@ -412,7 +430,7 @@ function ProjectTable({ filteredProjects }) {
 
   const itemsPerPage = 7;
 
-  const handleSort = (key) => {
+  const handleSort = (key: string) => {
     setSortConfig((prev) => ({
       key,
       direction: prev.key === key && prev.direction === "asc" ? "desc" : "asc",
@@ -442,7 +460,7 @@ function ProjectTable({ filteredProjects }) {
   const startIndex = (currentPage - 1) * itemsPerPage;
   const currentData = filteredAndSortedProjects.slice(
     startIndex,
-    startIndex + itemsPerPage,
+    startIndex + itemsPerPage
   );
 
   const getSortIcon = (key) => {
@@ -511,14 +529,18 @@ function ProjectTable({ filteredProjects }) {
                 <td className="p-2">{row.req}</td>
                 <td className="p-2">{row.alloc}</td>
                 <td
-                  className={`p-2 font-semibold ${row.util > 100 ? "text-red-600" : "text-green-600"}`}
+                  className={`p-2 font-semibold ${
+                    row.util > 100 ? "text-red-600" : "text-green-600"
+                  }`}
                 >
                   {row.util.toFixed(1)}%
                 </td>
                 <td className="p-2">{row.priority}</td>
                 <td className="p-2">${row.budget.toLocaleString()}</td>
                 <td
-                  className={`p-2 font-semibold ${row.actual > row.budget ? "text-red-600" : "text-green-600"}`}
+                  className={`p-2 font-semibold ${
+                    row.actual > row.budget ? "text-red-600" : "text-green-600"
+                  }`}
                 >
                   ${row.actual.toLocaleString()}
                 </td>
@@ -557,7 +579,7 @@ function ProjectTable({ filteredProjects }) {
 const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884D8"];
 
 export default function DashboardPage() {
-  const [selectedPeriods, setSelectedPeriods] = useState([]);
+  const [selectedPeriods, setSelectedPeriods] = useState<string[]>([]);
   const [selectedRoles, setSelectedRoles] = useState([]);
   const [selectedProjects, setSelectedProjects] = useState([]);
 
@@ -580,7 +602,7 @@ export default function DashboardPage() {
     }
     const selectedMonth = selectedPeriods[0];
     const monthData = productivityTrendAll.find(
-      (d) => d.month === selectedMonth,
+      (d) => d.month === selectedMonth
     );
     if (!monthData) {
       return projectsFilteredByRoleAndProject;
@@ -628,7 +650,7 @@ export default function DashboardPage() {
       data = generateDaysInMonth(selectedPeriods[0], 2025);
     } else {
       data = productivityTrendAll.filter((d) =>
-        selectedPeriods.includes(d.month),
+        selectedPeriods.includes(d.month)
       );
     }
     const rolesToDisplay =
@@ -641,10 +663,10 @@ export default function DashboardPage() {
             new Set(
               allProjects
                 .filter((p) =>
-                  selectedProjects.map((sp) => sp.value).includes(p.project),
+                  selectedProjects.map((sp) => sp.value).includes(p.project)
                 )
-                .map((p) => p.role),
-            ),
+                .map((p) => p.role)
+            )
           )
         : [];
     const finalRoles =
@@ -679,7 +701,7 @@ export default function DashboardPage() {
     const totalProjects = filteredProjects.length;
     const totalResources = filteredProjects.reduce(
       (sum, p) => sum + p.alloc,
-      0,
+      0
     );
     const avgUtil =
       filteredProjects.reduce((sum, p) => sum + p.util, 0) /
@@ -725,8 +747,8 @@ export default function DashboardPage() {
               rAvgUtil > 100
                 ? "text-red-500"
                 : rAvgUtil < 80
-                  ? "text-yellow-500"
-                  : "text-green-500",
+                ? "text-yellow-500"
+                : "text-green-500",
           };
         }),
       },
@@ -782,13 +804,13 @@ export default function DashboardPage() {
 
     return {
       priorityDistribution: Object.entries(priorityDistribution).map(
-        ([name, value]) => ({ name, value }),
+        ([name, value]) => ({ name, value })
       ),
       roleDistribution: Object.entries(roleDistribution).map(
         ([name, value]) => ({
           name,
           value: Number(value.toFixed(1)),
-        }),
+        })
       ),
     };
   }, [filteredProjects]);
@@ -833,7 +855,7 @@ export default function DashboardPage() {
                     setSelectedPeriods(
                       checked
                         ? [...selectedPeriods, d.month]
-                        : selectedPeriods.filter((m) => m !== d.month),
+                        : selectedPeriods.filter((m) => m !== d.month)
                     )
                   }
                 >
@@ -867,7 +889,7 @@ export default function DashboardPage() {
                     setSelectedRoles(
                       checked
                         ? [...selectedRoles, { value: r.role, label: r.role }]
-                        : selectedRoles.filter((role) => role.value !== r.role),
+                        : selectedRoles.filter((role) => role.value !== r.role)
                     )
                   }
                 >
@@ -897,7 +919,7 @@ export default function DashboardPage() {
                 <DropdownMenuCheckboxItem
                   key={p.project}
                   checked={selectedProjects.some(
-                    (proj) => proj.value === p.project,
+                    (proj) => proj.value === p.project
                   )}
                   onCheckedChange={(checked) =>
                     setSelectedProjects(
@@ -907,8 +929,8 @@ export default function DashboardPage() {
                             { value: p.project, label: p.project },
                           ]
                         : selectedProjects.filter(
-                            (proj) => proj.value !== p.project,
-                          ),
+                            (proj) => proj.value !== p.project
+                          )
                     )
                   }
                 >
