@@ -1,5 +1,5 @@
 import { Task } from "@/types/projects";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   Collapsible,
   CollapsibleContent,
@@ -55,12 +55,12 @@ export function TaskItem({
 
   const handleRemoveEmployee = (employeeId: number) => {
     const employee = task.assignedEmployees.find(
-      (emp) => emp.id === employeeId,
+      (emp) => emp.id === employeeId
     );
     if (!employee) return;
 
     const updatedEmployees = task.assignedEmployees.filter(
-      (emp) => emp.id !== employeeId,
+      (emp) => emp.id !== employeeId
     );
     onTaskUpdate(task.id, { assignedEmployees: updatedEmployees });
     toast(`${employee.name} dihapus dari "${task.name}"`);

@@ -5,9 +5,7 @@ import { useEffect, useState } from "react";
 import {
   Breadcrumb,
   BreadcrumbItem,
-  BreadcrumbLink,
   BreadcrumbList,
-  BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 
@@ -27,8 +25,6 @@ export function DashboardBreadcrumb() {
   useEffect(() => {
     setReady(true);
   }, []);
-
-  const current = menuItems.findLast((item) => pathname.startsWith(item.url));
 
   const getBreadcrumbItems = () => {
     const items = [];
@@ -56,7 +52,7 @@ export function DashboardBreadcrumb() {
             Dashboard
           </a>
         )}
-      </BreadcrumbItem>,
+      </BreadcrumbItem>
     );
 
     // Add remaining segments
@@ -87,7 +83,7 @@ export function DashboardBreadcrumb() {
                 {menuItem.title}
               </a>
             )}
-          </BreadcrumbItem>,
+          </BreadcrumbItem>
         );
       }
     }

@@ -10,30 +10,18 @@ interface StepIndicatorProps {
   steps: Step[];
   currentStep: number;
   onStepClick: (stepId: number) => void;
-  projectData: any;
-  roleLevels: any[];
-  estimationResults: any[];
 }
 
 export function StepIndicator({
   steps,
   currentStep,
   onStepClick,
-  projectData,
-  roleLevels,
-  estimationResults,
 }: StepIndicatorProps) {
   return (
     <div className="flex items-center justify-between px-12">
       {steps.map((step, index) => {
         const isClickable =
-          (step.id === 1 ||
-            (step.id === 2 && projectData) ||
-            (step.id === 3 && projectData && roleLevels.length > 0) ||
-            (step.id === 4 &&
-              projectData &&
-              roleLevels.length > 0 &&
-              estimationResults.length > 0)) ??
+          (step.id === 1 || step.id === 2 || step.id === 3 || step.id === 4) ??
           false;
 
         const isActive = currentStep === step.id;
@@ -47,10 +35,10 @@ export function StepIndicator({
                   isActive
                     ? "bg-primary text-primary-foreground shadow-md"
                     : isCompleted
-                      ? "text-primary hover:bg-primary/10"
-                      : isClickable
-                        ? "text-muted-foreground hover:bg-muted/50"
-                        : "cursor-not-allowed text-muted-foreground/50"
+                    ? "text-primary hover:bg-primary/10"
+                    : isClickable
+                    ? "text-muted-foreground hover:bg-muted/50"
+                    : "cursor-not-allowed text-muted-foreground/50"
                 }`}
               onClick={() => isClickable && onStepClick(step.id)}
             >

@@ -3,21 +3,15 @@ import { useEffect } from "react";
 import { ProjectCreatePage } from "@/components/project/create/ProjectCreatePage";
 import { StepIndicator } from "@/components/project/create/StepIndicator";
 import { ProjectResults } from "@/components/project/results/ProjectResults";
-import { RoleLevel } from "@/components/ProjectManagement";
 import { Card, CardContent } from "@/components/ui/card";
 import { useProject } from "@/hooks/projects/use-project";
 import { useSidebar } from "@/components/ui/sidebar";
 
-import { ResultCSV } from "@/lib/storage";
-import { ProjectData } from "@/types/projects";
 import { useState, useCallback } from "react";
 import ProjectAssignment from "@/components/project/assignment/ProjectAssignment";
 
 export default function ProjectCreate() {
   const [currentStep, setCurrentStep] = useState(1);
-  const [projectData, setProjectData] = useState<ProjectData | null>(null);
-  const [roleLevels, setRoleLevels] = useState<RoleLevel[]>([]);
-  const [estimationResults, setEstimationResults] = useState<ResultCSV[]>([]);
 
   const { activities, projectDetails } = useProject();
   const { setOpen } = useSidebar();
@@ -94,7 +88,7 @@ export default function ProjectCreate() {
         setCurrentStep(step);
       }
     },
-    [currentStep, activities, projectDetails],
+    [currentStep, activities, projectDetails]
   );
 
   return (
@@ -117,9 +111,6 @@ export default function ProjectCreate() {
               steps={steps}
               currentStep={currentStep}
               onStepClick={goToStep}
-              projectData={projectData}
-              roleLevels={roleLevels}
-              estimationResults={estimationResults}
             />
           </CardContent>
         </Card>
@@ -134,12 +125,7 @@ export default function ProjectCreate() {
 
         {currentStep === 2 && (
           <ProjectResults
-            teamComposition={[]} // TODO: Generate from activities data
-            activities={activities.map((activity) => ({
-              id: activity.id,
-              name: activity.activity,
-              date_range: `${activity.startDate} - ${activity.endDate}`,
-            }))}
+            teamComposition={[]}
             onNext={() => goToStep(3)}
             onPrevious={() => goToStep(1)}
           />

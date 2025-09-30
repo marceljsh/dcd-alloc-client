@@ -28,10 +28,6 @@ function EmployeeByTeamRows({
   members,
   dateRanges,
 }: EmployeeByTeamRowsProps) {
-  const utilizationAvg =
-    members.reduce((sum, member) => sum + member.utilization, 0) /
-    members.length;
-
   return (
     <>
       {/* Team Header Row */}
@@ -42,19 +38,7 @@ function EmployeeByTeamRows({
         {/* <TableCell className="text-center font-medium">{utilizationAvg.toFixed(1)}%</TableCell> */}
         <TableCell className="text-center font-medium"></TableCell>
         {dateRanges.map((_, idx) => {
-          const teamWeeklyTotal = members.reduce((acc, emp) => {
-            const weeklyData = generateWeeklyUtilization(emp, dateRanges);
-            return acc + weeklyData[idx];
-          }, 0);
-          const teamWeeklyAvg = teamWeeklyTotal / members.length;
-
           return (
-            // <TableCell
-            //   key={idx}
-            //   className={`text-center font-medium ${getUtilizationCellColor(teamWeeklyAvg)}`}
-            // >
-            //   {teamWeeklyAvg.toFixed(1)}%
-            // </TableCell>
             <TableCell
               key={idx}
               className="text-center font-medium"
@@ -67,7 +51,7 @@ function EmployeeByTeamRows({
       {members.map((employee) => {
         const weeklyUtilization = generateWeeklyUtilization(
           employee,
-          dateRanges,
+          dateRanges
         );
         const totalCapacity = 240; // 40 hours * 6 weeks
         const utilizedCapacity = (employee.utilization / 100) * totalCapacity;
@@ -78,7 +62,9 @@ function EmployeeByTeamRows({
               <div className="flex items-center space-x-2">
                 <Avatar className="h-6 w-6">
                   <AvatarFallback
-                    className={`text-xs font-mono text-background ${backgroundByRole(employee.role)}`}
+                    className={`text-xs font-mono text-background ${backgroundByRole(
+                      employee.role
+                    )}`}
                   >
                     {initials(employee.name)}
                   </AvatarFallback>
@@ -98,7 +84,9 @@ function EmployeeByTeamRows({
             {weeklyUtilization.map((utilization, index) => (
               <TableCell
                 key={index}
-                className={`text-center font-medium ${getUtilizationCellColor(utilization)}`}
+                className={`text-center font-medium ${getUtilizationCellColor(
+                  utilization
+                )}`}
               >
                 {utilization.toFixed(1)}%
               </TableCell>

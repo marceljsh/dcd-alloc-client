@@ -1,8 +1,5 @@
 import { Employee } from "@/types/employee";
 import { ProjectPriority, ProjectCategory, Team } from "@/types/common";
-import { UUID } from "crypto";
-import { ZodUUID } from "zod";
-import { $ZodUUIDv4Params } from "zod/v4/core";
 
 export interface ProjectRow {
   id: number;
