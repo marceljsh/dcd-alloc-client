@@ -60,6 +60,7 @@ const createSubActivity = (
   fte: data.fte,
   minimumLevel: data.minimumLevel,
   parentId: parentID,
+  role: data.role,
 });
 
 const getDefaultFormValues = (): SubActivityFormData => ({
@@ -71,6 +72,7 @@ const getDefaultFormValues = (): SubActivityFormData => ({
   workload: 0,
   minimumLevel: "junior",
   parentID: "",
+  role: "SE",
 });
 
 const mapEntityToFormData = (
@@ -84,6 +86,7 @@ const mapEntityToFormData = (
   workload: entity.workload,
   minimumLevel: entity.minimumLevel || "junior",
   parentID: "",
+  role: entity.role,
 });
 
 export function SubActivityForm({
@@ -391,6 +394,29 @@ export function SubActivityForm({
                       : "Enter dates first to see calculation"}
                   </FormDescription>
 
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="role"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Role</FormLabel>
+                  <FormControl>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select Role" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="SE">Software Engineer</SelectItem>
+                        <SelectItem value="SA">Solution Analyst</SelectItem>
+                        <SelectItem value="DE">Data Engineer</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}

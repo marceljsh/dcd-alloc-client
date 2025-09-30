@@ -71,7 +71,6 @@ const createActivity = (data: ActivityFormData): ProjectActivity => ({
   startDate: data.startDate,
   endDate: data.endDate,
   workload: data.workload,
-  role: data.role,
   subActivities: [],
 });
 
@@ -81,7 +80,6 @@ const getDefaultFormValues = (): ActivityFormData => ({
   startDate: "",
   endDate: "",
   workload: 0,
-  role: "SE",
 });
 
 const mapEntityToFormData = (entity: ProjectActivity): ActivityFormData => ({
@@ -90,7 +88,6 @@ const mapEntityToFormData = (entity: ProjectActivity): ActivityFormData => ({
   startDate: entity.startDate,
   endDate: entity.endDate,
   workload: entity.workload,
-  role: entity.role,
 });
 
 export function ActivityForm({
@@ -246,30 +243,6 @@ export function ActivityForm({
                 }}
               />
             </div>
-
-            {/* Role Field - Only for activities */}
-            <FormField
-              control={form.control}
-              name="role"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Role</FormLabel>
-                  <FormControl>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select Role" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="SE">Software Engineer</SelectItem>
-                        <SelectItem value="SA">Solution Analyst</SelectItem>
-                        <SelectItem value="DE">Data Engineer</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
           </div>
 
           {/* Sub-Activities List - Only show when editing an activity that has sub-activities */}

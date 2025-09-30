@@ -154,16 +154,6 @@ export function ActivitiesPanel({
                         <div className="w-6 mr-2" />
                       )}
                       {activity.name}{" "}
-                      {activity.role && (
-                        <Badge
-                          variant="outline"
-                          className={`ml-2 text-xs ${
-                            roleColors[activity.role as "SE" | "DE" | "SA"]
-                          }`}
-                        >
-                          {activity.role}
-                        </Badge>
-                      )}
                     </div>
                     <div className="px-2 text-center truncate flex items-center justify-center">
                       {activity.startDate}
@@ -217,7 +207,19 @@ export function ActivitiesPanel({
                                 }}
                               >
                                 <div className="px-2 col-span-2 text-muted-foreground pl-8 truncate flex items-center">
-                                  ↳ {subActivity.name}
+                                  ↳ {subActivity.name}{" "}
+                                  {subActivity.role && (
+                                    <Badge
+                                      variant="outline"
+                                      className={`ml-2 text-xs ${
+                                        roleColors[
+                                          subActivity.role as "SE" | "DE" | "SA"
+                                        ]
+                                      }`}
+                                    >
+                                      {subActivity.role}
+                                    </Badge>
+                                  )}
                                 </div>
                                 <div className="px-2 text-center text-muted-foreground truncate flex items-center justify-center">
                                   {subActivity.startDate}
