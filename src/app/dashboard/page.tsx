@@ -1,8 +1,8 @@
-"use client"
+"use client";
 
 import type React from "react"
 
-import { useState, useMemo, useRef } from "react"
+import { useState, useMemo } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { DateRangePicker } from "@/components/ui/date-range-picker"
@@ -1299,4 +1299,5 @@ export default function Page() {
       </Card>
     </div>
   )}
-</div>);
+</div>)
+}

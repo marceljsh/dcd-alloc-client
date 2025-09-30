@@ -22,7 +22,12 @@ import {
 } from "@/components/ui/select";
 import { useState } from "react";
 import { toast } from "sonner";
-import { employeeLevels, employeeRoles, employmentStatuses, teams } from "@/types/common";
+import {
+  employeeLevels,
+  employeeRoles,
+  employmentStatuses,
+  teams,
+} from "@/types/common";
 
 async function getSignedUploadUrl(args: { path: string; bucket?: string }) {
   const res = await fetch("/api/storage/signed-upload-url", {
@@ -101,7 +106,7 @@ export function AddEmployeeForm({ onSubmit, onCancel }: AddEmployeeFormProps) {
       phone: "",
       location: "",
       joinDate: "",
-    } as any,
+    },
   });
 
   const status = form.watch("status");

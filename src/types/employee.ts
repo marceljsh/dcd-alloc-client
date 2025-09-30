@@ -1,4 +1,9 @@
-import { EmployeeLevel, EmployeeRole, Team, EmploymentStatus } from "@/types/common";
+import {
+  EmployeeLevel,
+  EmployeeRole,
+  Team,
+  EmploymentStatus,
+} from "@/types/common";
 
 interface EmployeeBase {
   id: number;
@@ -17,11 +22,11 @@ interface EmployeeBase {
 }
 
 export interface PermanentEmployee extends EmployeeBase {
-  status: 'Permanent';
+  status: "Permanent";
 }
 
 export interface ContractEmployee extends EmployeeBase {
-  status: 'Contract';
+  status: "Contract";
   contractFilePath?: string;
   contractStartDate: string;
   contractEndDate: string;
@@ -33,19 +38,26 @@ export type EmployeeUtilization = EmployeeRow & {
   utilization: number;
   currentProjects: string[];
   hoursThisWeek: number;
-}
+};
 
-export function createEmployeeRow({ status, ...data }: any): EmployeeRow {
+
+export function createEmployeeRow({
+  status,
+  ...data
+}: NewEmployee): EmployeeRow {
   switch (status) {
-    case 'Permanent': return { ...data } as PermanentEmployee;
-    case 'Contract': return {
+    case "Permanent":
+      return { ...data } as PermanentEmployee;
+    case "Contract":
+      return {
         ...data,
-        contractFilePath: data.contractFilePath ?? '',
-        contractStartDate: data.contractStartDate ?? '',
-        contractEndDate: data.contractEndDate ?? ''
+        contractFilePath: data.contractFilePath ?? "",
+        contractStartDate: data.contractStartDate ?? "",
+        contractEndDate: data.contractEndDate ?? "",
       } as ContractEmployee;
 
-    default: throw new Error('Invalid employee status');
+    default:
+      throw new Error("Invalid employee status");
   }
 }
 

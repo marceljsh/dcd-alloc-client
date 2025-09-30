@@ -1,6 +1,6 @@
-"use client"
+"use client";
 
-import { useMemo, useState,useEffect } from "react"
+import { useMemo, useState,useEffect, useCallback } from "react"
 import type React from "react"
 import {
   type ColumnDef,
@@ -11,12 +11,19 @@ import {
   useReactTable,
   type SortingState,
   type ColumnFiltersState,
-} from "@tanstack/react-table"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+} from "@tanstack/react-table";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -48,35 +55,38 @@ import { AddProjectForm } from "@/components/project/AddProjectForm"
 import ProjectTimeline from "@/components/ProjectTimeline"
 import { useRouter } from "next/navigation"
 
-const projectsData: ProjectRow[] = rawProjects as ProjectRow[]
-
-export const PROJECT_CATEGORY_OPTIONS = ["Small", "Medium", "Big"] as const
-export const PROJECT_PRIORITY_OPTIONS = ["Low", "Medium", "High", "Critical"] as const
-export const TEAM_OPTIONS = ["DMA", "NCM", "CRM", "CM", "FRM", "RRM"] as const
+export const PROJECT_CATEGORY_OPTIONS = ["Small", "Medium", "Big"] as const;
+export const PROJECT_PRIORITY_OPTIONS = [
+  "Low",
+  "Medium",
+  "High",
+  "Critical",
+] as const;
+export const TEAM_OPTIONS = ["DMA", "NCM", "CRM", "CM", "FRM", "RRM"] as const;
 
 const getCategoryColor = (category: ProjectCategory) => {
   switch (category) {
     case "Small":
-      return "bg-blue-100 text-blue-800"
+      return "bg-blue-100 text-blue-800";
     case "Medium":
-      return "bg-green-100 text-green-800"
+      return "bg-green-100 text-green-800";
     case "Big":
-      return "bg-yellow-100 text-yellow-800"
+      return "bg-yellow-100 text-yellow-800";
   }
-}
+};
 
 const getPriorityColor = (priority: ProjectPriority) => {
   switch (priority) {
     case "Low":
-      return "bg-green-100 text-green-800"
+      return "bg-green-100 text-green-800";
     case "Medium":
-      return "bg-yellow-100 text-yellow-800"
+      return "bg-yellow-100 text-yellow-800";
     case "High":
-      return "bg-orange-100 text-orange-800"
+      return "bg-orange-100 text-orange-800";
     case "Critical":
-      return "bg-red-100 text-red-800"
+      return "bg-red-100 text-red-800";
   }
-}
+};
 
 const colors = [
   "bg-red-500",
@@ -91,24 +101,26 @@ const colors = [
 
 const formatRupiah = (n: number) => {
   if (n >= 1_000_000_000) {
-    return `Rp ${(n / 1_000_000_000).toFixed(1).replace(/\.0$/, "")} Bilion`
+    return `Rp ${(n / 1_000_000_000).toFixed(1).replace(/\.0$/, "")} Bilion`;
   }
   if (n >= 1_000_000) {
-    return `Rp ${(n / 1_000_000).toFixed(1).replace(/\.0$/, "")} Milion`
+    return `Rp ${(n / 1_000_000).toFixed(1).replace(/\.0$/, "")} Milion`;
   }
-  return `Rp ${n.toLocaleString("id-ID")}`
-}
+  return `Rp ${n.toLocaleString("id-ID")}`;
+};
 
-type ActiveDialog = "add" | "detail" | "timeline" | null
+type ActiveDialog = "add" | "detail" | "timeline" | null;
 
 export default function ProjectsPage() {
-  const router = useRouter()
-  const [activeDialog, setActiveDialog] = useState<ActiveDialog>(null)
-  const [selectedProject, setSelectedProject] = useState<ProjectRow | null>(null)
+  const router = useRouter();
+  const [activeDialog, setActiveDialog] = useState<ActiveDialog>(null);
+  const [selectedProject, setSelectedProject] = useState<ProjectRow | null>(
+    null
+  );
 
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([])
-  const [selectedPriorities, setSelectedPriorities] = useState<string[]>([])
-  const [selectedTeams, setSelectedTeams] = useState<string[]>([])
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [selectedPriorities, setSelectedPriorities] = useState<string[]>([]);
+  const [selectedTeams, setSelectedTeams] = useState<string[]>([]);
 
   const [projects, setProjects] = useState<ProjectRow[]>(() => rawProjects as ProjectRow[])
   const [sorting, setSorting] = useState<SortingState>([])
@@ -116,15 +128,23 @@ export default function ProjectsPage() {
   const [globalFilter, setGlobalFilter] = useState("")
   const [currentPage, setCurrentPage] = useState(1);
 
-  const handleArchive = (project: ProjectRow) => {
-    const stored = JSON.parse(localStorage.getItem("archivedProjects") || "[]")
-    localStorage.setItem("archivedProjects", JSON.stringify([...stored, project]))
+  const handleArchive = useCallback(
+    (project: ProjectRow) => {
+      const stored = JSON.parse(
+        localStorage.getItem("archivedProjects") || "[]"
+      );
+      localStorage.setItem(
+        "archivedProjects",
+        JSON.stringify([...stored, project])
+      );
 
-    setProjects((prev) => prev.filter((p) => p.code !== project.code))
+      setProjects((prev) => prev.filter((p) => p.code !== project.code));
 
-    toast.success(`Project "${project.name}" has been archived.`)
-    router.push("/dashboard/archive")
-  }
+      toast.success(`Project "${project.name}" has been archived.`);
+      router.push("/dashboard/archive");
+    },
+    [router, setProjects]
+  );
 
   const columns = useMemo<ColumnDef<ProjectRow>[]>(() => [
     { accessorKey: "code", header: "Project Code", enableGlobalFilter: true,
@@ -186,12 +206,12 @@ export default function ProjectsPage() {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-          )
+          );
         },
       },
     ],
-    [],
-  )
+    [handleArchive]
+  );
 
   const table = useReactTable({
     data: projects,
@@ -212,8 +232,8 @@ export default function ProjectsPage() {
     },
     filterFns: {
       arrIncludesSome: (row, columnId, value) => {
-        if (!value || value.length === 0) return true
-        return value.includes(row.getValue(columnId))
+        if (!value || value.length === 0) return true;
+        return value.includes(row.getValue(columnId));
       },
     },
   })
@@ -235,39 +255,67 @@ export default function ProjectsPage() {
   useEffect(() => { setCurrentPage(1) }, [globalFilter, columnFilters])
 
   const handleFilterChange =
-    (columnId: string, currentSelection: string[], setter: React.Dispatch<React.SetStateAction<string[]>>) =>
+    (
+      columnId: string,
+      currentSelection: string[],
+      setter: React.Dispatch<React.SetStateAction<string[]>>
+    ) =>
     (value: string, checked: boolean) => {
-      const newSelection = checked ? [...currentSelection, value] : currentSelection.filter((item) => item !== value)
+      const newSelection = checked
+        ? [...currentSelection, value]
+        : currentSelection.filter((item) => item !== value);
 
-      setter(newSelection)
-      table.getColumn(columnId)?.setFilterValue(newSelection.length > 0 ? newSelection : undefined)
-    }
+      setter(newSelection);
+      table
+        .getColumn(columnId)
+        ?.setFilterValue(newSelection.length > 0 ? newSelection : undefined);
+    };
 
-  const handleCategoryChange = handleFilterChange("category", selectedCategories, setSelectedCategories)
-  const handlePriorityChange = handleFilterChange("priority", selectedPriorities, setSelectedPriorities)
-  const handleTeamChange = handleFilterChange("team", selectedTeams, setSelectedTeams)
+  const handleCategoryChange = handleFilterChange(
+    "category",
+    selectedCategories,
+    setSelectedCategories
+  );
+  const handlePriorityChange = handleFilterChange(
+    "priority",
+    selectedPriorities,
+    setSelectedPriorities
+  );
+  const handleTeamChange = handleFilterChange(
+    "team",
+    selectedTeams,
+    setSelectedTeams
+  );
+
+  const handleAddProject = (e: MouseEvent) => {
+    e.preventDefault();
+    router.push("projects/new");
+  };
 
   const handleCloseDialog = () => {
-    setActiveDialog(null)
-    setSelectedProject(null)
-  }
+    setActiveDialog(null);
+    setSelectedProject(null);
+  };
 
   const stats = useMemo(
     () => ({
       totalProjects: projects.length,
       totalBudget: projects.reduce((sum, p) => sum + p.budget, 0),
-      bigSizedRatio: projects.length ? projects.filter((p) => p.category === "Big").length / projects.length : 0,
+      bigSizedRatio: projects.length
+        ? projects.filter((p) => p.category === "Big").length / projects.length
+        : 0,
       criticalPriorityRatio: projects.length
-        ? projects.filter((p) => p.priority === "Critical").length / projects.length
+        ? projects.filter((p) => p.priority === "Critical").length /
+          projects.length
         : 0,
     }),
-    [projects],
-  )
+    [projects]
+  );
 
   // --- RENDER ---
   return (
-    <div className="space-y-2 mx-10" data-testid="projects-page">
-      <PageHeader onAddProject={() => setActiveDialog("add")} />
+    <div className="space-y-6 mx-10">
+      <PageHeader onAddProject={handleAddProject} />
       <StatCards stats={stats} />
 
       <Card className="py-4">
@@ -337,20 +385,27 @@ export default function ProjectsPage() {
       </Card>
 
       {/* Dialogs */}
-      <ProjectDetailDialog project={selectedProject} isOpen={activeDialog === "detail"} onClose={handleCloseDialog} />
+      <ProjectDetailDialog
+        project={selectedProject}
+        isOpen={activeDialog === "detail"}
+        onClose={handleCloseDialog}
+      />
       <ProjectTimelineDialog
         project={selectedProject}
         isOpen={activeDialog === "timeline"}
         onClose={() => setActiveDialog(null)}
       />
-      <AddProjectDialog isOpen={activeDialog === "add"} onClose={handleCloseDialog} />
 
       <Toaster position="top-center" />
     </div>
-  )
+  );
 }
 
-const PageHeader = ({ onAddProject }: { onAddProject: () => void }) => (
+const PageHeader = ({
+  onAddProject,
+}: {
+  onAddProject: (e: MouseEvent) => void;
+}) => (
   <div className="flex items-center justify-between">
     <div>
       <h1 className="text-3xl font-bold" data-testid="page-title">Projects</h1>
@@ -361,7 +416,7 @@ const PageHeader = ({ onAddProject }: { onAddProject: () => void }) => (
       Add Project
     </Button>
   </div>
-)
+);
 
 const StatCards = ({ stats }: { stats: any }) => (
   <div className="grid gap-3 md:grid-cols-4">
@@ -381,17 +436,23 @@ const StatCards = ({ stats }: { stats: any }) => (
         <Users className="h-4 w-4 text-muted-foreground" />
       </CardHeader>
       <CardContent>
-        <div className="text-2xl font-bold">{formatRupiah(stats.totalBudget)}</div>
+        <div className="text-2xl font-bold">
+          {formatRupiah(stats.totalBudget)}
+        </div>
         <p className="text-xs text-muted-foreground">Ready to Spend</p>
       </CardContent>
     </Card>
     <Card className="py-4 gap-0" data-testid="stat-big-projects">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium">Big Sized Projects</CardTitle>
+        <CardTitle className="text-sm font-medium">
+          Big Sized Projects
+        </CardTitle>
         <Clock className="h-4 w-4 text-muted-foreground" />
       </CardHeader>
       <CardContent>
-        <div className="text-2xl font-bold">{Math.round(stats.bigSizedRatio * 100)}%</div>
+        <div className="text-2xl font-bold">
+          {Math.round(stats.bigSizedRatio * 100)}%
+        </div>
         <p className="text-xs text-muted-foreground">of All Projects</p>
       </CardContent>
     </Card>
@@ -401,17 +462,22 @@ const StatCards = ({ stats }: { stats: any }) => (
         <Target className="h-4 w-4 text-muted-foreground" />
       </CardHeader>
       <CardContent>
-        <div className="text-2xl font-bold">{Math.round(stats.criticalPriorityRatio * 100)}%</div>
+        <div className="text-2xl font-bold">
+          {Math.round(stats.criticalPriorityRatio * 100)}%
+        </div>
         <p className="text-xs text-muted-foreground">of All Projects</p>
       </CardContent>
     </Card>
   </div>
-)
+);
 
 const FilterDropdown = ({ title, filter }: { title: string; filter: any }) => (
   <DropdownMenu>
     <DropdownMenuTrigger asChild>
-      <Button variant="outline" className="flex items-center gap-2 bg-transparent">
+      <Button
+        variant="outline"
+        className="flex items-center gap-2 bg-transparent"
+      >
         <Filter className="h-4 w-4" /> {title}
         {filter.selected.length > 0 && (
           <Badge variant="secondary" className="rounded-full px-2">
@@ -432,13 +498,17 @@ const FilterDropdown = ({ title, filter }: { title: string; filter: any }) => (
       ))}
     </DropdownMenuContent>
   </DropdownMenu>
-)
+);
 
 const TableToolbar = ({
   globalFilter,
   setGlobalFilter,
   filters,
-}: { globalFilter: string; setGlobalFilter: (value: string) => void; filters: any }) => (
+}: {
+  globalFilter: string;
+  setGlobalFilter: (value: string) => void;
+  filters: any;
+}) => (
   <CardHeader className="flex flex-row items-center justify-between">
     <CardTitle className="text-xl">Project Portfolio</CardTitle>
     <div className="flex items-center gap-2">
@@ -457,7 +527,7 @@ const TableToolbar = ({
       </div>
     </div>
   </CardHeader>
-)
+);
 
 const ProjectsDataTable = ({ table, columns, paginatedRows }: { table: any; columns: any[]; paginatedRows: any[] }) => (
   <ScrollArea className="h-[500px]">
@@ -468,12 +538,19 @@ const ProjectsDataTable = ({ table, columns, paginatedRows }: { table: any; colu
             {headerGroup.headers.map((header: any) => (
               <TableHead
                 key={header.id}
-                className={header.column.getCanSort() ? "cursor-pointer select-none" : ""}
+                className={
+                  header.column.getCanSort() ? "cursor-pointer select-none" : ""
+                }
                 onClick={header.column.getToggleSortingHandler()}
               >
                 <div className="flex items-center gap-2">
-                  {flexRender(header.column.columnDef.header, header.getContext())}
-                  {{ asc: "▲", desc: "▼" }[header.column.getIsSorted() as string] ?? null}
+                  {flexRender(
+                    header.column.columnDef.header,
+                    header.getContext()
+                  )}
+                  {{ asc: "▲", desc: "▼" }[
+                    header.column.getIsSorted() as string
+                  ] ?? null}
                 </div>
               </TableHead>
             ))}
@@ -517,8 +594,12 @@ const ProjectDetailDialog = ({
   project,
   isOpen,
   onClose,
-}: { project: ProjectRow | null; isOpen: boolean; onClose: () => void }) => {
-  if (!project) return null
+}: {
+  project: ProjectRow | null;
+  isOpen: boolean;
+  onClose: () => void;
+}) => {
+  if (!project) return null;
 
   const workloadData = {
     totalEstimated: 2400,
@@ -526,7 +607,7 @@ const ProjectDetailDialog = ({
     workloadGap: -350,
     budgetUsed: 350,
     budgetAvailable: project.budget - 350,
-  }
+  };
 
   const subactivities = [
   {
@@ -560,24 +641,36 @@ const ProjectDetailDialog = ({
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto" data-testid="project-detail-dialog">
         <DialogHeader>
-          <DialogTitle className="text-xl font-semibold">{project.name}</DialogTitle>
+          <DialogTitle className="text-xl font-semibold">
+            {project.name}
+          </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-2 py-4">
           <div className="grid grid-cols-3 gap-6">
             <div className="space-y-1">
-              <Label className="text-sm font-medium text-muted-foreground">Category</Label>
+              <Label className="text-sm font-medium text-muted-foreground">
+                Category
+              </Label>
               <div>
-                <Badge variant="outline" className={getCategoryColor(project.category)}>
+                <Badge
+                  variant="outline"
+                  className={getCategoryColor(project.category)}
+                >
                   {project.category}
                 </Badge>
               </div>
             </div>
 
             <div className="space-y-1">
-              <Label className="text-sm font-medium text-muted-foreground">Priority</Label>
+              <Label className="text-sm font-medium text-muted-foreground">
+                Priority
+              </Label>
               <div>
-                <Badge variant="outline" className={getPriorityColor(project.priority)}>
+                <Badge
+                  variant="outline"
+                  className={getPriorityColor(project.priority)}
+                >
                   {project.priority}
                 </Badge>
               </div>
@@ -593,12 +686,16 @@ const ProjectDetailDialog = ({
 
           <div className="grid grid-cols-3 gap-6">
             <div className="space-y-1">
-              <Label className="text-sm font-medium text-muted-foreground">Crew</Label>
+              <Label className="text-sm font-medium text-muted-foreground">
+                Crew
+              </Label>
               <p className="text-sm">{project.crew} members</p>
             </div>
 
             <div className="space-y-1">
-              <Label className="text-sm font-medium text-muted-foreground">Budget</Label>
+              <Label className="text-sm font-medium text-muted-foreground">
+                Budget
+              </Label>
               <p className="text-sm">${project.budget.toLocaleString()}</p>
             </div>
 
@@ -611,13 +708,17 @@ const ProjectDetailDialog = ({
           </div>
 
           <div className="space-y-1">
-            <Label className="text-sm font-medium text-muted-foreground">Assigned Team</Label>
+            <Label className="text-sm font-medium text-muted-foreground">
+              Assigned Team
+            </Label>
             <p className="text-sm">{project.team}</p>
           </div>
 
           <div className="grid grid-cols-2 gap-8">
             <div className="space-y-3">
-              <Label className="text-sm font-medium text-muted-foreground">Overall Progress</Label>
+              <Label className="text-sm font-medium text-muted-foreground">
+                Overall Progress
+              </Label>
               <div className="w-full bg-gray-200 rounded-full h-2">
                 <div className="bg-blue-600 h-2 rounded-full transition-all duration-300" style={{ width: "65%" }} data-testid="progress-bar"/>
               </div>
@@ -625,7 +726,9 @@ const ProjectDetailDialog = ({
 
             <div className="space-y-3">
               <div className="flex justify-between items-center">
-                <Label className="text-sm font-medium text-muted-foreground">Budget</Label>
+                <Label className="text-sm font-medium text-muted-foreground">
+                  Budget
+                </Label>
                 <div className="flex gap-4 text-xs text-muted-foreground">
                   <span>Used</span>
                   <span>Available</span>
@@ -634,7 +737,11 @@ const ProjectDetailDialog = ({
               <div className="w-full bg-gray-200 rounded-full h-2">
                 <div
                   className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                  style={{ width: `${(workloadData.budgetUsed / project.budget) * 100}%` }}
+                  style={{
+                    width: `${
+                      (workloadData.budgetUsed / project.budget) * 100
+                    }%`,
+                  }}
                 />
               </div>
             </div>
@@ -644,21 +751,29 @@ const ProjectDetailDialog = ({
             <div className="space-y-3">
               <div className="flex justify-between">
                 <span className="text-sm">Total Estimated Workload</span>
-                <span className="text-sm font-medium">{workloadData.totalEstimated.toLocaleString()} hrs</span>
+                <span className="text-sm font-medium">
+                  {workloadData.totalEstimated.toLocaleString()} hrs
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-sm">Allocated FTE (adjusted)</span>
-                <span className="text-sm font-medium">{workloadData.allocatedFTE.toLocaleString()} hrs</span>
+                <span className="text-sm font-medium">
+                  {workloadData.allocatedFTE.toLocaleString()} hrs
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-sm">Workload Gap / Surplus</span>
-                <span className="text-sm font-medium">{workloadData.workloadGap} hrs</span>
+                <span className="text-sm font-medium">
+                  {workloadData.workloadGap} hrs
+                </span>
               </div>
             </div>
             <div className="space-y-3">
               <div className="flex justify-between">
                 <span className="text-sm">Used</span>
-                <span className="text-sm font-medium">-{workloadData.budgetUsed} hrs</span>
+                <span className="text-sm font-medium">
+                  -{workloadData.budgetUsed} hrs
+                </span>
               </div>
             </div>
           </div>
@@ -722,11 +837,19 @@ const ProjectDetailDialog = ({
         </div>
       </DialogContent>
     </Dialog>
-  )
-}
+  );
+};
 
-const ProjectTimelineDialog = ({ project, isOpen, onClose }: { project: ProjectRow, isOpen: boolean, onClose: () => void }) => {
-  if (!project) return null
+const ProjectTimelineDialog = ({
+  project,
+  isOpen,
+  onClose,
+}: {
+  project: ProjectRow;
+  isOpen: boolean;
+  onClose: () => void;
+}) => {
+  if (!project) return null;
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -740,5 +863,5 @@ const ProjectTimelineDialog = ({ project, isOpen, onClose }: { project: ProjectR
         </div>
       </DialogContent>
     </Dialog>
-  )
-}
+  );
+};

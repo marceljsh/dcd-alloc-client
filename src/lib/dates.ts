@@ -1,6 +1,3 @@
-import { ProjectActivity } from "@/components/project/create/type";
-import { Project } from "next/dist/build/swc/types";
-
 export function datesOverlap(
   _start1: string,
   _end1: string,
@@ -55,32 +52,37 @@ export const getMonthAbbr = (date: Date) => {
   return months[date.getMonth()];
 };
 
-export const getActivityDateIndex = (
-  activity: ProjectActivity,
-  dates: Date[],
-  windowStart: Date,
-  daysInWindow: number
-) => {
-  const startDate = new Date(activity.startDate);
-  const endDate = new Date(activity.endDate);
-  const startIndex = Math.max(
-    0,
-    Math.min(
-      daysInWindow + 1,
-      Math.floor(
-        (startDate.getTime() - windowStart.getTime()) / (1000 * 60 * 60 * 24)
-      )
-    )
-  );
-  const endIndex = Math.max(
-    0,
-    Math.min(
-      daysInWindow + 1,
-      Math.floor(
-        (endDate.getTime() - windowStart.getTime()) / (1000 * 60 * 60 * 24)
-      ) + 1
-    )
-  );
+export const calculateWorkingDays = (
+  startDate: string,
+  endDate: string
+): number => {
+  if (!startDate || !endDate) return 0;
 
-  return `${startIndex} / ${endIndex}`;
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+
+  if (end <= start) return 0;
+
+  let workingDays = 0;
+  const currentDate = new Date(start);
+
+  while (currentDate <= end) {
+    const dayOfWeek = currentDate.getDay();
+    if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+      workingDays++;
+    }
+    currentDate.setDate(currentDate.getDate() + 1);
+  }
+
+  return workingDays;
+};
+
+export const calculateDuration = (
+  startDate: string,
+  endDate: string,
+  fte: number
+): number => {
+  const workingDays = calculateWorkingDays(startDate, endDate);
+  const hoursPerDay = 8;
+  return Math.round(workingDays * hoursPerDay * fte);
 };
