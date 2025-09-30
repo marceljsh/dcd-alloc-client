@@ -19,7 +19,13 @@ export const useProject = () => {
       case "delete-activity":
         return store.deleteActivity(action.id);
       case "edit-sub":
-        return store.openForm("subactivity", "Edit", action.parent, action.sub);
+        return store.openForm(
+          "subactivity",
+          "Edit",
+          action.parent,
+          undefined,
+          action.sub
+        );
       case "delete-sub":
         return store.deleteSubActivity(action.activityId, action.subId);
     }
@@ -28,7 +34,7 @@ export const useProject = () => {
   const handleFormSubmit = (
     entity: ProjectActivity | ProjectSubActivity,
     type: EntityType,
-    mode: ModeType,
+    mode: ModeType
   ) => {
     if (type === "activity") {
       if (mode === "Add") {
@@ -48,7 +54,7 @@ export const useProject = () => {
 
   const openAddActivity = (
     type: "activity" | "subactivity",
-    parent?: ProjectActivity,
+    parent?: ProjectActivity
   ) => {
     if (type === "activity") {
       store.openForm("activity", "Add");
@@ -80,7 +86,8 @@ export const useProject = () => {
 
     // Form actions
     closeForm: store.closeForm,
-    setFormDetails: store.setFormDetails,
+    setActivityDetails: store.setActivityDetails,
+    setSubActivityDetails: store.setSubActivityDetails,
 
     // Utility
     initializeProject: store.initializeProject,

@@ -8,7 +8,10 @@ import { GanttActivityBar } from "./GanttActivityBar";
 
 interface GanttActivityRowProps {
   activity: ProjectActivity;
-  getGridPosition: (activity: ProjectActivity) => {
+  getGridPosition: (
+    startDate: string,
+    endDate: string
+  ) => {
     start: number;
     end: number;
   };
@@ -22,7 +25,7 @@ export function GanttActivityRow({
   datesLength,
   viewMode = "normal",
 }: GanttActivityRowProps) {
-  const position = getGridPosition(activity);
+  const position = getGridPosition(activity.startDate, activity.endDate);
 
   return (
     <AccordionItem
@@ -33,11 +36,10 @@ export function GanttActivityRow({
       <AccordionTrigger className="hidden" />
 
       <GanttActivityBar
-        activity={activity.activity}
+        activity={activity.name}
         startPosition={position.start}
         endPosition={position.end}
         datesLength={datesLength}
-        fte={activity.fte}
         viewMode={viewMode}
       />
 
@@ -45,16 +47,15 @@ export function GanttActivityRow({
         {activity.subActivities && activity.subActivities.length > 0 && (
           <div>
             {activity.subActivities.map((subActivity) => {
-              const subPosition = getGridPosition({
-                ...subActivity,
-                startDate: subActivity.startDate,
-                endDate: subActivity.endDate || subActivity.startDate,
-              });
+              const subPosition = getGridPosition(
+                subActivity.startDate,
+                subActivity.endDate
+              );
 
               return (
                 <div key={subActivity.id} className="bg-gray-25">
                   <GanttActivityBar
-                    activity={subActivity.activity}
+                    activity={subActivity.name}
                     startPosition={subPosition.start}
                     endPosition={subPosition.end}
                     datesLength={datesLength}

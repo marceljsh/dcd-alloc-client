@@ -1,5 +1,8 @@
 import { Employee } from "@/types/employee";
 import { ProjectPriority, ProjectCategory, Team } from "@/types/common";
+import { UUID } from "crypto";
+import { ZodUUID } from "zod";
+import { $ZodUUIDv4Params } from "zod/v4/core";
 
 export interface ProjectRow {
   id: number;
@@ -66,26 +69,24 @@ export interface ProjectStage {
 export type ProjectData = Record<string, Task[]>;
 
 export interface ProjectActivity {
-  id: number;
-  activity: string;
+  id: string;
+  name: string;
   startDate: string;
   endDate: string;
-  duration: number;
-  fte: number;
-  role: "SA" | "SE" | "DE" | "" | undefined;
+  workload: number;
+  role: "SA" | "SE" | "DE";
   subActivities?: ProjectSubActivity[];
 }
 
 export interface ProjectSubActivity {
-  id: number;
-  parentId: number;
-  activity: string;
+  id: string;
+  parentId: string;
+  name: string;
   startDate: string;
   endDate: string;
-  duration: number;
+  workload: number;
   fte: number;
-  role: "SA" | "SE" | "DE" | "";
-  excludeLevel?: "none" | "junior" | "middle" | "senior";
+  minimumLevel: "junior" | "middle" | "senior";
 }
 
 export type EntityType = "activity" | "subactivity";
@@ -94,9 +95,9 @@ export type ModeType = "Add" | "Edit";
 export type ActivityAction =
   | { type: "add-sub"; parent: ProjectActivity }
   | { type: "edit-activity"; activity: ProjectActivity }
-  | { type: "delete-activity"; id: number }
+  | { type: "delete-activity"; id: string }
   | { type: "edit-sub"; sub: ProjectSubActivity; parent: ProjectActivity }
-  | { type: "delete-sub"; activityId: number; subId: number };
+  | { type: "delete-sub"; activityId: string; subId: string };
 
 export function createAction<T extends ActivityAction>(action: T): T {
   return action;

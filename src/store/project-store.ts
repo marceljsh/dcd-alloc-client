@@ -13,7 +13,8 @@ interface FormState {
   type: EntityType;
   mode: ModeType;
   parentActivity: ProjectActivity | null;
-  formDetails: ProjectActivity | ProjectSubActivity | null;
+  subActivityDetails: ProjectSubActivity | null;
+  activityDetails: ProjectActivity | null;
 }
 
 interface DateRange {
@@ -46,20 +47,21 @@ interface ProjectState {
   addSubActivity: (subActivity: ProjectSubActivity) => void;
   updateActivity: (activity: ProjectActivity) => void;
   updateSubActivity: (subActivity: ProjectSubActivity) => void;
-  deleteActivity: (id: number) => void;
-  deleteSubActivity: (activityId: number, subActivityId: number) => void;
+  deleteActivity: (id: string) => void;
+  deleteSubActivity: (activityId: string, subActivityId: string) => void;
 
   // Actions for form
   openForm: (
     type: EntityType,
     mode: ModeType,
     parent?: ProjectActivity,
-    details?: ProjectActivity | ProjectSubActivity
+    activity?: ProjectActivity,
+    subActivity?: ProjectSubActivity
   ) => void;
   closeForm: () => void;
-  setFormDetails: (
-    details: ProjectActivity | ProjectSubActivity | null
-  ) => void;
+
+  setActivityDetails: (details: ProjectActivity | null) => void;
+  setSubActivityDetails: (details: ProjectSubActivity | null) => void;
 
   // Actions for UI
   setExpandedItems: (items: string[]) => void;
@@ -118,14 +120,14 @@ const recalculateParentActivity = (
     return activity;
   }
 
-  const totalDuration = activity.subActivities.reduce(
-    (total, sub) => total + sub.duration,
+  const totalWorkload = activity.subActivities.reduce(
+    (total, sub) => total + sub.workload,
     0
   );
 
   return {
     ...activity,
-    duration: totalDuration,
+    workload: totalWorkload,
   };
 };
 
@@ -143,7 +145,8 @@ const initialState = {
     type: "activity" as EntityType,
     mode: "Add" as ModeType,
     parentActivity: null,
-    formDetails: null,
+    activityDetails: null,
+    subActivityDetails: null,
   },
   expandedItems: [],
   dateRange: {
@@ -250,25 +253,32 @@ export const useProjectStore = create<ProjectState>()(
         }
       }),
 
-    openForm: (type, mode, parent, details) =>
+    openForm: (type, mode, parent, activity, subActivity) =>
       set((state) => {
         state.form.isOpen = true;
         state.form.type = type;
         state.form.mode = mode;
         state.form.parentActivity = parent || null;
-        state.form.formDetails = details || null;
+        state.form.activityDetails = activity || null;
+        state.form.subActivityDetails = subActivity || null;
       }),
 
     closeForm: () =>
       set((state) => {
         state.form.isOpen = false;
-        state.form.formDetails = null;
+        state.form.activityDetails = null;
+        state.form.subActivityDetails = null;
         state.form.parentActivity = null;
       }),
 
-    setFormDetails: (details) =>
+    setActivityDetails: (details) =>
       set((state) => {
-        state.form.formDetails = details;
+        state.form.activityDetails = details;
+      }),
+
+    setSubActivityDetails: (details) =>
+      set((state) => {
+        state.form.subActivityDetails = details;
       }),
 
     setExpandedItems: (items) =>

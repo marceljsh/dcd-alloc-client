@@ -64,7 +64,7 @@ export function GanttActivityBar({
                     : "text-primary"
                 }`}
               >
-                {Math.round(fte * 100)}%
+                {fte} fte
               </span>
             </div>
           </div>
@@ -73,7 +73,6 @@ export function GanttActivityBar({
     );
   }
 
-  // Normal mode - tampilkan activity dan subactivity seperti biasa
   return (
     <div className="relative border-b h-12">
       <div

@@ -24,16 +24,16 @@ export function GanttPanel({
 }: GanttPanelProps) {
   const windowStart = dates[0];
 
-  const getGridPosition = (activity: ProjectActivity) => {
-    const startDate = new Date(activity.startDate);
-    const endDate = new Date(activity.endDate);
+  const getGridPosition = (start: string, end: string) => {
+    const startDate = new Date(start);
+    const endDate = new Date(end);
 
     const startIndex = dates.findIndex(
-      (date) => date.toDateString() === startDate.toDateString(),
+      (date) => date.toDateString() === startDate.toDateString()
     );
 
     const endIndex = dates.findIndex(
-      (date) => date.toDateString() === endDate.toDateString(),
+      (date) => date.toDateString() === endDate.toDateString()
     );
 
     if (startIndex === -1 || endIndex === -1) {
@@ -42,11 +42,11 @@ export function GanttPanel({
       const activityEndTime = endDate.getTime();
 
       const daysDiff = Math.floor(
-        (activityStartTime - windowStartTime) / (1000 * 60 * 60 * 24),
+        (activityStartTime - windowStartTime) / (1000 * 60 * 60 * 24)
       );
       const duration =
         Math.floor(
-          (activityEndTime - activityStartTime) / (1000 * 60 * 60 * 24),
+          (activityEndTime - activityStartTime) / (1000 * 60 * 60 * 24)
         ) + 1;
 
       return {
@@ -84,7 +84,7 @@ export function GanttPanel({
         <Accordion type="multiple" className="w-full" value={expandedItems}>
           <div className="divide-y">
             {data.map((activity: ProjectActivity) =>
-              renderActivityRow(activity),
+              renderActivityRow(activity)
             )}
           </div>
         </Accordion>

@@ -41,6 +41,8 @@ import { useProject, useProjectDetails } from "@/hooks/projects/use-project";
 import { projectCategories, projectPriorities, teams } from "@/types/common";
 import { ProjectPlannerSkeleton } from "./ProjectPlannerSkeleton";
 import { NewItemButton } from "./NewItemButton";
+import { SubActivityForm } from "./SubActivityForm";
+import { ProjectActivity, ProjectSubActivity } from "@/types/projects";
 
 type ProjectPlannerProps = {
   onNext: () => void;
@@ -254,30 +256,47 @@ export function ProjectCreatePage({ onNext }: ProjectPlannerProps) {
                 {form.type === "activity" ? "Activity" : "Sub-Activity"}
               </SheetTitle>
             </SheetHeader>
-            <ActivityForm
-              parentActivity={form.parentActivity}
-              sheetType={form.type}
-              formDetails={form.formDetails}
-              mode={form.mode}
-              activities={activities}
-              onSubmit={(entity) =>
-                handleFormSubmit(entity, form.type, form.mode)
-              }
-              onEditSubActivity={(subActivity, parentActivity) =>
-                handleAction({
-                  type: "edit-sub",
-                  parent: parentActivity,
-                  sub: subActivity,
-                })
-              }
-              onDeleteSubActivity={(parentActivityId, subActivityId) =>
-                handleAction({
-                  type: "delete-sub",
-                  activityId: parentActivityId,
-                  subId: subActivityId,
-                })
-              }
-            />
+            {form.type === "activity" && (
+              <ActivityForm
+                activityDetails={form.activityDetails}
+                mode={form.mode}
+                activities={activities}
+                onSubmit={(entity) =>
+                  handleFormSubmit(entity, form.type, form.mode)
+                }
+                onEditSubActivity={(
+                  subActivity: ProjectSubActivity,
+                  parentActivity: ProjectActivity
+                ) =>
+                  handleAction({
+                    type: "edit-sub",
+                    parent: parentActivity,
+                    sub: subActivity,
+                  })
+                }
+                onDeleteSubActivity={(
+                  parentActivityId: string,
+                  subActivityId: string
+                ) =>
+                  handleAction({
+                    type: "delete-sub",
+                    activityId: parentActivityId,
+                    subId: subActivityId,
+                  })
+                }
+              />
+            )}
+            {form.type === "subactivity" && (
+              <SubActivityForm
+                parentActivity={form.parentActivity}
+                subActivityDetails={form.subActivityDetails}
+                mode={form.mode}
+                onSubmit={(entity) =>
+                  handleFormSubmit(entity, form.type, form.mode)
+                }
+                activities={activities}
+              />
+            )}
           </SheetContent>
         </Sheet>
 

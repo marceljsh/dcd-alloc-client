@@ -38,12 +38,12 @@ const ACTIONS = {
   editActivity: (activity: ProjectActivity) =>
     createAction({ type: "edit-activity", activity }),
 
-  deleteActivity: (id: number) => createAction({ type: "delete-activity", id }),
+  deleteActivity: (id: string) => createAction({ type: "delete-activity", id }),
 
   editSub: (sub: ProjectSubActivity, parent: ProjectActivity) =>
     createAction({ type: "edit-sub", sub, parent }),
 
-  deleteSub: (activityId: number, subId: number) =>
+  deleteSub: (activityId: string, subId: string) =>
     createAction({ type: "delete-sub", activityId, subId }),
 };
 
@@ -67,18 +67,18 @@ export function ActivitiesPanel({
   const [deleteDialog, setDeleteDialog] = useState<{
     isOpen: boolean;
     type: "activity" | "subactivity";
-    activityId?: number;
+    activityId?: string;
     activityName?: string;
-    subActivityId?: number;
+    subActivityId?: string;
     subActivityName?: string;
   }>({ isOpen: false, type: "activity" });
 
   const handleDeleteClick = (
     type: "activity" | "subactivity",
-    activityId: number,
+    activityId: string,
     activityName: string,
-    subActivityId?: number,
-    subActivityName?: string,
+    subActivityId?: string,
+    subActivityName?: string
   ) => {
     setDeleteDialog({
       isOpen: true,
@@ -99,7 +99,7 @@ export function ActivitiesPanel({
       deleteDialog.subActivityId
     ) {
       onAction(
-        ACTIONS.deleteSub(deleteDialog.activityId, deleteDialog.subActivityId),
+        ACTIONS.deleteSub(deleteDialog.activityId, deleteDialog.subActivityId)
       );
     }
     setDeleteDialog({ isOpen: false, type: "activity" });
@@ -153,7 +153,7 @@ export function ActivitiesPanel({
                       ) : (
                         <div className="w-6 mr-2" />
                       )}
-                      {activity.activity}{" "}
+                      {activity.name}{" "}
                       {activity.role && (
                         <Badge
                           variant="outline"
@@ -169,7 +169,7 @@ export function ActivitiesPanel({
                       {activity.startDate}
                     </div>
                     <div className="px-2 text-center truncate flex items-center justify-center">
-                      {activity.duration} jam
+                      {activity.workload} jam
                     </div>
                   </div>
                 </ContextMenuTrigger>
@@ -189,11 +189,7 @@ export function ActivitiesPanel({
                   </ContextMenuItem>
                   <ContextMenuItem
                     onClick={() =>
-                      handleDeleteClick(
-                        "activity",
-                        activity.id,
-                        activity.activity,
-                      )
+                      handleDeleteClick("activity", activity.id, activity.name)
                     }
                   >
                     <Trash className="mr-2 h-4 w-4" />
@@ -216,18 +212,18 @@ export function ActivitiesPanel({
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   onAction(
-                                    ACTIONS.editSub(subActivity, activity),
+                                    ACTIONS.editSub(subActivity, activity)
                                   );
                                 }}
                               >
                                 <div className="px-2 col-span-2 text-muted-foreground pl-8 truncate flex items-center">
-                                  ↳ {subActivity.activity}
+                                  ↳ {subActivity.name}
                                 </div>
                                 <div className="px-2 text-center text-muted-foreground truncate flex items-center justify-center">
                                   {subActivity.startDate}
                                 </div>
                                 <div className="px-2 text-center text-muted-foreground truncate flex items-center justify-center">
-                                  {subActivity.duration} jam
+                                  {subActivity.workload} jam
                                 </div>
                               </div>
                             </ContextMenuTrigger>
@@ -236,7 +232,7 @@ export function ActivitiesPanel({
                               <ContextMenuItem
                                 onClick={() =>
                                   onAction(
-                                    ACTIONS.editSub(subActivity, activity),
+                                    ACTIONS.editSub(subActivity, activity)
                                   )
                                 }
                               >
@@ -248,9 +244,9 @@ export function ActivitiesPanel({
                                   handleDeleteClick(
                                     "subactivity",
                                     activity.id,
-                                    activity.activity,
+                                    activity.name,
                                     subActivity.id,
-                                    subActivity.activity,
+                                    subActivity.name
                                   )
                                 }
                               >
@@ -259,7 +255,7 @@ export function ActivitiesPanel({
                               </ContextMenuItem>
                             </ContextMenuContent>
                           </ContextMenu>
-                        ),
+                        )
                       )}
                     </div>
                   )}
