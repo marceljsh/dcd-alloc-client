@@ -30,7 +30,6 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-  FormDescription,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import {
@@ -43,180 +42,110 @@ import {
 import {
   ProjectActivity,
   ProjectSubActivity,
-  EntityType,
   ModeType,
 } from "@/types/projects";
-import { calculateWorkingDays } from "@/lib/dates";
-import {
-  ActivityFormData,
-  activityFormSchema,
-  createSubActivitySchema,
-} from "@/lib/schemas/project";
+import { ActivityFormData, activityFormSchema } from "@/lib/schemas/project";
+import { v4 as uuidv4 } from "uuid";
 
 interface ActivityFormProps {
-  sheetType: EntityType;
-  parentActivity: ProjectActivity | null;
-  formDetails: ProjectActivity | ProjectSubActivity | null;
+  activityDetails: ProjectActivity | null;
   mode: ModeType;
   activities?: ProjectActivity[];
   onSubmit: (
     entity: ProjectActivity | ProjectSubActivity,
-    parent?: ProjectActivity,
+    parent?: ProjectActivity
   ) => void;
   onEditSubActivity?: (
     subActivity: ProjectSubActivity,
-    parentActivity: ProjectActivity,
+    parentActivity: ProjectActivity
   ) => void;
   onDeleteSubActivity?: (
-    parentActivityId: number,
-    subActivityId: number,
+    parentActivityId: string,
+    subActivityId: string
   ) => void;
 }
 
 const createActivity = (data: ActivityFormData): ProjectActivity => ({
-  id: data.id ?? Date.now(),
-  activity: data.activityName.trim(),
+  id: data.id ? data.id : uuidv4(),
+  name: data.name.trim(),
   startDate: data.startDate,
   endDate: data.endDate,
-  duration: data.duration,
-  fte: data.fte,
+  workload: data.workload,
   role: data.role,
-  subActivities: [], // Initialize empty sub-activities array
-});
-
-const createSubActivity = (
-  data: ActivityFormData,
-  parent: ProjectActivity,
-): ProjectSubActivity => ({
-  id: data.id ?? Date.now(),
-  activity: data.activityName.trim(),
-  startDate: data.startDate,
-  endDate: data.endDate,
-  duration: data.duration,
-  fte: data.fte,
-  parentId: parent.id,
-  role: data.role || "", // Fallback to empty string
-  excludeLevel: data.excludeLevel,
+  subActivities: [],
 });
 
 const getDefaultFormValues = (): ActivityFormData => ({
-  activityName: "",
+  id: "",
+  name: "",
   startDate: "",
   endDate: "",
-  fte: 1.0,
-  duration: 0,
-  role: "",
-  excludeLevel: "none",
+  workload: 0,
+  role: "SE",
 });
 
-const mapEntityToFormData = (
-  entity: ProjectActivity | ProjectSubActivity,
-): ActivityFormData => ({
+const mapEntityToFormData = (entity: ProjectActivity): ActivityFormData => ({
   id: entity.id,
-  activityName: entity.activity,
+  name: entity.name,
   startDate: entity.startDate,
   endDate: entity.endDate,
-  fte: entity.fte,
-  duration: entity.duration,
-  role: entity.role || "",
-  excludeLevel:
-    "excludeLevel" in entity ? entity.excludeLevel || "none" : "none",
+  workload: entity.workload,
+  role: entity.role,
 });
 
 export function ActivityForm({
-  sheetType,
   mode,
-  parentActivity,
-  formDetails,
-  activities = [],
+  activityDetails: formDetails,
   onSubmit,
   onEditSubActivity,
   onDeleteSubActivity,
 }: ActivityFormProps) {
-  const schema =
-    sheetType === "subactivity" && parentActivity
-      ? createSubActivitySchema(
-          parentActivity.startDate,
-          parentActivity.endDate,
-        )
-      : activityFormSchema;
-
   const form = useForm<ActivityFormData>({
-    resolver: zodResolver(schema),
+    resolver: zodResolver(activityFormSchema),
     defaultValues: getDefaultFormValues(),
   });
 
-  const watchedFields = form.watch(["startDate", "endDate", "fte", "duration"]);
-
-  const [selectedParentId, setSelectedParentId] = React.useState<number | null>(
-    parentActivity ? parentActivity.id : null,
-  );
-
-  // Track which field was last updated to prevent infinite calculation loops
-  const [lastUpdatedField, setLastUpdatedField] = React.useState<
-    "fte" | "duration" | null
-  >(null);
-  const [isCalculating, setIsCalculating] = React.useState(false);
-
-  // Local state to track subactivities marked for deletion
   const [deletedSubActivityIds, setDeletedSubActivityIds] = React.useState<
-    number[]
+    string[]
   >([]);
 
-  // State for delete confirmation dialog
   const [deleteConfirmation, setDeleteConfirmation] = React.useState<{
     isOpen: boolean;
-    subActivityId?: number;
+    subActivityId?: string;
     subActivityName?: string;
   }>({ isOpen: false });
 
   const handleFormSubmit = (data: ActivityFormData) => {
-    let entity: ProjectActivity | ProjectSubActivity;
+    console.log("Form Data Submitted:", data);
+    console.log(uuidv4());
+    const entity = createActivity(data);
 
-    if (sheetType === "activity") {
-      entity = createActivity(data);
+    if (mode === "Edit" && formDetails && "subActivities" in formDetails) {
+      const filteredSubActivities = (formDetails.subActivities || []).filter(
+        (sub) => !deletedSubActivityIds.includes(sub.id)
+      );
+      (entity as ProjectActivity).subActivities = filteredSubActivities;
 
-      if (mode === "Edit" && formDetails && "subActivities" in formDetails) {
-        // Apply deleted subactivities - remove ones marked for deletion
-        const filteredSubActivities = (formDetails.subActivities || []).filter(
-          (sub) => !deletedSubActivityIds.includes(sub.id),
-        );
-        (entity as ProjectActivity).subActivities = filteredSubActivities;
-
-        // Apply actual deletions to store for each deleted subactivity
-        deletedSubActivityIds.forEach((subId) => {
-          onDeleteSubActivity?.(formDetails.id, subId);
-        });
-      }
-
-      if (mode === "Add") {
-        entity.duration = 0;
-      }
-      onSubmit(entity);
-    } else {
-      // Subactivity
-      let parent: ProjectActivity | null = parentActivity;
-      if (!parent && selectedParentId) {
-        parent = activities.find((a) => a.id === selectedParentId) || null;
-      }
-      if (!parent) {
-        console.error("Cannot create sub-activity without parent activity");
-        return;
-      }
-      entity = createSubActivity(data, parent);
-      onSubmit(entity, parent);
+      deletedSubActivityIds.forEach((subId) => {
+        onDeleteSubActivity?.(formDetails.id, subId);
+      });
     }
+
+    if (mode === "Add") {
+      entity.workload = 0;
+    }
+    onSubmit(entity);
   };
 
   const handleCancel = () => {
     form.reset(getDefaultFormValues());
-    // Reset deleted subactivities when canceling
+
     setDeletedSubActivityIds([]);
   };
 
   const handleDeleteSubActivityLocally = (
-    subActivityId: number,
-    subActivityName: string,
+    subActivityId: string,
+    subActivityName: string
   ) => {
     setDeleteConfirmation({
       isOpen: true,
@@ -235,128 +164,32 @@ export function ActivityForm({
     setDeleteConfirmation({ isOpen: false });
   };
 
-  const currentDates = form.watch(["startDate", "endDate"]);
-  const workingDays =
-    currentDates[0] && currentDates[1]
-      ? calculateWorkingDays(currentDates[0], currentDates[1])
-      : 0;
-
-  const isFteFieldVisible = sheetType === "subactivity";
-  const isDurationVisible = sheetType === "subactivity";
-  const isRoleVisible = sheetType === "activity";
-
   const getSubmitButtonText = () => {
     const action = mode === "Add" ? "Add" : "Update";
-    const entityType = sheetType === "activity" ? "Activity" : "Sub-Activity";
-    return `${action} ${entityType}`;
+    return `${action} Activity`;
   };
 
   const getSheetTitle = () => {
-    const entityType = sheetType === "activity" ? "Activity" : "Sub-Activity";
-    return `${mode} ${entityType}`;
+    return `${mode} Activity`;
   };
-
-  useEffect(() => {
-    const [startDate, endDate, fte, duration] = watchedFields;
-
-    // Prevent calculations if already calculating or no dates
-    if (isCalculating || !startDate || !endDate) return;
-
-    const workingDays = calculateWorkingDays(startDate, endDate);
-    const totalWorkHours = workingDays * 8; // 8 hours per working day
-
-    if (totalWorkHours <= 0) return;
-
-    // Auto-calculate duration when FTE changes (and FTE was last updated)
-    if (lastUpdatedField === "fte" && fte > 0) {
-      const calculatedDuration = Math.round(totalWorkHours * fte * 10) / 10;
-      if (Math.abs(duration - calculatedDuration) > 0.05) {
-        // Only update if significant difference
-        setIsCalculating(true);
-        form.setValue("duration", calculatedDuration, {
-          shouldValidate: false,
-        });
-        setTimeout(() => {
-          setIsCalculating(false);
-          setLastUpdatedField(null);
-        }, 0);
-      }
-    }
-
-    // Auto-calculate FTE when duration changes (and duration was last updated)
-    else if (lastUpdatedField === "duration" && duration > 0) {
-      const calculatedFte = Math.round((duration / totalWorkHours) * 10) / 10;
-      if (calculatedFte <= 2.0 && Math.abs(fte - calculatedFte) > 0.05) {
-        // Only update if significant difference
-        setIsCalculating(true);
-        form.setValue("fte", calculatedFte, { shouldValidate: false });
-        setTimeout(() => {
-          setIsCalculating(false);
-          setLastUpdatedField(null);
-        }, 0);
-      }
-    }
-
-    // Initial calculation when editing existing data (only once)
-    else if (
-      mode === "Edit" &&
-      formDetails &&
-      fte > 0 &&
-      !lastUpdatedField &&
-      duration === 0
-    ) {
-      const calculatedDuration = Math.round(totalWorkHours * fte * 10) / 10;
-      setIsCalculating(true);
-      form.setValue("duration", calculatedDuration, { shouldValidate: false });
-      setTimeout(() => {
-        setIsCalculating(false);
-      }, 0);
-    }
-  }, [watchedFields, form, formDetails, mode, lastUpdatedField, isCalculating]);
 
   useEffect(() => {
     if (formDetails && mode === "Edit") {
       const formData = mapEntityToFormData(formDetails);
       form.reset(formData);
-      // Reset deleted subactivities when form is opened for editing
+
       setDeletedSubActivityIds([]);
     } else if (mode === "Add" && !formDetails && !form.formState.isDirty) {
-      // Only reset if form is not dirty (hasn't been filled out yet)
       form.reset(getDefaultFormValues());
       setDeletedSubActivityIds([]);
     }
-  }, [formDetails, mode, sheetType, form]);
+  }, [formDetails, mode, form]);
 
   return (
     <SheetContent className="sm:max-w-[600px] flex flex-col overflow-y-scroll">
       <SheetHeader>
         <SheetTitle>{getSheetTitle()}</SheetTitle>
       </SheetHeader>
-
-      {sheetType === "subactivity" &&
-        !parentActivity &&
-        activities.length > 0 && (
-          <div className="px-4 pb-2">
-            <label className="block mb-2 text-sm font-medium">
-              Select Parent Activity
-            </label>
-            <Select
-              value={selectedParentId ? String(selectedParentId) : ""}
-              onValueChange={(val) => setSelectedParentId(Number(val))}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select activity..." />
-              </SelectTrigger>
-              <SelectContent>
-                {activities.map((a) => (
-                  <SelectItem key={a.id} value={String(a.id)}>
-                    {a.activity}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        )}
 
       <Form {...form}>
         <form
@@ -367,20 +200,12 @@ export function ActivityForm({
             {/* Activity Name Field */}
             <FormField
               control={form.control}
-              name="activityName"
+              name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>
-                    {sheetType === "activity" ? "Activity" : "Sub-Activity"}{" "}
-                    Name
-                  </FormLabel>
+                  <FormLabel>Activity Name</FormLabel>
                   <FormControl>
-                    <Input
-                      placeholder={`Enter ${
-                        sheetType === "activity" ? "activity" : "sub-activity"
-                      } name`}
-                      {...field}
-                    />
+                    <Input placeholder={`Enter activity name`} {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -393,29 +218,11 @@ export function ActivityForm({
                 control={form.control}
                 name="startDate"
                 render={({ field }) => {
-                  let minDate = undefined;
-                  let maxDate = undefined;
-                  if (sheetType === "subactivity") {
-                    const parent =
-                      parentActivity ||
-                      (selectedParentId
-                        ? activities.find((a) => a.id === selectedParentId)
-                        : undefined);
-                    if (parent) {
-                      minDate = parent.startDate;
-                      maxDate = parent.endDate;
-                    }
-                  }
                   return (
                     <FormItem>
                       <FormLabel>Start Date</FormLabel>
                       <FormControl>
-                        <Input
-                          type="date"
-                          {...field}
-                          min={minDate}
-                          max={maxDate}
-                        />
+                        <Input type="date" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -427,29 +234,11 @@ export function ActivityForm({
                 control={form.control}
                 name="endDate"
                 render={({ field }) => {
-                  let minDate = undefined;
-                  let maxDate = undefined;
-                  if (sheetType === "subactivity") {
-                    const parent =
-                      parentActivity ||
-                      (selectedParentId
-                        ? activities.find((a) => a.id === selectedParentId)
-                        : undefined);
-                    if (parent) {
-                      minDate = parent.startDate;
-                      maxDate = parent.endDate;
-                    }
-                  }
                   return (
                     <FormItem>
                       <FormLabel>End Date</FormLabel>
                       <FormControl>
-                        <Input
-                          type="date"
-                          {...field}
-                          min={minDate}
-                          max={maxDate}
-                        />
+                        <Input type="date" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -459,153 +248,36 @@ export function ActivityForm({
             </div>
 
             {/* Role Field - Only for activities */}
-            {isRoleVisible && (
-              <FormField
-                control={form.control}
-                name="role"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Role</FormLabel>
-                    <FormControl>
-                      <Select
-                        onValueChange={field.onChange}
-                        value={field.value}
-                      >
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Select Role" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="SE">Software Engineer</SelectItem>
-                          <SelectItem value="SA">Solution Analyst</SelectItem>
-                          <SelectItem value="DE">Data Engineer</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
-
-            {/* FTE Field - Only for sub-activities with auto calculation */}
-            {isFteFieldVisible && (
-              <FormField
-                control={form.control}
-                name="fte"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>FTE (Full Time Equivalent)</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        step="0.25"
-                        min="0.25"
-                        max="2.0"
-                        {...field}
-                        onChange={(e) => {
-                          const value = Number(e.target.value);
-                          if (!isCalculating) {
-                            setLastUpdatedField("fte");
-                            field.onChange(value);
-                          }
-                        }}
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      1.0 = 8 hours/day | 0.5 = 4 hours/day | 0.25 = 2 hours/day
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
-
-            {/* Duration Field - Only for sub-activities */}
-            {isDurationVisible && (
-              <FormField
-                control={form.control}
-                name="duration"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Workload (hours)</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        step="1"
-                        min="0"
-                        max="2000"
-                        {...field}
-                        onChange={(e) => {
-                          const value = Number(e.target.value);
-                          if (!isCalculating) {
-                            setLastUpdatedField("duration");
-                            field.onChange(value);
-                          }
-                        }}
-                      />
-                    </FormControl>
-
-                    <FormDescription>
-                      {workingDays > 0
-                        ? `${workingDays} working days × 8 hours × ${form.getValues(
-                            "fte",
-                          )} FTE = ${
-                            Math.round(
-                              workingDays * 8 * form.getValues("fte") * 10,
-                            ) / 10
-                          } hours (calculated)`
-                        : "Enter dates first to see calculation"}
-                    </FormDescription>
-
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
-
-            {/* Exclude Level Field - Only for sub-activities */}
-            {sheetType === "subactivity" && (
-              <FormField
-                control={form.control}
-                name="excludeLevel"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Exclude Level (Optional)</FormLabel>
-                    <FormControl>
-                      <Select
-                        onValueChange={field.onChange}
-                        value={field.value || "none"}
-                      >
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Select level to exclude" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">No exclusion</SelectItem>
-                          <SelectItem value="junior">Junior</SelectItem>
-                          <SelectItem value="middle">Middle</SelectItem>
-                          <SelectItem value="senior">Senior</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </FormControl>
-                    <FormDescription>
-                      Exclude specific experience level from this task
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
+            <FormField
+              control={form.control}
+              name="role"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Role</FormLabel>
+                  <FormControl>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select Role" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="SE">Software Engineer</SelectItem>
+                        <SelectItem value="SA">Solution Analyst</SelectItem>
+                        <SelectItem value="DE">Data Engineer</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
           </div>
 
           {/* Sub-Activities List - Only show when editing an activity that has sub-activities */}
-          {sheetType === "activity" &&
-            formDetails &&
+          {formDetails &&
             "subActivities" in formDetails &&
             (() => {
-              // Use formDetails directly for consistency (not real-time store data)
-              // Filter out subactivities that are marked for deletion locally
               const subActivities = (formDetails.subActivities || []).filter(
-                (sub) => !deletedSubActivityIds.includes(sub.id),
+                (sub) => !deletedSubActivityIds.includes(sub.id)
               );
 
               return subActivities.length > 0 ? (
@@ -622,19 +294,14 @@ export function ActivityForm({
                         >
                           <div className="flex-1">
                             <div className="font-medium">
-                              {subActivity.activity}
+                              {subActivity.name}
                             </div>
                             <div className="text-sm text-muted-foreground flex items-center gap-4">
                               <span>
                                 {subActivity.startDate} - {subActivity.endDate}
                               </span>
-                              <span>{subActivity.duration} hours</span>
+                              <span>{subActivity.workload} hours</span>
                               <span>FTE: {subActivity.fte}</span>
-                              {subActivity.role && (
-                                <Badge variant="outline" className="text-xs">
-                                  {subActivity.role}
-                                </Badge>
-                              )}
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
@@ -645,7 +312,7 @@ export function ActivityForm({
                               onClick={() =>
                                 onEditSubActivity?.(
                                   subActivity,
-                                  formDetails as ProjectActivity,
+                                  formDetails as ProjectActivity
                                 )
                               }
                               className="h-8 w-8 p-0"
@@ -659,7 +326,7 @@ export function ActivityForm({
                               onClick={() =>
                                 handleDeleteSubActivityLocally(
                                   subActivity.id,
-                                  subActivity.activity,
+                                  subActivity.name
                                 )
                               }
                               className="h-8 w-8 p-0 text-red-500 hover:text-red-600 hover:bg-red-50"
