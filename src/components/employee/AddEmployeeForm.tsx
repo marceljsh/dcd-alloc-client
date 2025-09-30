@@ -51,7 +51,7 @@ async function uploadViaSignedUrlWithToken(
   bucket: string,
   path: string,
   token: string,
-  file: File,
+  file: File
 ) {
   const { supabase } = await import("@/lib/supabaseClient");
   const { error } = await supabase.storage
@@ -106,14 +106,14 @@ export function AddEmployeeForm({ onSubmit, onCancel }: AddEmployeeFormProps) {
       phone: "",
       location: "",
       joinDate: "",
-    } as any,
+    },
   });
 
   const status = form.watch("status");
   const [contractFile, setContractFile] = useState<File | null>(null);
 
   async function uploadContractFileIfNeeded(
-    currentStatus: string | undefined,
+    currentStatus: string | undefined
   ): Promise<string | undefined> {
     if (currentStatus !== "Contract" || !contractFile) return undefined;
 

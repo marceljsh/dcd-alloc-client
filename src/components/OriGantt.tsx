@@ -264,7 +264,7 @@ export default function Component({
   const [selectedRoles, setSelectedRoles] = useState<Role[]>(roles);
 
   /* calculate timeline bounds */
-  const { startDate, endDate, totalDays } = useMemo(() => {
+  const { startDate, endDate } = useMemo(() => {
     const filteredTasks = tasks.getValues().filter((task) => {
       const stage = stages.get(task.stageId);
       const employee = employees.get(task.employeeId);
@@ -299,7 +299,7 @@ export default function Component({
         /* accumulator with initial values */
         earliestDate: new Date(filteredTasks[0].startDate),
         latestDate: new Date(filteredTasks[0].endDate),
-      },
+      }
     );
 
     const start = startOfWeek(earliestDate, { weekStartsOn: 1 });
@@ -307,7 +307,7 @@ export default function Component({
     const total = differenceInDays(end, start) + 1;
 
     return { startDate: start, endDate: end, totalDays: total };
-  }, [tasks, employees, selectedProjects, selectedRoles]);
+  }, [selectedProjects, selectedRoles]);
 
   /* generate daily timeline headers */
   const dailyHeaders = useMemo(() => {
@@ -331,7 +331,7 @@ export default function Component({
 
       /* count days in this week that are within our range */
       const daysInWeek = dailyHeaders.filter(
-        (day) => day >= current && day <= weekEnd,
+        (day) => day >= current && day <= weekEnd
       ).length;
 
       if (daysInWeek > 0) {
@@ -354,10 +354,10 @@ export default function Component({
 
     /* find the index of start and end days in our daily headers */
     const startDayIndex = dailyHeaders.findIndex(
-      (day) => day.toDateString() === taskStart.toDateString(),
+      (day) => day.toDateString() === taskStart.toDateString()
     );
     const endDayIndex = dailyHeaders.findIndex(
-      (day) => day.toDateString() === taskEnd.toDateString(),
+      (day) => day.toDateString() === taskEnd.toDateString()
     );
 
     /* if dates are not found in our range, calculate based on position */
@@ -368,8 +368,8 @@ export default function Component({
             0,
             Math.floor(
               (taskStart.getTime() - startDate.getTime()) /
-                (1000 * 60 * 60 * 24),
-            ),
+                (1000 * 60 * 60 * 24)
+            )
           );
 
     const actualEndIndex =
@@ -378,8 +378,8 @@ export default function Component({
         : Math.min(
             dailyHeaders.length - 1,
             Math.floor(
-              (taskEnd.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24),
-            ),
+              (taskEnd.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
+            )
           );
 
     /* calculate position in pixels based on day width */
@@ -420,7 +420,7 @@ export default function Component({
       employee,
       tasks: filteredTasks.filter((task) => task.employeeId === employee.id),
     }));
-  }, [selectedProjects, selectedRoles, employees, tasks]);
+  }, [selectedProjects, selectedRoles]);
 
   /* calculate task levels for overlapping tasks */
   const getTaskLevels = (employeeTasks: Task[]) => {
@@ -428,7 +428,7 @@ export default function Component({
 
     const sortedTasks = [...employeeTasks].sort(
       (a, b) =>
-        new Date(a.startDate).getTime() - new Date(b.startDate).getTime(),
+        new Date(a.startDate).getTime() - new Date(b.startDate).getTime()
     );
 
     sortedTasks.forEach((task) => {
@@ -466,14 +466,14 @@ export default function Component({
     if (selectedProjects.length === projects.size) return "All";
 
     return selectedProjects.length;
-  }, [selectedProjects.length, projects.size]);
+  }, [selectedProjects.length]);
 
   const selectedRolesLabel = useMemo(() => {
     if (selectedRoles.length === 0) return "None";
     if (selectedRoles.length === roles.length) return "All";
 
     return selectedRoles.length;
-  }, [selectedRoles.length, roles.length]);
+  }, [selectedRoles.length]);
 
   return (
     <div className={cn("space-y-6", className)} {...props}>
@@ -501,7 +501,7 @@ export default function Component({
                   setSelectedProjects(
                     checked
                       ? [...selectedProjects, project.id]
-                      : selectedProjects.filter((p) => p !== project.id),
+                      : selectedProjects.filter((p) => p !== project.id)
                   )
                 }
               >
@@ -534,7 +534,7 @@ export default function Component({
                   setSelectedRoles(
                     checked
                       ? [...selectedRoles, role]
-                      : selectedRoles.filter((r) => r !== role),
+                      : selectedRoles.filter((r) => r !== role)
                   )
                 }
               >
@@ -563,7 +563,9 @@ export default function Component({
                   {/* This container handles both scrolls */}
                   <div
                     style={{
-                      minWidth: `${employeeColumnFixedW + employeeColumnWidth}px`,
+                      minWidth: `${
+                        employeeColumnFixedW + employeeColumnWidth
+                      }px`,
                     }}
                   >
                     {/* Headers Section - Sticky Top */}
@@ -615,7 +617,7 @@ export default function Component({
                                 className={cn(
                                   "p-1 text-center text-xs border-r",
                                   "flex flex-col justify-center sticky top-[64px] z-20",
-                                  isWeekend(date) ? "bg-gray-50" : "bg-white",
+                                  isWeekend(date) ? "bg-gray-50" : "bg-white"
                                 )}
                                 style={{
                                   width: `${dayWidth}px`,
@@ -649,11 +651,11 @@ export default function Component({
                           const taskLevels = getTaskLevels(employeeTasks);
                           const maxLevel = Math.max(
                             ...Object.values(taskLevels),
-                            0,
+                            0
                           );
                           const rowHeight = Math.max(
                             60,
-                            (maxLevel + 1) * 28 + 20,
+                            (maxLevel + 1) * 28 + 20
                           );
 
                           return (
@@ -669,7 +671,9 @@ export default function Component({
                                 </div>
                                 <Badge
                                   variant="outline"
-                                  className={`w-fit mt-1 ${getRoleColor(employee.role)}`}
+                                  className={`w-fit mt-1 ${getRoleColor(
+                                    employee.role
+                                  )}`}
                                 >
                                   {employee.role}
                                 </Badge>
@@ -682,7 +686,11 @@ export default function Component({
                                   {dailyHeaders.map((date, index) => (
                                     <div
                                       key={index}
-                                      className={`border-r ${isWeekend(date) ? "bg-gray-50" : "bg-white"}`}
+                                      className={`border-r ${
+                                        isWeekend(date)
+                                          ? "bg-gray-50"
+                                          : "bg-white"
+                                      }`}
                                       style={{ width: `${dayWidth}px` }}
                                     />
                                   ))}
@@ -696,15 +704,15 @@ export default function Component({
                                     const topOffset = level * 28 + 8;
 
                                     const taskStart = new Date(
-                                      task.startDate,
+                                      task.startDate
                                     ).toLocaleDateString();
                                     const taskEnd = new Date(
-                                      task.endDate,
+                                      task.endDate
                                     ).toLocaleDateString();
 
                                     const stage = stages.get(task.stageId)!;
                                     const project = projects.get(
-                                      stage.projectId,
+                                      stage.projectId
                                     )!;
 
                                     return (
@@ -717,8 +725,8 @@ export default function Component({
                                               getTaskColor(
                                                 projects
                                                   .getKeys()
-                                                  .indexOf(project.id),
-                                              ),
+                                                  .indexOf(project.id)
+                                              )
                                             )}
                                             style={{
                                               left: position.left,
@@ -775,7 +783,7 @@ export default function Component({
                               </div>
                             </div>
                           );
-                        },
+                        }
                       )}
                     </TooltipProvider>
                   </div>
@@ -806,7 +814,7 @@ export default function Component({
               });
 
             const projectColor = getTaskColor(
-              projects.getKeys().indexOf(project.id),
+              projects.getKeys().indexOf(project.id)
             );
 
             return (

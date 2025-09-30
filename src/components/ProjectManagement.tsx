@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -29,7 +28,6 @@ import {
   Download,
   Trash2,
   Copy,
-  FileText,
   Database,
   BookTemplate as Template,
 } from "lucide-react";
@@ -83,8 +81,9 @@ export function ProjectManagement({
   onLoadProject,
   onLoadTemplate,
 }: ProjectManagementProps) {
-  const [savedProjects, setSavedProjects] =
-    useState<SavedProject[]>(getSavedProjects());
+  const [savedProjects, setSavedProjects] = useState<SavedProject[]>(
+    getSavedProjects()
+  );
   const [templates, setTemplates] = useState<ProjectTemplate[]>(getTemplates());
   const [templateName, setTemplateName] = useState("");
   const [templateDescription, setTemplateDescription] = useState("");
@@ -104,7 +103,7 @@ export function ProjectManagement({
       templateName,
       templateDescription,
       projectData,
-      roleLevels,
+      roleLevels
     );
     setTemplates(getTemplates());
     setTemplateName("");
@@ -130,7 +129,10 @@ export function ProjectManagement({
     if (!projectData || !results) return;
 
     const csvContent = exportToCSV(results, projectData);
-    const filename = `${projectData.projectName.replace(/\s+/g, "_")}_estimation.csv`;
+    const filename = `${projectData.projectName.replace(
+      /\s+/g,
+      "_"
+    )}_estimation.csv`;
     downloadCSV(csvContent, filename);
   };
 

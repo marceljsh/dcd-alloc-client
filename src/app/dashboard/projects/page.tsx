@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback } from "react";
 import type React from "react";
 import {
   type ColumnDef,
@@ -59,7 +59,6 @@ import rawProjects from "@/data/projects.json";
 import type { ProjectCategory, ProjectPriority } from "@/types/common";
 import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
-import { AddProjectForm } from "@/components/project/AddProjectForm";
 import ProjectTimeline from "@/components/ProjectTimeline";
 import { useRouter } from "next/navigation";
 
@@ -112,7 +111,7 @@ export default function ProjectsPage() {
   const router = useRouter();
   const [activeDialog, setActiveDialog] = useState<ActiveDialog>(null);
   const [selectedProject, setSelectedProject] = useState<ProjectRow | null>(
-    null,
+    null
   );
 
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
@@ -120,24 +119,29 @@ export default function ProjectsPage() {
   const [selectedTeams, setSelectedTeams] = useState<string[]>([]);
 
   const [projects, setProjects] = useState<ProjectRow[]>(
-    () => rawProjects as ProjectRow[],
+    () => rawProjects as ProjectRow[]
   );
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [globalFilter, setGlobalFilter] = useState("");
 
-  const handleArchive = (project: ProjectRow) => {
-    const stored = JSON.parse(localStorage.getItem("archivedProjects") || "[]");
-    localStorage.setItem(
-      "archivedProjects",
-      JSON.stringify([...stored, project]),
-    );
+  const handleArchive = useCallback(
+    (project: ProjectRow) => {
+      const stored = JSON.parse(
+        localStorage.getItem("archivedProjects") || "[]"
+      );
+      localStorage.setItem(
+        "archivedProjects",
+        JSON.stringify([...stored, project])
+      );
 
-    setProjects((prev) => prev.filter((p) => p.code !== project.code));
+      setProjects((prev) => prev.filter((p) => p.code !== project.code));
 
-    toast.success(`Project "${project.name}" has been archived.`);
-    router.push("/dashboard/archive");
-  };
+      toast.success(`Project "${project.name}" has been archived.`);
+      router.push("/dashboard/archive");
+    },
+    [router, setProjects]
+  );
 
   const columns = useMemo<ColumnDef<ProjectRow>[]>(
     () => [
@@ -254,7 +258,7 @@ export default function ProjectsPage() {
         },
       },
     ],
-    [],
+    [handleArchive]
   );
 
   const table = useReactTable({
@@ -279,7 +283,7 @@ export default function ProjectsPage() {
     (
       columnId: string,
       currentSelection: string[],
-      setter: React.Dispatch<React.SetStateAction<string[]>>,
+      setter: React.Dispatch<React.SetStateAction<string[]>>
     ) =>
     (value: string, checked: boolean) => {
       const newSelection = checked
@@ -295,17 +299,17 @@ export default function ProjectsPage() {
   const handleCategoryChange = handleFilterChange(
     "category",
     selectedCategories,
-    setSelectedCategories,
+    setSelectedCategories
   );
   const handlePriorityChange = handleFilterChange(
     "priority",
     selectedPriorities,
-    setSelectedPriorities,
+    setSelectedPriorities
   );
   const handleTeamChange = handleFilterChange(
     "team",
     selectedTeams,
-    setSelectedTeams,
+    setSelectedTeams
   );
 
   const handleAddProject = (e: MouseEvent) => {
@@ -330,7 +334,7 @@ export default function ProjectsPage() {
           projects.length
         : 0,
     }),
-    [projects],
+    [projects]
   );
 
   // --- RENDER ---
@@ -535,7 +539,7 @@ const ProjectsDataTable = ({
                 <div className="flex items-center gap-2">
                   {flexRender(
                     header.column.columnDef.header,
-                    header.getContext(),
+                    header.getContext()
                   )}
                   {{ asc: "▲", desc: "▼" }[
                     header.column.getIsSorted() as string
@@ -567,26 +571,6 @@ const ProjectsDataTable = ({
       </TableBody>
     </Table>
   </ScrollArea>
-);
-
-const AddProjectDialog = ({
-  isOpen,
-  onClose,
-}: {
-  isOpen: boolean;
-  onClose: () => void;
-}) => (
-  <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-    <DialogContent className="sm:max-w-[425px]">
-      <DialogHeader>
-        <DialogTitle>Add New Project</DialogTitle>
-        <DialogDescription>
-          Create a new project to track progress and manage resources.
-        </DialogDescription>
-      </DialogHeader>
-      <AddProjectForm onCancel={onClose} />
-    </DialogContent>
-  </Dialog>
 );
 
 const ProjectDetailDialog = ({
