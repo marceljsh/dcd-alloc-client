@@ -1,4 +1,4 @@
-import { EmployeeLevel, EmployeeRole } from "@/types/common";
+import { EmployeeLevel, EmployeeRole, EmploymentStatus } from "@/types/common";
 
 export function initials(str: string): string {
   const words = str.split(' ');
@@ -20,7 +20,7 @@ export function title(str: string): string {
   return str.replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
-export function normalizeRole(role: EmployeeRole): string {
+export function formatRole(role: EmployeeRole): string {
   switch (role) {
     case "SLA": return "System Analyst";
     case "DTE": return "Data Engineer";
@@ -28,10 +28,17 @@ export function normalizeRole(role: EmployeeRole): string {
   }
 }
 
-export function normalizeLevel(level: EmployeeLevel): string {
+export function formatLevel(level: EmployeeLevel): string {
   switch (level) {
     case "JR":  return "Junior";
     case "MID": return "Mid";
     case "SR":  return "Senior";
+  }
+}
+
+export function formatEmploymentStatus(status: EmploymentStatus): string {
+  switch (status) {
+    case "CR": return "Contract";
+    case "OR": return "Permanent";
   }
 }

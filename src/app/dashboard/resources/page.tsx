@@ -1,6 +1,6 @@
-"use client";
+'use client'
 
-import { ComponentType, ReactNode, useMemo, useState } from "react";
+import { ComponentType, ReactNode, useMemo, useState } from "react"
 import {
   ColumnDef,
   flexRender,
@@ -10,20 +10,13 @@ import {
   useReactTable,
   SortingState,
   ColumnFiltersState,
-} from "@tanstack/react-table";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+} from "@tanstack/react-table"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -32,7 +25,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@/components/ui/dropdown-menu"
 import {
   Dialog,
   DialogContent,
@@ -40,13 +33,13 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Search, Plus, MoreHorizontal, Edit, Trash2, Mail, Phone, Calendar, MapPin, Filter, Table2 } from "lucide-react";
-import { initials } from "@/lib/strings";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { toast } from "sonner";
-import { Toaster } from "@/components/ui/sonner";
+} from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
+import { Search, Plus, MoreHorizontal, Edit, Trash2, Mail, Phone, Calendar, MapPin, Filter, Table2 } from "lucide-react"
+import { initials, formatEmploymentStatus, formatRole } from "@/lib/strings"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { toast } from "sonner"
+import { Toaster } from "@/components/ui/sonner"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -56,28 +49,29 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { employeeLevelOpt, EmployeeRole, employeeRoleOpt, EmploymentStatus, employmentStatusOpt } from "@/types/common";
-import rawEmployees from "@/data/employees.json";
-import { ContractEmployee, EmployeeRow, PermanentEmployee } from "@/types/employee";
-import { AddEmployeeFormValues, AddEmployeeForm } from "@/components/employee/AddEmployeeForm";
-import { Separator } from "@/components/ui/separator";
+} from "@/components/ui/alert-dialog"
+import { ApiResponse, employeeLevelOpt, EmployeeRole, employeeRoleOpt, EmploymentStatus, employmentStatusOpt } from "@/types/common"
+import rawEmployees from "@/data/employees.json"
+import { Employee, RawEmployee } from "@/types/employee"
+import { AddEmployeeFormValues, AddEmployeeForm } from "@/components/employee/AddEmployeeForm"
+import { Separator } from "@/components/ui/separator"
+import { mapRawToEmployee } from "@/lib/mapper"
 
 export default function ResourcesPage() {
-  const [employees, setEmployees] = useState<EmployeeRow[]>(initialEmployees);
-  const [selectedEmployee, setSelectedEmployee] = useState<EmployeeRow | null>(null);
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [employeeToDelete, setEmployeeToDelete] = useState<EmployeeRow | null>(null);
+  const [employees, setEmployees] = useState<Employee[]>(initialEmployees)
+  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null)
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
+  const [employeeToDelete, setEmployeeToDelete] = useState<Employee | null>(null)
 
-  const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
-  const [selectedLevels, setSelectedLevels] = useState<string[]>([]);
-  const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
+  const [selectedRoles, setSelectedRoles] = useState<string[]>([])
+  const [selectedLevels, setSelectedLevels] = useState<string[]>([])
+  const [selectedStatuses, setSelectedStatuses] = useState<string[]>([])
 
-  const [sorting, setSorting] = useState<SortingState>([]);
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
-  const [globalFilter, setGlobalFilter] = useState("");
+  const [sorting, setSorting] = useState<SortingState>([])
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
+  const [globalFilter, setGlobalFilter] = useState("")
 
-  const columns = useMemo<ColumnDef<EmployeeRow>[]>(
+  const columns = useMemo<ColumnDef<Employee>[]>(
     () => [
       {
         accessorKey: "name",
@@ -85,9 +79,9 @@ export default function ResourcesPage() {
         cell: ({ row }) => <IdentityCell employee={row.original} />,
       },
       {
-        accessorKey: "code",
+        accessorKey: "nip",
         header: "NIP",
-        cell: ({ row }) => <div className="font-mono">{row.original.code}</div>,
+        cell: ({ row }) => <div className="font-mono">{row.original.nip}</div>,
       },
       {
         accessorKey: "role",
@@ -116,7 +110,7 @@ export default function ResourcesPage() {
       },
     ],
     [],
-  );
+  )
 
   const table = useReactTable({
     data: employees,
@@ -130,77 +124,96 @@ export default function ResourcesPage() {
     getFilteredRowModel: getFilteredRowModel(),
     filterFns: {
       arrIncludesSome: (row, columnId, value) => {
-        if (!value || value.length === 0) return true;
-        return value.includes(row.getValue(columnId));
+        if (!value || value.length === 0) return true
+        return value.includes(row.getValue(columnId))
       },
     },
-  });
+  })
 
   const fetchEmployees = async () => {
     try {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        toast.error("You are not logged in");
-        return;
+      const token = localStorage.getItem('token')
+      if (!token) throw new Error('You are not authenticated')
+
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/employees`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+
+      if (!res.ok) {
+        const errText = await res.text()
+        throw new Error(errText || 'Failed to fetch employees')
       }
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/employees`, {
-        method: "GET",
-        headers: { "Authorization": `Bearer ${token}` },
-      });
+      const fetched: ApiResponse<RawEmployee[]> = await res.json()
+      if (!fetched.success || !fetched.data) {
+        throw new Error(fetched.message || 'Failed to fetch employees')
+      }
 
-      if (!response.ok) throw new Error("Failed to fetch employees");
-
-      const data = await response.json();
-      setEmployees(data);
-
+      const mapped: Employee[] = fetched.data.map(mapRawToEmployee)
+      setEmployees(mapped)
     } catch (error) {
-      console.error("Error fetching employees:", error);
-      toast.error("Failed to load employees");
+      console.error('Error fetching employees:', error)
+      toast.error(error instanceof Error ? error.message : 'Failed to load employees')
     }
-  };
+  }
 
   const handleAddEmployee = async (data: AddEmployeeFormValues) => {
     try {
-      const token = localStorage.getItem("token")
-      if (!token) {
-        toast.error("You are not logged in")
-        return
-      }
+      const token = localStorage.getItem('token')
+      if (!token) throw new Error('You are not authenticated')
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/employees`, {
-        method: "POST",
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/employees`, {
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(data),
-      });
+      })
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || "Failed to add employee");
+      if (!res.ok) {
+        const errText = await res.text()
+        throw new Error(errText || 'Failed to add employee')
       }
 
-      const result = await response.json();
+      const response: ApiResponse<RawEmployee> = await res.json()
+      if (!response.success || !response.data) {
+        throw new Error(response.message || 'Failed to add employee')
+      }
 
-      setIsAddDialogOpen(false);
+      setIsAddDialogOpen(false)
+      toast.success(`${data.name} has been added`)
 
-      toast.success(`${data.name} has been added`);
-
-      fetchEmployees();
-
+      await fetchEmployees()
     } catch (error) {
-      console.error("Error adding employee:", error);
-      toast.error(error instanceof Error ? error.message : "Failed to add employee");
+      console.error('Error adding employee:', error)
+      toast.error(error instanceof Error ? error.message : 'Failed to add employee')
     }
-  };
+  }
 
-  const handleDeleteEmployee = (employee: EmployeeRow) => {
-    setEmployees((prev) => prev.filter((emp) => emp.id !== employee.id));
-    setEmployeeToDelete(null);
-    toast.success(`${employee.name} has been removed.`);
-  };
+  const handleDeleteEmployee = async (employee: Employee) => {
+    try {
+      const token = localStorage.getItem('token')
+      if (!token) throw new Error('You are not authenticated')
+
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/employees/${employee.id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!res.ok) {
+        const errText = await res.text()
+        throw new Error(errText || `Failed to delete employee ${employee.name}`)
+      }
+
+      toast.success(`${employee.name} has been removed.`)
+      setEmployeeToDelete(null)
+
+      await fetchEmployees()
+    } catch (error) {
+      console.error('Error deleting employee:', error)
+      toast.error(error instanceof Error ? error.message : `Failed to delete employee ${employee.name}`)
+    }
+  }
 
   const handleFilterChange =
     (
@@ -209,15 +222,15 @@ export default function ResourcesPage() {
       setter: React.Dispatch<React.SetStateAction<string[]>>,
     ) =>
     (value: string, checked: boolean) => {
-      const newSelection = checked ? [...currentSelection, value] : currentSelection.filter((item) => item !== value);
+      const newSelection = checked ? [...currentSelection, value] : currentSelection.filter((item) => item !== value)
 
-      setter(newSelection);
-      table.getColumn(columnId)?.setFilterValue(newSelection.length > 0 ? newSelection : undefined);
-    };
+      setter(newSelection)
+      table.getColumn(columnId)?.setFilterValue(newSelection.length > 0 ? newSelection : undefined)
+    }
 
-  const handleRoleFilterChange = handleFilterChange("role", selectedRoles, setSelectedRoles);
-  const handleLevelFilterChange = handleFilterChange("level", selectedLevels, setSelectedLevels);
-  const handleStatusFilterChange = handleFilterChange("status", selectedStatuses, setSelectedStatuses);
+  const handleRoleFilterChange = handleFilterChange("role", selectedRoles, setSelectedRoles)
+  const handleLevelFilterChange = handleFilterChange("level", selectedLevels, setSelectedLevels)
+  const handleStatusFilterChange = handleFilterChange("status", selectedStatuses, setSelectedStatuses)
 
   return (
     <div className="flex flex-col h-full space-y-6 mx-10">
@@ -337,36 +350,36 @@ export default function ResourcesPage() {
 
       <Toaster theme="light" position="top-center" richColors />
     </div>
-  );
+  )
 }
 
 const getRoleColor = (role: EmployeeRole): string => {
   switch (role) {
-    case "SLA": return "bg-blue-100 text-blue-800";
-    case "DTE": return "bg-green-100 text-green-800";
-    case "SWE": return "bg-purple-100 text-purple-800";
+    case "SLA": return "bg-blue-100 text-blue-800"
+    case "DTE": return "bg-green-100 text-green-800"
+    case "SWE": return "bg-purple-100 text-purple-800"
   }
-};
+}
 
 const getStatusColor = (status: EmploymentStatus): string => {
   switch (status) {
-    case "OR": return "bg-green-100 text-green-800";
-    case "CR": return "bg-yellow-100 text-yellow-800";
+    case "OR": return "bg-green-100 text-green-800"
+    case "CR": return "bg-yellow-100 text-yellow-800"
   }
-};
+}
 
-const initialEmployees: EmployeeRow[] = rawEmployees.map(({ status, ...data }: any) => {
+const initialEmployees: Employee[] = rawEmployees.map(({ status, ...data }: any) => {
   switch (status) {
     case "Permanent":
-      return { status, ...data } as PermanentEmployee;
+      return { status, ...data } as PermanentEmployee
     case "Contract":
-      return { status, ...data } as ContractEmployee;
+      return { status, ...data } as ContractEmployee
     default:
-      throw new Error("Invalid employee status");
+      throw new Error("Invalid employee status")
   }
-});
+})
 
-const AddEmployeeDialog = ({ isOpen, onOpenChange, onAdd }: { isOpen: boolean; onOpenChange: (open: boolean) => void; onAdd: (data: AddEmployeeFormValues) => void; }) => (
+const AddEmployeeDialog = ({ isOpen, onOpenChange, onAdd }: { isOpen: boolean onOpenChange: (open: boolean) => void onAdd: (data: AddEmployeeFormValues) => void }) => (
   <Dialog open={isOpen} onOpenChange={onOpenChange}>
     <DialogTrigger asChild>
       <Button>
@@ -382,9 +395,9 @@ const AddEmployeeDialog = ({ isOpen, onOpenChange, onAdd }: { isOpen: boolean; o
       <AddEmployeeForm onSubmit={onAdd} onCancel={() => onOpenChange(false)} />
     </DialogContent>
   </Dialog>
-);
+)
 
-const StatCard = ({ title, value, description }: { title: string; value: ReactNode; description: string; }) => (
+const StatCard = ({ title, value, description }: { title: string value: ReactNode description: string }) => (
   <Card className="py-4 gap-0">
     <CardHeader>
       <CardTitle className="text-sm font-medium">{title}</CardTitle>
@@ -394,9 +407,9 @@ const StatCard = ({ title, value, description }: { title: string; value: ReactNo
       <p className="text-xs text-muted-foreground">{description}</p>
     </CardContent>
   </Card>
-);
+)
 
-const FilterDropdown = <T extends string>({ label, options, selected, onChange }: { label: string; options: readonly T[]; selected: readonly T[]; onChange: (option: T, checked: boolean) => void; }) => (
+const FilterDropdown = <T extends string>({ label, options, selected, onChange }: { label: string options: readonly T[] selected: readonly T[] onChange: (option: T, checked: boolean) => void }) => (
   <DropdownMenu>
     <DropdownMenuTrigger asChild>
       <Button variant="outline" className="flex items-center gap-2">
@@ -416,9 +429,9 @@ const FilterDropdown = <T extends string>({ label, options, selected, onChange }
       ))}
     </DropdownMenuContent>
   </DropdownMenu>
-);
+)
 
-const IdentityCell = ({ employee }: { employee: EmployeeRow }) => (
+const IdentityCell = ({ employee }: { employee: Employee }) => (
   <div className="flex items-center space-x-3">
     <Avatar>
       <AvatarFallback className={`font-mono text-background ${getRoleColor(employee.role)}`}>{initials(employee.name)}</AvatarFallback>
@@ -428,13 +441,26 @@ const IdentityCell = ({ employee }: { employee: EmployeeRow }) => (
       <div className="font-normal text-sm text-muted-foreground">{employee.email}</div>
     </div>
   </div>
-);
+)
 
-const RoleBadge = ({ role }: { role: EmployeeRole }) => <Badge variant="outline" className={getRoleColor(role)}>{role}</Badge>;
+const RoleBadge = ({ role }: { role: EmployeeRole }) => (
+  <Badge variant="outline" className={getRoleColor(role)}>
+    {formatRole(role)}
+  </Badge>
+)
 
-const StatusBadge = ({ status }: { status: EmploymentStatus }) => <Badge variant="outline" className={getStatusColor(status)}>{status}</Badge>;
+const StatusBadge = ({ status }: { status: EmploymentStatus }) => (
+  <Badge variant="outline" className={getStatusColor(status)}>
+    {formatEmploymentStatus(status)}
+  </Badge>
+)
 
-const ActionMenu = ({ employee, onViewDetails, onSendEmail, onRemove }: { employee: EmployeeRow; onViewDetails: (employee: EmployeeRow) => void; onSendEmail: (employee: EmployeeRow) => void; onRemove: (employee: EmployeeRow) => void; }) => (
+const ActionMenu = ({ employee, onViewDetails, onSendEmail, onRemove }: {
+  employee: Employee
+  onViewDetails: (employee: Employee) => void
+  onSendEmail: (employee: Employee) => void
+  onRemove: (employee: Employee) => void
+}) => (
   <div className="text-center">
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -466,28 +492,35 @@ const ActionMenu = ({ employee, onViewDetails, onSendEmail, onRemove }: { employ
       </DropdownMenuContent>
     </DropdownMenu>
   </div>
-);
+)
 
-const DeleteEmployeeDialog = ({ employee, isOpen, onOpenChange, onDelete }: { employee: EmployeeRow | null; isOpen: boolean; onOpenChange: (open: boolean) => void; onDelete: (employee: EmployeeRow) => void; }) => (
+const DeleteEmployeeDialog = ({ employee, isOpen, onOpenChange, onDelete }: {
+  employee: Employee
+  isOpen: boolean
+  onOpenChange: (open: boolean) => void
+  onDelete: (employee: Employee) => void
+}) => (
   <AlertDialog open={isOpen} onOpenChange={onOpenChange}>
     <AlertDialogContent>
       <AlertDialogHeader>
         <AlertDialogTitle>Are you sure?</AlertDialogTitle>
         <AlertDialogDescription>
-          This action cannot be undone. This will permanently remove <strong>{employee?.name}</strong> from your team.
+          This action cannot be undone. This will permanently remove <strong>{employee.name}</strong> from your team.
         </AlertDialogDescription>
       </AlertDialogHeader>
 
       <AlertDialogFooter>
         <AlertDialogCancel>Cancel</AlertDialogCancel>
-        <AlertDialogAction onClick={() => employee && onDelete(employee)} className="bg-red-600 hover:bg-red-700">Delete</AlertDialogAction>
+        <AlertDialogAction onClick={() => onDelete(employee)} className="bg-red-600 hover:bg-red-700">
+          Delete
+        </AlertDialogAction>
       </AlertDialogFooter>
     </AlertDialogContent>
   </AlertDialog>
-);
+)
 
-const EmployeeDetailDialog = ({ employee, onClose, getRoleColor, initials }: { employee: EmployeeRow | null; onClose: () => void; getRoleColor: (role: EmployeeRole) => string; initials: (name: string) => string; }) => {
-  if (!employee) return null;
+const EmployeeDetailDialog = ({ employee, onClose }: { employee: Employee, onClose: () => void }) => {
+  if (!employee) return null
 
   return (
     <Dialog open={!!employee} onOpenChange={onClose}>
@@ -495,7 +528,9 @@ const EmployeeDetailDialog = ({ employee, onClose, getRoleColor, initials }: { e
         <DialogHeader>
           <DialogTitle className="flex items-center space-x-3">
             <Avatar>
-              <AvatarFallback className={`font-mono text-background ${getRoleColor(employee.role)}`}>{initials(employee.name)}</AvatarFallback>
+              <AvatarFallback className={`font-mono text-background ${getRoleColor(employee.role)}`}>
+                {initials(employee.name)}
+              </AvatarFallback>
             </Avatar>
             <div>
               <div>{employee.name}</div>
@@ -508,7 +543,7 @@ const EmployeeDetailDialog = ({ employee, onClose, getRoleColor, initials }: { e
           <DetailItem icon={Mail} value={employee.email} />
           <DetailItem icon={Phone} value={`+${employee.phone}`} />
           <DetailItem icon={MapPin} value={employee.location} />
-          <DetailItem icon={Calendar} value={`Joined ${new Date(employee.joinDate).toLocaleDateString("id-ID")}`} />
+          <DetailItem icon={Calendar} value={`Joined ${new Date(employee.joinDate).toLocaleDateString("en-US")}`} />
 
           {employee.status === "CR" && (
             <>
@@ -519,8 +554,8 @@ const EmployeeDetailDialog = ({ employee, onClose, getRoleColor, initials }: { e
         </div>
       </DialogContent>
     </Dialog>
-  );
-};
+  )
+}
 
 const ContractDetails = ({ employee }: { employee: ContractEmployee }) => (
   <div>
@@ -544,18 +579,18 @@ const ContractDetails = ({ employee }: { employee: ContractEmployee }) => (
       </div>
     </div>
   </div>
-);
+)
 
-const DetailItem = ({ icon: Icon, value }: { icon: ComponentType<{ className?: string }>; value: string; }) => (
+const DetailItem = ({ icon: Icon, value }: { icon: ComponentType<{ className?: string }> value: string }) => (
   <div className="flex items-center space-x-2">
     <Icon className="h-4 w-4 text-muted-foreground" />
     <span className="text-sm">{value}</span>
   </div>
-);
+)
 
-const ContractField = ({ label, value }: { label: string; value: string }) => (
+const ContractField = ({ label, value }: { label: string value: string }) => (
   <div className="space-y-1">
     <Label className="text-xs text-muted-foreground">{label}</Label>
     <p className="text-sm">{value}</p>
   </div>
-);
+)
