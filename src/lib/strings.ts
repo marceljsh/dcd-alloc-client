@@ -1,3 +1,5 @@
+import { EmployeeLevel, EmployeeRole, EmploymentStatus } from "@/types/common";
+
 export function initials(str: string): string {
   const words = str.split(' ');
   if (words.length === 0) return '??';
@@ -16,4 +18,27 @@ export function toKebab(str: string): string {
 export function title(str: string): string {
   if (!str) return "";
   return str.replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+export function formatRole(role: EmployeeRole): string {
+  switch (role) {
+    case "SLA": return "Solution Analyst";
+    case "DTE": return "Data Engineer";
+    case "SWE": return "Software Engineer";
+  }
+}
+
+export function formatLevel(level: EmployeeLevel): string {
+  switch (level) {
+    case "JR":  return "Junior";
+    case "MID": return "Middle";
+    case "SR":  return "Senior";
+  }
+}
+
+export function formatEmploymentStatus(status: EmploymentStatus): string {
+  switch (status) {
+    case "CR": return "Contract";
+    case "OR": return "Permanent";
+  }
 }
