@@ -1,11 +1,11 @@
-import { Employee } from "@/types/employee";
-import { ProjectPriority, ProjectCategory, Team } from "@/types/common";
+import { Employee, TeamInfo } from "@/types/employee";
+import { ProjectPriority, ProjectCategory } from "@/types/common";
 
 export interface ProjectRow {
   id: number;
   code: string;
   name: string;
-  team: Team;
+  team: TeamInfo;
   category: ProjectCategory;
   priority: ProjectPriority;
   crew: number;
@@ -49,7 +49,7 @@ export interface Task {
 
 export type ProjectDraft = {
   name: string;
-  team: Team;
+  team: TeamInfo;
   category: ProjectCategory;
   priority: ProjectPriority;
   budget: number;

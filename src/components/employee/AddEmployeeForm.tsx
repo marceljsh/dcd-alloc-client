@@ -20,14 +20,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import {
-  employeeLevels,
-  employeeRoles,
-  employmentStatuses,
-  teams,
-} from "@/types/common";
+import { employeeLevelOpt, employeeRoleOpt, EmploymentStatus, employmentStatusOpt } from "@/types/common";
+import { TeamInfo } from "@/types/employee";
 
 async function getSignedUploadUrl(args: { path: string; bucket?: string }) {
   const res = await fetch("/api/storage/signed-upload-url", {
@@ -62,20 +58,20 @@ async function uploadViaSignedUrlWithToken(
   }
 }
 
+// get team options by fetching "localhost:8080/api/my/teams/as-dropdown" with schema a list of `{"id": 0, "name": "some-string"}`
+
 const schema = z.object({
   name: z.string().min(1, "Name is required"),
   email: z.email("Invalid email"),
-  role: z.enum(employeeRoles, "Role is required"),
-  level: z.enum(employeeLevels, "Level is required"),
-  status: z.enum(employmentStatuses, "Status is required"),
-  team: z.enum(teams, "Team is required"),
-  phone: z
-    .string()
+  role: z.enum(employeeRoleOpt, "Role is required"),
+  level: z.enum(employeeLevelOpt, "Level is required"),
+  status: z.enum(employmentStatusOpt, "Status is required"),
+  team: z.string("Team is required"),
+  phone: z.string()
     .min(1, "Phone number is required")
     .regex(/^\+?[0-9\s]+$/, "Invalid phone number"),
   location: z.string().min(1, "Location is required"),
-  joinDate: z
-    .string()
+  joinDate: z.string()
     .min(1, "Join date is required")
     .refine((date) => !isNaN(Date.parse(date)), "Invalid date format"),
   // Optional fields for contract employees
@@ -111,11 +107,24 @@ export function AddEmployeeForm({ onSubmit, onCancel }: AddEmployeeFormProps) {
 
   const status = form.watch("status");
   const [contractFile, setContractFile] = useState<File | null>(null);
+  const [teams, setTeams] = useState<TeamInfo[]>([]);
 
-  async function uploadContractFileIfNeeded(
-    currentStatus: string | undefined
-  ): Promise<string | undefined> {
-    if (currentStatus !== "Contract" || !contractFile) return undefined;
+  useEffect(() => {
+    const fetchTeams = async () => {
+      try {
+        const res = await fetch("http://localhost:8080/api/my/teams/as-dropdown");
+        if (!res.ok) throw new Error("Failed to fetch teams");
+        const data: TeamInfo[] = await res.json();
+        setTeams(data);
+      } catch (err) {
+        console.error("Error fetching teams:", err);
+      }
+    };
+    fetchTeams();
+  }, []);
+
+  async function uploadContractFileIfNeeded(currentStatus: EmploymentStatus): Promise<string | undefined> {
+    if (currentStatus !== "CR" || !contractFile) return undefined;
 
     const bucket = "contracts"; // Ensure this bucket exists in Supabase Storage
     const safeName = contractFile.name.replace(/[^a-zA-Z0-9._-]/g, "_");
@@ -226,7 +235,7 @@ export function AddEmployeeForm({ onSubmit, onCancel }: AddEmployeeFormProps) {
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    {employeeRoles.map((role) => (
+                    {employeeRoleOpt.map((role) => (
                       <SelectItem key={role} value={role}>
                         {role}
                       </SelectItem>
@@ -260,7 +269,7 @@ export function AddEmployeeForm({ onSubmit, onCancel }: AddEmployeeFormProps) {
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    {employeeLevels.map((level) => (
+                    {employeeLevelOpt.map((level) => (
                       <SelectItem key={level} value={level}>
                         {level}
                       </SelectItem>
@@ -294,7 +303,7 @@ export function AddEmployeeForm({ onSubmit, onCancel }: AddEmployeeFormProps) {
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    {employmentStatuses.map((status) => (
+                    {employmentStatusOpt.map((status) => (
                       <SelectItem key={status} value={status}>
                         {status}
                       </SelectItem>
@@ -329,8 +338,8 @@ export function AddEmployeeForm({ onSubmit, onCancel }: AddEmployeeFormProps) {
                   </FormControl>
                   <SelectContent>
                     {teams.map((team) => (
-                      <SelectItem key={team} value={team}>
-                        {team}
+                      <SelectItem key={team.id} value={team.name}>
+                        {team.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -412,7 +421,7 @@ export function AddEmployeeForm({ onSubmit, onCancel }: AddEmployeeFormProps) {
         />
 
         {/* Contract-only fields */}
-        {status === "Contract" && (
+        {status === "CR" && (
           <>
             <Separator className="my-4" />
             <p className="text-lg font-semibold">Contract Details</p>

@@ -1,9 +1,9 @@
-import {
-  EmployeeLevel,
-  EmployeeRole,
-  Team,
-  EmploymentStatus,
-} from "@/types/common";
+import { EmployeeLevel, EmployeeRole, EmploymentStatus } from "@/types/common";
+
+export interface TeamInfo {
+  id: number;
+  name: string;
+}
 
 interface EmployeeBase {
   id: number;
@@ -11,7 +11,7 @@ interface EmployeeBase {
   name: string;
   role: EmployeeRole;
   level: EmployeeLevel;
-  team: Team;
+  team: TeamInfo;
   status: EmploymentStatus;
   email: string;
   phone: string;
@@ -22,11 +22,11 @@ interface EmployeeBase {
 }
 
 export interface PermanentEmployee extends EmployeeBase {
-  status: "Permanent";
+  status: "OR";
 }
 
 export interface ContractEmployee extends EmployeeBase {
-  status: "Contract";
+  status: "CR";
   contractFilePath?: string;
   contractStartDate: string;
   contractEndDate: string;
@@ -41,14 +41,11 @@ export type EmployeeUtilization = EmployeeRow & {
 };
 
 
-export function createEmployeeRow({
-  status,
-  ...data
-}: NewEmployee): EmployeeRow {
+export function createEmployeeRow({ status, ...data }: NewEmployee): EmployeeRow {
   switch (status) {
-    case "Permanent":
+    case "OR":
       return { ...data } as PermanentEmployee;
-    case "Contract":
+    case "CR":
       return {
         ...data,
         contractFilePath: data.contractFilePath ?? "",

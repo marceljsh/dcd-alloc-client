@@ -42,20 +42,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import {
-  Search,
-  Plus,
-  MoreHorizontal,
-  Edit,
-  Trash2,
-  Mail,
-  Phone,
-  Calendar,
-  MapPin,
-  Filter,
-  Table2,
-  Grid3X3,
-} from "lucide-react";
+import { Search, Plus, MoreHorizontal, Edit, Trash2, Mail, Phone, Calendar, MapPin, Filter, Table2 } from "lucide-react";
 import { initials } from "@/lib/strings";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
@@ -70,39 +57,17 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-  employeeLevels,
-  EmployeeRole,
-  employeeRoles,
-  EmploymentStatus,
-  employmentStatuses,
-} from "@/types/common";
+import { employeeLevelOpt, EmployeeRole, employeeRoleOpt, EmploymentStatus, employmentStatusOpt } from "@/types/common";
 import rawEmployees from "@/data/employees.json";
-import {
-  ContractEmployee,
-  EmployeeRow,
-  PermanentEmployee,
-} from "@/types/employee";
-import {
-  AddEmployeeFormValues,
-  AddEmployeeForm,
-} from "@/components/employee/AddEmployeeForm";
+import { ContractEmployee, EmployeeRow, PermanentEmployee } from "@/types/employee";
+import { AddEmployeeFormValues, AddEmployeeForm } from "@/components/employee/AddEmployeeForm";
 import { Separator } from "@/components/ui/separator";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import EmployeeHeatmap from "@/components/employee/EmployeeHeatmap";
-
-type ViewMode = "table" | "heatmap";
 
 export default function ResourcesPage() {
   const [employees, setEmployees] = useState<EmployeeRow[]>(initialEmployees);
-  const [selectedEmployee, setSelectedEmployee] = useState<EmployeeRow | null>(
-    null,
-  );
+  const [selectedEmployee, setSelectedEmployee] = useState<EmployeeRow | null>(null);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [employeeToDelete, setEmployeeToDelete] = useState<EmployeeRow | null>(
-    null,
-  );
-  const [viewMode, setViewMode] = useState<ViewMode>("table");
+  const [employeeToDelete, setEmployeeToDelete] = useState<EmployeeRow | null>(null);
 
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
   const [selectedLevels, setSelectedLevels] = useState<string[]>([]);
@@ -144,9 +109,7 @@ export default function ResourcesPage() {
           <ActionMenu
             employee={row.original}
             onViewDetails={setSelectedEmployee}
-            onSendEmail={(employee) =>
-              toast.success(`Sent email to ${employee.email}`)
-            }
+            onSendEmail={(employee) => toast.success(`Sent email to ${employee.email}`)}
             onRemove={setEmployeeToDelete}
           />
         ),
@@ -173,11 +136,64 @@ export default function ResourcesPage() {
     },
   });
 
-  const handleAddEmployee = (data: AddEmployeeFormValues) => {
-    const employee = createEmployee(data);
-    setEmployees((prev) => [...prev, employee]);
-    setIsAddDialogOpen(false);
-    toast(`${employee.name} has been added to the team.`);
+  const fetchEmployees = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        toast.error("You are not logged in");
+        return;
+      }
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/employees`, {
+        method: "GET",
+        headers: { "Authorization": `Bearer ${token}` },
+      });
+
+      if (!response.ok) throw new Error("Failed to fetch employees");
+
+      const data = await response.json();
+      setEmployees(data);
+
+    } catch (error) {
+      console.error("Error fetching employees:", error);
+      toast.error("Failed to load employees");
+    }
+  };
+
+  const handleAddEmployee = async (data: AddEmployeeFormValues) => {
+    try {
+      const token = localStorage.getItem("token")
+      if (!token) {
+        toast.error("You are not logged in")
+        return
+      }
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/employees`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || "Failed to add employee");
+      }
+
+      const result = await response.json();
+
+      setIsAddDialogOpen(false);
+
+      toast.success(`${data.name} has been added`);
+
+      fetchEmployees();
+
+    } catch (error) {
+      console.error("Error adding employee:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to add employee");
+    }
   };
 
   const handleDeleteEmployee = (employee: EmployeeRow) => {
@@ -193,31 +209,15 @@ export default function ResourcesPage() {
       setter: React.Dispatch<React.SetStateAction<string[]>>,
     ) =>
     (value: string, checked: boolean) => {
-      const newSelection = checked
-        ? [...currentSelection, value]
-        : currentSelection.filter((item) => item !== value);
+      const newSelection = checked ? [...currentSelection, value] : currentSelection.filter((item) => item !== value);
 
       setter(newSelection);
-      table
-        .getColumn(columnId)
-        ?.setFilterValue(newSelection.length > 0 ? newSelection : undefined);
+      table.getColumn(columnId)?.setFilterValue(newSelection.length > 0 ? newSelection : undefined);
     };
 
-  const handleRoleFilterChange = handleFilterChange(
-    "role",
-    selectedRoles,
-    setSelectedRoles,
-  );
-  const handleLevelFilterChange = handleFilterChange(
-    "level",
-    selectedLevels,
-    setSelectedLevels,
-  );
-  const handleStatusFilterChange = handleFilterChange(
-    "status",
-    selectedStatuses,
-    setSelectedStatuses,
-  );
+  const handleRoleFilterChange = handleFilterChange("role", selectedRoles, setSelectedRoles);
+  const handleLevelFilterChange = handleFilterChange("level", selectedLevels, setSelectedLevels);
+  const handleStatusFilterChange = handleFilterChange("status", selectedStatuses, setSelectedStatuses);
 
   return (
     <div className="flex flex-col h-full space-y-6 mx-10">
@@ -227,183 +227,106 @@ export default function ResourcesPage() {
           <h1 className="text-3xl font-bold">Resources</h1>
           <p className="text-muted-foreground">Manage your team members and their assignments</p>
         </div>
-        <AddEmployeeDialog
-          isOpen={isAddDialogOpen}
-          onOpenChange={setIsAddDialogOpen}
-          onAdd={handleAddEmployee}
-        />
+        <AddEmployeeDialog isOpen={isAddDialogOpen} onOpenChange={setIsAddDialogOpen} onAdd={handleAddEmployee} />
       </div>
 
       {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-4">
         <StatCard
           title="Contract Resources"
+          description="Members"
           value={
             <>
-              {employees.filter((emp) => emp.status === "Contract").length}
+              {employees.filter((emp) => emp.status === "CR").length}
               <span className="text-base font-normal">{` / ${employees.length}`}</span>
             </>
           }
-          description="Members"
         />
         <StatCard
           title="Software Engineer"
-          value={
-            employees.filter((emp) => emp.role === "Software Engineer").length
-          }
           description="Skilled Coders"
+          value={employees.filter((emp) => emp.role === "SWE").length}
         />
         <StatCard
           title="Data Engineer"
-          value={employees.filter((emp) => emp.role === "Data Engineer").length}
           description="Keen Minds"
+          value={employees.filter((emp) => emp.role === "DTE").length}
         />
         <StatCard
           title="System Analyst"
-          value={
-            employees.filter((emp) => emp.role === "System Analyst").length
-          }
           description="People"
+          value={employees.filter((emp) => emp.role === "SLA").length}
         />
       </div>
 
       {/* Table */}
       <Card className="flex-1 flex flex-col py-4 min-h-0">
         <CardHeader className="flex flex-row items-center justify-between shrink-0">
-          <div className="flex items-center gap-4">
-            <CardTitle className="text-xl">Team Members</CardTitle>
-            <ToggleGroup
-              type="single"
-              value={viewMode}
-              onValueChange={(val) => val && setViewMode(val as ViewMode)}
-            >
-              <ToggleGroupItem value="table" aria-label="Table view">
-                <Table2 className="h-4 w-4" />
-              </ToggleGroupItem>
-              <ToggleGroupItem value="heatmap" aria-label="Heatmap view">
-                <Grid3X3 className="h-4 w-4" />
-              </ToggleGroupItem>
-            </ToggleGroup>
-          </div>
+          <CardTitle className="text-xl">Team Members</CardTitle>
 
           <div className="flex items-center gap-2">
             {/* Role Filter */}
-            <FilterDropdown
-              label="Role"
-              options={employeeRoles}
-              selected={selectedRoles}
-              onChange={handleRoleFilterChange}
-            />
+            <FilterDropdown label="Role" options={employeeRoleOpt} selected={selectedRoles} onChange={handleRoleFilterChange} />
 
             {/* Level Filter */}
-            <FilterDropdown
-              label="Level"
-              options={employeeLevels}
-              selected={selectedLevels}
-              onChange={handleLevelFilterChange}
-            />
+            <FilterDropdown label="Level" options={employeeLevelOpt} selected={selectedLevels} onChange={handleLevelFilterChange} />
 
             {/* Status Filter */}
-            <FilterDropdown
-              label="Status"
-              options={employmentStatuses}
-              selected={selectedStatuses}
-              onChange={handleStatusFilterChange}
-            />
+            <FilterDropdown label="Status" options={employmentStatusOpt} selected={selectedStatuses} onChange={handleStatusFilterChange} />
 
             {/* Search Input */}
             <div className="relative">
               <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search resources..."
-                value={globalFilter}
-                onChange={(e) => setGlobalFilter(e.target.value)}
-                className="pl-8"
-              />
+              <Input placeholder="Search resources..." value={globalFilter} onChange={(e) => setGlobalFilter(e.target.value)} className="pl-8" />
             </div>
           </div>
         </CardHeader>
 
         <CardContent className="flex-1 overflow-hidden">
           <ScrollArea className="h-full">
-            {viewMode === "heatmap" ? (
-              <EmployeeHeatmap
-                employees={employees.map((emp) => {
-                  return {
-                    ...emp,
-                    utilization: Math.random() * 100,
-                    currentProjects: [],
-                    hoursThisWeek: 0,
-                  };
-                })}
-              />
-            ) : (
-              <Table>
-                <TableHeader className="sticky top-0 z-10 bg-background shadow-sm">
-                  {table.getHeaderGroups().map((headerGroup) => (
-                    <TableRow key={headerGroup.id} className="hover:bg-white">
-                      {headerGroup.headers.map((header) => (
-                        <TableHead
-                          key={header.id}
-                          className={
-                            header.column.getCanSort()
-                              ? "cursor-pointer select-none"
-                              : ""
-                          }
-                          onClick={header.column.getToggleSortingHandler()}
-                        >
-                          <div className="flex items-center gap-2">
-                            {flexRender(
-                              header.column.columnDef.header,
-                              header.getContext(),
-                            )}
-                            {{ asc: "▲", desc: "▼" }[
-                              header.column.getIsSorted() as string
-                            ] ?? null}
-                          </div>
-                        </TableHead>
+            <Table>
+              <TableHeader className="sticky top-0 z-10 bg-background shadow-sm">
+                {table.getHeaderGroups().map((headerGroup) => (
+                  <TableRow key={headerGroup.id} className="hover:bg-white">
+                    {headerGroup.headers.map((header) => (
+                      <TableHead
+                        key={header.id}
+                        className={header.column.getCanSort() ? "cursor-pointer select-none" : ""}
+                        onClick={header.column.getToggleSortingHandler()}
+                      >
+                        <div className="flex items-center gap-2">
+                          {flexRender(header.column.columnDef.header, header.getContext())}
+                          {{ asc: "▲", desc: "▼" }[header.column.getIsSorted() as string] ?? null}
+                        </div>
+                      </TableHead>
+                    ))}
+                  </TableRow>
+                ))}
+              </TableHeader>
+
+              <TableBody>
+                {table.getRowModel().rows?.length ? (
+                  table.getRowModel().rows.map((row) => (
+                    <TableRow key={row.id}>
+                      {row.getVisibleCells().map((cell) => (
+                        <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
                       ))}
                     </TableRow>
-                  ))}
-                </TableHeader>
-
-                <TableBody>
-                  {table.getRowModel().rows?.length ? (
-                    table.getRowModel().rows.map((row) => (
-                      <TableRow key={row.id}>
-                        {row.getVisibleCells().map((cell) => (
-                          <TableCell key={cell.id}>
-                            {flexRender(
-                              cell.column.columnDef.cell,
-                              cell.getContext(),
-                            )}
-                          </TableCell>
-                        ))}
-                      </TableRow>
-                    ))
-                  ) : (
-                    <TableRow>
-                      <TableCell
-                        colSpan={columns.length}
-                        className="h-24 text-center"
-                      >
-                        No results.
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            )}
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={columns.length} className="h-24 text-center">
+                      No results.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
           </ScrollArea>
         </CardContent>
       </Card>
 
-      <EmployeeDetailDialog
-        employee={selectedEmployee}
-        onClose={() => setSelectedEmployee(null)}
-        getRoleColor={getRoleColor}
-        initials={initials}
-      />
+      <EmployeeDetailDialog employee={selectedEmployee} onClose={() => setSelectedEmployee(null)} getRoleColor={getRoleColor} initials={initials} />
 
       <DeleteEmployeeDialog
         employee={employeeToDelete}
@@ -419,75 +342,31 @@ export default function ResourcesPage() {
 
 const getRoleColor = (role: EmployeeRole): string => {
   switch (role) {
-    case "System Analyst":
-      return "bg-blue-100 text-blue-800";
-    case "Data Engineer":
-      return "bg-green-100 text-green-800";
-    case "Software Engineer":
-      return "bg-purple-100 text-purple-800";
+    case "SLA": return "bg-blue-100 text-blue-800";
+    case "DTE": return "bg-green-100 text-green-800";
+    case "SWE": return "bg-purple-100 text-purple-800";
   }
 };
 
 const getStatusColor = (status: EmploymentStatus): string => {
   switch (status) {
-    case "Permanent":
-      return "bg-green-100 text-green-800";
-    case "Contract":
-      return "bg-yellow-100 text-yellow-800";
+    case "OR": return "bg-green-100 text-green-800";
+    case "CR": return "bg-yellow-100 text-yellow-800";
   }
 };
 
-const createEmployee = ({
-  status,
-  ...data
-}: AddEmployeeFormValues): EmployeeRow => {
-  const now = new Date().toISOString();
-  const base = {
-    id: Math.floor(Math.random() * 1000000),
-    createdAt: now,
-    updatedAt: now,
-    status,
-  };
-
+const initialEmployees: EmployeeRow[] = rawEmployees.map(({ status, ...data }: any) => {
   switch (status) {
     case "Permanent":
-      return {
-        ...base,
-        ...data,
-        code: `ORG-${Math.floor(Math.random() * 1000000)}`,
-      } as PermanentEmployee;
+      return { status, ...data } as PermanentEmployee;
     case "Contract":
-      return {
-        ...base,
-        ...data,
-        status: "Contract",
-        code: `CR-${Math.floor(Math.random() * 10000000)}`,
-      } as ContractEmployee;
+      return { status, ...data } as ContractEmployee;
+    default:
+      throw new Error("Invalid employee status");
   }
-};
+});
 
-const initialEmployees: EmployeeRow[] = rawEmployees.map(
-  ({ status, ...data }: any) => {
-    switch (status) {
-      case "Permanent":
-        return { status, ...data } as PermanentEmployee;
-      case "Contract":
-        return { status, ...data } as ContractEmployee;
-      default:
-        throw new Error("Invalid employee status");
-    }
-  },
-);
-
-const AddEmployeeDialog = ({
-  isOpen,
-  onOpenChange,
-  onAdd,
-}: {
-  isOpen: boolean;
-  onOpenChange: (open: boolean) => void;
-  onAdd: (data: AddEmployeeFormValues) => void;
-}) => (
+const AddEmployeeDialog = ({ isOpen, onOpenChange, onAdd }: { isOpen: boolean; onOpenChange: (open: boolean) => void; onAdd: (data: AddEmployeeFormValues) => void; }) => (
   <Dialog open={isOpen} onOpenChange={onOpenChange}>
     <DialogTrigger asChild>
       <Button>
@@ -505,15 +384,7 @@ const AddEmployeeDialog = ({
   </Dialog>
 );
 
-const StatCard = ({
-  title,
-  value,
-  description,
-}: {
-  title: string;
-  value: ReactNode;
-  description: string;
-}) => (
+const StatCard = ({ title, value, description }: { title: string; value: ReactNode; description: string; }) => (
   <Card className="py-4 gap-0">
     <CardHeader>
       <CardTitle className="text-sm font-medium">{title}</CardTitle>
@@ -525,25 +396,13 @@ const StatCard = ({
   </Card>
 );
 
-const FilterDropdown = <T extends string>({
-  label,
-  options,
-  selected,
-  onChange,
-}: {
-  label: string;
-  options: readonly T[];
-  selected: readonly T[];
-  onChange: (option: T, checked: boolean) => void;
-}) => (
+const FilterDropdown = <T extends string>({ label, options, selected, onChange }: { label: string; options: readonly T[]; selected: readonly T[]; onChange: (option: T, checked: boolean) => void; }) => (
   <DropdownMenu>
     <DropdownMenuTrigger asChild>
       <Button variant="outline" className="flex items-center gap-2">
         <Filter className="h-4 w-4" /> {label}
         {selected.length > 0 && (
-          <Badge variant="secondary" className="rounded-full px-2">
-            {selected.length}
-          </Badge>
+          <Badge variant="secondary" className="rounded-full px-2">{selected.length}</Badge>
         )}
       </Button>
     </DropdownMenuTrigger>
@@ -551,11 +410,7 @@ const FilterDropdown = <T extends string>({
       <DropdownMenuLabel>Filter by {label}</DropdownMenuLabel>
       <DropdownMenuSeparator />
       {options.map((opt) => (
-        <DropdownMenuCheckboxItem
-          key={opt}
-          checked={selected.includes(opt)}
-          onCheckedChange={(checked) => onChange(opt, !!checked)}
-        >
+        <DropdownMenuCheckboxItem key={opt} checked={selected.includes(opt)} onCheckedChange={(checked) => onChange(opt, !!checked)}>
           {opt}
         </DropdownMenuCheckboxItem>
       ))}
@@ -566,44 +421,20 @@ const FilterDropdown = <T extends string>({
 const IdentityCell = ({ employee }: { employee: EmployeeRow }) => (
   <div className="flex items-center space-x-3">
     <Avatar>
-      <AvatarFallback
-        className={`font-mono text-background ${getRoleColor(employee.role)}`}
-      >
-        {initials(employee.name)}
-      </AvatarFallback>
+      <AvatarFallback className={`font-mono text-background ${getRoleColor(employee.role)}`}>{initials(employee.name)}</AvatarFallback>
     </Avatar>
     <div>
       <div className="font-medium">{employee.name}</div>
-      <div className="font-normal text-sm text-muted-foreground">
-        {employee.email}
-      </div>
+      <div className="font-normal text-sm text-muted-foreground">{employee.email}</div>
     </div>
   </div>
 );
 
-const RoleBadge = ({ role }: { role: EmployeeRole }) => (
-  <Badge variant="outline" className={getRoleColor(role)}>
-    {role}
-  </Badge>
-);
+const RoleBadge = ({ role }: { role: EmployeeRole }) => <Badge variant="outline" className={getRoleColor(role)}>{role}</Badge>;
 
-const StatusBadge = ({ status }: { status: EmploymentStatus }) => (
-  <Badge variant="outline" className={getStatusColor(status)}>
-    {status}
-  </Badge>
-);
+const StatusBadge = ({ status }: { status: EmploymentStatus }) => <Badge variant="outline" className={getStatusColor(status)}>{status}</Badge>;
 
-const ActionMenu = ({
-  employee,
-  onViewDetails,
-  onSendEmail,
-  onRemove,
-}: {
-  employee: EmployeeRow;
-  onViewDetails: (employee: EmployeeRow) => void;
-  onSendEmail: (employee: EmployeeRow) => void;
-  onRemove: (employee: EmployeeRow) => void;
-}) => (
+const ActionMenu = ({ employee, onViewDetails, onSendEmail, onRemove }: { employee: EmployeeRow; onViewDetails: (employee: EmployeeRow) => void; onSendEmail: (employee: EmployeeRow) => void; onRemove: (employee: EmployeeRow) => void; }) => (
   <div className="text-center">
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -628,10 +459,7 @@ const ActionMenu = ({
 
         <DropdownMenuSeparator />
 
-        <DropdownMenuItem
-          className="text-red-400"
-          onClick={() => onRemove(employee)}
-        >
+        <DropdownMenuItem className="text-red-400" onClick={() => onRemove(employee)}>
           <Trash2 className="mr-2 h-4 w-4 text-red-400" />
           Remove
         </DropdownMenuItem>
@@ -640,51 +468,25 @@ const ActionMenu = ({
   </div>
 );
 
-const DeleteEmployeeDialog = ({
-  employee,
-  isOpen,
-  onOpenChange,
-  onDelete,
-}: {
-  employee: EmployeeRow | null;
-  isOpen: boolean;
-  onOpenChange: (open: boolean) => void;
-  onDelete: (employee: EmployeeRow) => void;
-}) => (
+const DeleteEmployeeDialog = ({ employee, isOpen, onOpenChange, onDelete }: { employee: EmployeeRow | null; isOpen: boolean; onOpenChange: (open: boolean) => void; onDelete: (employee: EmployeeRow) => void; }) => (
   <AlertDialog open={isOpen} onOpenChange={onOpenChange}>
     <AlertDialogContent>
       <AlertDialogHeader>
         <AlertDialogTitle>Are you sure?</AlertDialogTitle>
         <AlertDialogDescription>
-          This action cannot be undone. This will permanently remove{" "}
-          <strong>{employee?.name}</strong> from your team.
+          This action cannot be undone. This will permanently remove <strong>{employee?.name}</strong> from your team.
         </AlertDialogDescription>
       </AlertDialogHeader>
 
       <AlertDialogFooter>
         <AlertDialogCancel>Cancel</AlertDialogCancel>
-        <AlertDialogAction
-          onClick={() => employee && onDelete(employee)}
-          className="bg-red-600 hover:bg-red-700"
-        >
-          Delete
-        </AlertDialogAction>
+        <AlertDialogAction onClick={() => employee && onDelete(employee)} className="bg-red-600 hover:bg-red-700">Delete</AlertDialogAction>
       </AlertDialogFooter>
     </AlertDialogContent>
   </AlertDialog>
 );
 
-const EmployeeDetailDialog = ({
-  employee,
-  onClose,
-  getRoleColor,
-  initials,
-}: {
-  employee: EmployeeRow | null;
-  onClose: () => void;
-  getRoleColor: (role: EmployeeRole) => string;
-  initials: (name: string) => string;
-}) => {
+const EmployeeDetailDialog = ({ employee, onClose, getRoleColor, initials }: { employee: EmployeeRow | null; onClose: () => void; getRoleColor: (role: EmployeeRole) => string; initials: (name: string) => string; }) => {
   if (!employee) return null;
 
   return (
@@ -693,17 +495,11 @@ const EmployeeDetailDialog = ({
         <DialogHeader>
           <DialogTitle className="flex items-center space-x-3">
             <Avatar>
-              <AvatarFallback
-                className={`font-mono text-background ${getRoleColor(employee.role)}`}
-              >
-                {initials(employee.name)}
-              </AvatarFallback>
+              <AvatarFallback className={`font-mono text-background ${getRoleColor(employee.role)}`}>{initials(employee.name)}</AvatarFallback>
             </Avatar>
             <div>
               <div>{employee.name}</div>
-              <div className="text-sm text-muted-foreground font-normal">
-                {employee.role}
-              </div>
+              <div className="text-sm text-muted-foreground font-normal">{employee.role}</div>
             </div>
           </DialogTitle>
         </DialogHeader>
@@ -712,12 +508,9 @@ const EmployeeDetailDialog = ({
           <DetailItem icon={Mail} value={employee.email} />
           <DetailItem icon={Phone} value={`+${employee.phone}`} />
           <DetailItem icon={MapPin} value={employee.location} />
-          <DetailItem
-            icon={Calendar}
-            value={`Joined ${new Date(employee.joinDate).toLocaleDateString("id-ID")}`}
-          />
+          <DetailItem icon={Calendar} value={`Joined ${new Date(employee.joinDate).toLocaleDateString("id-ID")}`} />
 
-          {employee.status === "Contract" && (
+          {employee.status === "CR" && (
             <>
               <Separator className="my-4" />
               <ContractDetails employee={employee as ContractEmployee} />
@@ -741,11 +534,7 @@ const ContractDetails = ({ employee }: { employee: ContractEmployee }) => (
 
         {employee.contractFilePath ? (
           <div className="mt-2 border rounded overflow-hidden">
-            <iframe
-              src={employee.contractFilePath}
-              title="Contract PDF"
-              className="w-full h-48"
-            />
+            <iframe src={employee.contractFilePath} title="Contract PDF" className="w-full h-48" />
           </div>
         ) : (
           <div className="mt-2">
@@ -757,13 +546,7 @@ const ContractDetails = ({ employee }: { employee: ContractEmployee }) => (
   </div>
 );
 
-const DetailItem = ({
-  icon: Icon,
-  value,
-}: {
-  icon: ComponentType<{ className?: string }>;
-  value: string;
-}) => (
+const DetailItem = ({ icon: Icon, value }: { icon: ComponentType<{ className?: string }>; value: string; }) => (
   <div className="flex items-center space-x-2">
     <Icon className="h-4 w-4 text-muted-foreground" />
     <span className="text-sm">{value}</span>
