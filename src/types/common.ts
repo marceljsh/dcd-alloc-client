@@ -1,12 +1,6 @@
 import { ProjectRow, StageRow, TaskRow } from '@/types/projects'
 import { Employee } from '@/types/employee'
 
-export interface ApiResponse<T> {
-  success : boolean
-  message : string
-  data    : T | null
-}
-
 export const employeeRoleOpt     = ['SWE', 'DTE', 'SLA'] as const
 export const employeeLevelOpt    = ['JR', 'MID', 'SR'] as const
 export const employmentStatusOpt = ['CR', 'OR'] as const

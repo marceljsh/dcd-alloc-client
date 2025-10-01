@@ -31,7 +31,7 @@ export function formatRole(role: EmployeeRole): string {
 export function formatLevel(level: EmployeeLevel): string {
   switch (level) {
     case "JR":  return "Junior";
-    case "MID": return "Mid";
+    case "MID": return "Middle";
     case "SR":  return "Senior";
   }
 }

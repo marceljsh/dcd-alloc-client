@@ -1,6 +1,6 @@
 'use client'
 
-import { ComponentType, ReactNode, useMemo, useState } from "react"
+import { ComponentType, ReactNode, useEffect, useMemo, useState } from "react"
 import {
   ColumnDef,
   flexRender,
@@ -36,7 +36,7 @@ import {
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Search, Plus, MoreHorizontal, Edit, Trash2, Mail, Phone, Calendar, MapPin, Filter, Table2 } from "lucide-react"
-import { initials, formatEmploymentStatus, formatRole } from "@/lib/strings"
+import { initials, formatEmploymentStatus, formatRole, formatLevel } from "@/lib/strings"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { toast } from "sonner"
 import { Toaster } from "@/components/ui/sonner"
@@ -50,15 +50,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { ApiResponse, employeeLevelOpt, EmployeeRole, employeeRoleOpt, EmploymentStatus, employmentStatusOpt } from "@/types/common"
-import rawEmployees from "@/data/employees.json"
-import { Employee, RawEmployee } from "@/types/employee"
+import { employeeLevelOpt, EmployeeRole, employeeRoleOpt, EmploymentStatus, employmentStatusOpt } from "@/types/common"
+import { Contract, Employee, EmployeeDetail, RawEmployee, RawEmployeeDetails } from "@/types/employee"
 import { AddEmployeeFormValues, AddEmployeeForm } from "@/components/employee/AddEmployeeForm"
 import { Separator } from "@/components/ui/separator"
-import { mapRawToEmployee } from "@/lib/mapper"
+import { mapRawToEmployee, mapRawToEmployeeDetails } from "@/lib/mapper"
+import { ApiResponse, Paging } from "@/types/api"
 
 export default function ResourcesPage() {
-  const [employees, setEmployees] = useState<Employee[]>(initialEmployees)
+  const [employees, setEmployees] = useState<Employee[]>([])
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null)
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [employeeToDelete, setEmployeeToDelete] = useState<Employee | null>(null)
@@ -69,7 +69,11 @@ export default function ResourcesPage() {
 
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
-  const [globalFilter, setGlobalFilter] = useState("")
+  const [globalFilter, setGlobalFilter] = useState('')
+
+  useEffect(() => {
+    fetchEmployees()
+  }, [])
 
   const columns = useMemo<ColumnDef<Employee>[]>(
     () => [
@@ -89,8 +93,8 @@ export default function ResourcesPage() {
         cell: ({ row }) => <RoleBadge role={row.original.role} />,
         filterFn: "arrIncludesSome",
       },
-      { accessorKey: "level", header: "Level", filterFn: "arrIncludesSome" },
-      { accessorKey: "team", header: "Team" },
+      { accessorKey: "level", header: "Level", filterFn: "arrIncludesSome", cell: ({ row }) => formatLevel(row.original.level) },
+      { accessorKey: "team", header: "Team", cell: ({ row }) => row.original.team.name },
       {
         accessorKey: "status",
         header: "Status",
@@ -135,7 +139,7 @@ export default function ResourcesPage() {
       const token = localStorage.getItem('token')
       if (!token) throw new Error('You are not authenticated')
 
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/employees`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/my/employees`, {
         headers: { Authorization: `Bearer ${token}` },
       })
 
@@ -144,12 +148,12 @@ export default function ResourcesPage() {
         throw new Error(errText || 'Failed to fetch employees')
       }
 
-      const fetched: ApiResponse<RawEmployee[]> = await res.json()
+      const fetched: ApiResponse<Paging<RawEmployee>> = await res.json()
       if (!fetched.success || !fetched.data) {
         throw new Error(fetched.message || 'Failed to fetch employees')
       }
 
-      const mapped: Employee[] = fetched.data.map(mapRawToEmployee)
+      const mapped: Employee[] = fetched.data.items.map(mapRawToEmployee)
       setEmployees(mapped)
     } catch (error) {
       console.error('Error fetching employees:', error)
@@ -228,9 +232,9 @@ export default function ResourcesPage() {
       table.getColumn(columnId)?.setFilterValue(newSelection.length > 0 ? newSelection : undefined)
     }
 
-  const handleRoleFilterChange = handleFilterChange("role", selectedRoles, setSelectedRoles)
-  const handleLevelFilterChange = handleFilterChange("level", selectedLevels, setSelectedLevels)
-  const handleStatusFilterChange = handleFilterChange("status", selectedStatuses, setSelectedStatuses)
+  const handleRoleFilterChange = handleFilterChange('role', selectedRoles, setSelectedRoles)
+  const handleLevelFilterChange = handleFilterChange('level', selectedLevels, setSelectedLevels)
+  const handleStatusFilterChange = handleFilterChange('status', selectedStatuses, setSelectedStatuses)
 
   return (
     <div className="flex flex-col h-full space-y-6 mx-10">
@@ -339,14 +343,15 @@ export default function ResourcesPage() {
         </CardContent>
       </Card>
 
-      <EmployeeDetailDialog employee={selectedEmployee} onClose={() => setSelectedEmployee(null)} getRoleColor={getRoleColor} initials={initials} />
-
-      <DeleteEmployeeDialog
-        employee={employeeToDelete}
-        isOpen={!!employeeToDelete}
-        onOpenChange={() => setEmployeeToDelete(null)}
-        onDelete={handleDeleteEmployee}
-      />
+      {selectedEmployee && <EmployeeDetailDialog employee={selectedEmployee} onClose={() => setSelectedEmployee(null)} />}
+      {employeeToDelete && (
+        <DeleteEmployeeDialog
+          employee={employeeToDelete}
+          isOpen={true}
+          onOpenChange={() => setEmployeeToDelete(null)}
+          onDelete={handleDeleteEmployee}
+        />
+      )}
 
       <Toaster theme="light" position="top-center" richColors />
     </div>
@@ -368,18 +373,11 @@ const getStatusColor = (status: EmploymentStatus): string => {
   }
 }
 
-const initialEmployees: Employee[] = rawEmployees.map(({ status, ...data }: any) => {
-  switch (status) {
-    case "Permanent":
-      return { status, ...data } as PermanentEmployee
-    case "Contract":
-      return { status, ...data } as ContractEmployee
-    default:
-      throw new Error("Invalid employee status")
-  }
-})
-
-const AddEmployeeDialog = ({ isOpen, onOpenChange, onAdd }: { isOpen: boolean onOpenChange: (open: boolean) => void onAdd: (data: AddEmployeeFormValues) => void }) => (
+const AddEmployeeDialog = ({ isOpen, onOpenChange, onAdd }: {
+  isOpen: boolean,
+  onOpenChange: (open: boolean) => void,
+  onAdd: (data: AddEmployeeFormValues) => void
+}) => (
   <Dialog open={isOpen} onOpenChange={onOpenChange}>
     <DialogTrigger asChild>
       <Button>
@@ -397,7 +395,7 @@ const AddEmployeeDialog = ({ isOpen, onOpenChange, onAdd }: { isOpen: boolean on
   </Dialog>
 )
 
-const StatCard = ({ title, value, description }: { title: string value: ReactNode description: string }) => (
+const StatCard = ({ title, value, description }: { title: string, value: ReactNode, description: string }) => (
   <Card className="py-4 gap-0">
     <CardHeader>
       <CardTitle className="text-sm font-medium">{title}</CardTitle>
@@ -409,7 +407,12 @@ const StatCard = ({ title, value, description }: { title: string value: ReactNod
   </Card>
 )
 
-const FilterDropdown = <T extends string>({ label, options, selected, onChange }: { label: string options: readonly T[] selected: readonly T[] onChange: (option: T, checked: boolean) => void }) => (
+const FilterDropdown = <T extends string>({ label, options, selected, onChange }: {
+  label: string,
+  options: readonly T[],
+  selected: readonly T[],
+  onChange: (option: T, checked: boolean) => void
+}) => (
   <DropdownMenu>
     <DropdownMenuTrigger asChild>
       <Button variant="outline" className="flex items-center gap-2">
@@ -519,11 +522,50 @@ const DeleteEmployeeDialog = ({ employee, isOpen, onOpenChange, onDelete }: {
   </AlertDialog>
 )
 
-const EmployeeDetailDialog = ({ employee, onClose }: { employee: Employee, onClose: () => void }) => {
+const EmployeeDetailDialog = ({ employee, onClose }: { employee: Employee | null, onClose: () => void }) => {
+  const [details, setDetails] = useState<EmployeeDetail | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!employee) return
+    const fetchDetails = async () => {
+      setLoading(true)
+      setError(null)
+      try {
+        const token = localStorage.getItem('token')
+        if (!token) throw new Error('You are not authenticated')
+
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/employees/${employee.id}/detail`, {
+          headers: { 'Authorization': `Bearer ${token}` },
+        })
+
+        if (!res.ok) {
+          const errText = await res.text()
+          throw new Error(errText || 'Failed to fetch employee details')
+        }
+
+        const fetched: ApiResponse<RawEmployeeDetails> = await res.json()
+        if (!fetched.success || !fetched.data) {
+          throw new Error(fetched.message || 'No detail data')
+        }
+
+        const mapped = mapRawToEmployeeDetails(fetched.data)
+        setDetails(mapped)
+      } catch (err: any) {
+        setError(err.message)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchDetails()
+  }, [employee])
+
   if (!employee) return null
 
   return (
-    <Dialog open={!!employee} onOpenChange={onClose}>
+    <Dialog open={true} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle className="flex items-center space-x-3">
@@ -534,42 +576,53 @@ const EmployeeDetailDialog = ({ employee, onClose }: { employee: Employee, onClo
             </Avatar>
             <div>
               <div>{employee.name}</div>
-              <div className="text-sm text-muted-foreground font-normal">{employee.role}</div>
+              <div className="text-sm text-muted-foreground font-normal">
+                {formatRole(employee.role)}
+              </div>
             </div>
           </DialogTitle>
         </DialogHeader>
 
-        <div className="grid gap-4 py-4">
-          <DetailItem icon={Mail} value={employee.email} />
-          <DetailItem icon={Phone} value={`+${employee.phone}`} />
-          <DetailItem icon={MapPin} value={employee.location} />
-          <DetailItem icon={Calendar} value={`Joined ${new Date(employee.joinDate).toLocaleDateString("en-US")}`} />
+        {loading && <p className="text-sm text-muted-foreground">Loading…</p>}
+        {error && (
+          <p className="text-sm text-red-500">Failed: {error}</p>
+        )}
+        {details && (
+          <div className="grid gap-4 py-4">
+            <DetailItem icon={Mail} value={employee.email} />
+            <DetailItem icon={Phone} value={`+${details.phoneNumber}`} />
+            <DetailItem icon={MapPin} value={details.address} />
+            <DetailItem
+              icon={Calendar}
+              value={`Joined ${new Date(details.joinDate).toLocaleDateString("en-US")}`}
+            />
 
-          {employee.status === "CR" && (
-            <>
-              <Separator className="my-4" />
-              <ContractDetails employee={employee as ContractEmployee} />
-            </>
-          )}
-        </div>
+            {employee.status === 'CR' && details.contract && (
+              <>
+                <Separator className="my-4" />
+                <ContractDetails contract={details.contract} />
+              </>
+            )}
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   )
 }
 
-const ContractDetails = ({ employee }: { employee: ContractEmployee }) => (
+const ContractDetails = ({ contract }: { contract: Contract }) => (
   <div>
     <p className="text-md font-semibold">Contract Details</p>
     <div className="grid grid-cols-2 gap-4">
-      <ContractField label="Start" value={employee.contractStartDate} />
-      <ContractField label="End" value={employee.contractEndDate} />
+      <ContractField label="Start" value={contract.start} />
+      <ContractField label="End" value={contract.end} />
 
       <div className="col-span-2">
         <Label className="text-xs text-muted-foreground">Contract File</Label>
 
-        {employee.contractFilePath ? (
+        {contract.url ? (
           <div className="mt-2 border rounded overflow-hidden">
-            <iframe src={employee.contractFilePath} title="Contract PDF" className="w-full h-48" />
+            <iframe src={contract.url} title="Contract PDF" className="w-full h-48" />
           </div>
         ) : (
           <div className="mt-2">
@@ -581,14 +634,14 @@ const ContractDetails = ({ employee }: { employee: ContractEmployee }) => (
   </div>
 )
 
-const DetailItem = ({ icon: Icon, value }: { icon: ComponentType<{ className?: string }> value: string }) => (
+const DetailItem = ({ icon: Icon, value }: { icon: ComponentType<{ className?: string }>, value: string }) => (
   <div className="flex items-center space-x-2">
     <Icon className="h-4 w-4 text-muted-foreground" />
     <span className="text-sm">{value}</span>
   </div>
 )
 
-const ContractField = ({ label, value }: { label: string value: string }) => (
+const ContractField = ({ label, value }: { label: string, value: string }) => (
   <div className="space-y-1">
     <Label className="text-xs text-muted-foreground">{label}</Label>
     <p className="text-sm">{value}</p>

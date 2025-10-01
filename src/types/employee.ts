@@ -27,6 +27,26 @@ export interface Employee {
   status : EmploymentStatus
 }
 
+export interface Contract {
+  start : string
+  end   : string
+  url   : string
+}
+
+export interface RawEmployeeDetails {
+  phoneNumber : string
+  address     : string
+  joinDate    : string
+  contract    : Contract | null
+}
+
+export interface EmployeeDetail {
+  phoneNumber : string
+  address     : string
+  joinDate    : string
+  contract    : Contract | null
+}
+
 export type EmployeeUtilization = Employee & {
   utilization     : number
   currentProjects : string[]
