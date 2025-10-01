@@ -9,9 +9,39 @@ import { useSidebar } from "@/components/ui/sidebar";
 
 import { useState, useCallback } from "react";
 import ProjectAssignment from "@/components/project/assignment/ProjectAssignment";
+import { TeamMember } from "@/types/projects";
+import axios from "axios";
+
+// Types for backend response
+interface BackendSubActivity {
+  id: string;
+  name: string;
+  start_date: string;
+  end_date: string;
+  workload: number;
+  fte: number;
+  role: string;
+  minimum_level: string;
+}
+
+interface BackendGroupComposition {
+  name: string;
+  role: string;
+  level: string[] | string;
+  total_workload: number;
+  total_fte: number;
+  utilization: number;
+  sub_activities: BackendSubActivity[];
+}
+
+interface BackendResponse {
+  group_composition: BackendGroupComposition[];
+  feedback: unknown[];
+}
 
 export default function ProjectCreate() {
   const [currentStep, setCurrentStep] = useState(1);
+  const [teamComposition, setTeamComposition] = useState<TeamMember[]>([]);
 
   const { activities, projectDetails } = useProject();
   const { setOpen } = useSidebar();
@@ -19,13 +49,6 @@ export default function ProjectCreate() {
   useEffect(() => {
     setOpen(false);
   }, [setOpen]);
-
-  // Debug log to track activities data
-  useEffect(() => {
-    console.log("Current step:", currentStep);
-    console.log("Activities data:", activities);
-    console.log("Project details:", projectDetails);
-  }, [currentStep, activities, projectDetails]);
 
   const steps = [
     { id: 1, name: "Project Input", description: "Basic project information" },
@@ -35,8 +58,6 @@ export default function ProjectCreate() {
 
   const goToStep = useCallback(
     async (step: number) => {
-      console.log(`Attempting to go to step ${step}`);
-
       if (step <= currentStep) {
         setCurrentStep(step);
         return;
@@ -51,6 +72,75 @@ export default function ProjectCreate() {
         if (!projectDetails.name.trim()) {
           console.warn("Project name is required");
           return;
+        }
+
+        // Transform activities to API format
+        const transformedActivities = activities.map((activity) => ({
+          id: activity.id,
+          name: activity.name,
+          start_date: activity.startDate,
+          end_date: activity.endDate,
+          sub_activities:
+            activity.subActivities?.map((subActivity) => ({
+              id: subActivity.id,
+              name: subActivity.name,
+              start_date: subActivity.startDate,
+              end_date: subActivity.endDate,
+              workload: subActivity.workload,
+              fte: subActivity.fte,
+              minimum_level:
+                subActivity.minimumLevel === "junior"
+                  ? "Junior"
+                  : subActivity.minimumLevel === "middle"
+                  ? "Middle"
+                  : "Senior",
+              role:
+                subActivity.role === "SA"
+                  ? "Solution Analyst"
+                  : subActivity.role === "SE"
+                  ? "Software Engineer"
+                  : "Data Engineer",
+            })) || [],
+        }));
+
+        try {
+          const composition = await axios.post(
+            "http://10.113.75.77:8000/optimize",
+            {
+              activities: transformedActivities,
+            }
+          );
+
+          // Transform backend response to frontend format
+          const backendData = composition.data as BackendResponse;
+          if (
+            backendData &&
+            backendData.group_composition &&
+            Array.isArray(backendData.group_composition)
+          ) {
+            const transformedTeamComposition =
+              backendData.group_composition.map(
+                (member: BackendGroupComposition) => ({
+                  name: member.name,
+                  role: member.role,
+                  level: Array.isArray(member.level)
+                    ? member.level.join("/")
+                    : member.level,
+                  workload_hours: member.total_workload,
+                  total_working_days: Math.ceil(member.total_workload / 8), // Assuming 8 hours per day
+                  utilization_rate: `${member.utilization}%`,
+                  assigned_activities: member.sub_activities || [],
+                })
+              );
+
+            setTeamComposition(transformedTeamComposition);
+          } else {
+            console.warn("Invalid response format:", composition.data);
+            setTeamComposition([]);
+          }
+        } catch (error) {
+          console.error("Error calling optimize API:", error);
+          setTeamComposition([]);
         }
 
         // TODO: Save project data to backend using axios/TanStack Query
@@ -125,7 +215,19 @@ export default function ProjectCreate() {
 
         {currentStep === 2 && (
           <ProjectResults
-            teamComposition={[]}
+            teamComposition={teamComposition}
+            activities={activities.map((activity, index) => ({
+              id: index + 1,
+              name: activity.name,
+              date_range: `${new Date(activity.startDate).toLocaleDateString(
+                "en-US",
+                { month: "short", day: "numeric" }
+              )}-${new Date(activity.endDate).toLocaleDateString("en-US", {
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+              })}`,
+            }))}
             onNext={() => goToStep(3)}
             onPrevious={() => goToStep(1)}
           />

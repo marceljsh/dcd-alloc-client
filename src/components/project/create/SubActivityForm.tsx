@@ -38,7 +38,7 @@ import {
   SubActivityFormData,
   subActivityFormSchema,
 } from "@/lib/schemas/project";
-import { uuidv4 } from "zod";
+import { v4 } from "uuid";
 
 interface SubActivityFormProps {
   parentActivity: ProjectActivity | null;
@@ -52,7 +52,7 @@ const createSubActivity = (
   data: SubActivityFormData,
   parentID: string
 ): ProjectSubActivity => ({
-  id: data.id || String(uuidv4()),
+  id: data.id || v4(),
   name: data.name.trim(),
   startDate: data.startDate,
   endDate: data.endDate,
