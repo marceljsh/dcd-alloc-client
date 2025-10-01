@@ -36,11 +36,11 @@ import {
 import { ProjectRow } from "@/types/projects";
 import rawProjects from "@/data/projects.json";
 import { ProjectCategory, ProjectPriority } from "@/types/common";
+import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 
 const allProjects: ProjectRow[] = rawProjects as ProjectRow[];
-const initialHistory = allProjects; // bisa pakai filter kalau history punya kriteria khusus
+const initialHistory = allProjects; 
 
-// Utils
 const getCategoryColor = (category: ProjectCategory) => {
   switch (category) {
     case "Small":
@@ -65,17 +65,26 @@ const getPriorityColor = (priority: ProjectPriority) => {
   }
 };
 
+const PageHeader = ({ onAddProject }: { onAddProject: () => void }) => (
+  <div className="flex items-center justify-between mb-6">
+    <div>
+      <h1 className="text-3xl font-bold" data-testid="page-title">History</h1>
+      <p className="text-muted-foreground">Manage your last projects and track their result</p>
+    </div>
+  </div>
+)
+
 export default function HistoryPage() {
   const [history] = useState<ProjectRow[]>(initialHistory);
 
-  // Filter states
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [selectedPriorities, setSelectedPriorities] = useState<string[]>([]);
   const [selectedTeams, setSelectedTeams] = useState<string[]>([]);
 
-  const [sorting, setSorting] = useState<SortingState>([]);
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
-  const [globalFilter, setGlobalFilter] = useState("");
+  const [sorting, setSorting] = useState<SortingState>([])
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
+  const [globalFilter, setGlobalFilter] = useState("")
+  const [currentPage, setCurrentPage] = useState(1);
 
   const columns = useMemo<ColumnDef<ProjectRow>[]>(
     () => [
@@ -184,30 +193,32 @@ export default function HistoryPage() {
         ?.setFilterValue(newSelection.length > 0 ? newSelection : undefined);
     };
 
-  const handleCategoryChange = handleFilterChange(
-    "category",
-    selectedCategories,
-    setSelectedCategories,
-  );
-  const handlePriorityChange = handleFilterChange(
-    "priority",
-    selectedPriorities,
-    setSelectedPriorities,
-  );
-  const handleTeamChange = handleFilterChange(
-    "team",
-    selectedTeams,
-    setSelectedTeams,
-  );
+  const allFilteredAndSortedRows = table.getSortedRowModel().rows
+  const itemsPerPage = 10
+  const totalPages = Math.ceil(allFilteredAndSortedRows.length / itemsPerPage)
+  const paginatedRows = allFilteredAndSortedRows.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  )
+
+  const handlePageChange = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
+  };
+
+  useMemo(() => setCurrentPage(1), [globalFilter, columnFilters, sorting])
+  const handleCategoryChange = handleFilterChange("category", selectedCategories, setSelectedCategories)
+  const handlePriorityChange = handleFilterChange("priority", selectedPriorities, setSelectedPriorities)
+  const handleTeamChange = handleFilterChange("team", selectedTeams, setSelectedTeams)
 
   return (
     <div className="space-y-6 mx-10">
-      <PageHeader />
+      <PageHeader onAddProject={() => {}} />
       <Card className="py-4">
         <CardHeader className="flex items-center justify-between">
           <CardTitle className="text-xl">History Projects</CardTitle>
           <div className="flex gap-2 items-center">
-            {/* --- Category Filter --- */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" className="flex items-center gap-2">
@@ -229,7 +240,6 @@ export default function HistoryPage() {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            {/* --- Priority Filter --- */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" className="flex items-center gap-2">
@@ -273,7 +283,6 @@ export default function HistoryPage() {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            {/* --- Search --- */}
             <div className="relative">
               <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
@@ -285,31 +294,47 @@ export default function HistoryPage() {
             </div>
           </div>
         </CardHeader>
+
         <CardContent>
-          <ProjectsDataTable table={table} columns={columns} />
+          <ProjectsDataTable table={table} rows={paginatedRows} />
+
+          {/* Pagination */}
+          <div className="mt-4 flex justify-center">
+            <Pagination>
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
+                  />
+                </PaginationItem>
+                {[...Array(totalPages)].map((_, i) => (
+                  <PaginationItem key={i}>
+                    <PaginationLink
+                      isActive={currentPage === i + 1}
+                      onClick={() => handlePageChange(i + 1)}
+                    >
+                      {i + 1}
+                    </PaginationLink>
+                  </PaginationItem>
+                ))}
+                <PaginationItem>
+                  <PaginationNext
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    className={currentPage === totalPages ? "pointer-events-none opacity-50" : ""}
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          </div>
         </CardContent>
       </Card>
     </div>
   );
 }
 
-const PageHeader = () => (
-  <div className="flex items-center justify-between">
-    <div>
-      <h1 className="text-3xl font-bold">History</h1>
-      <p className="text-muted-foreground">View past project records</p>
-    </div>
-  </div>
-);
-
-const ProjectsDataTable = ({
-  table,
-  columns,
-}: {
-  table: any;
-  columns: any[];
-}) => (
-  <ScrollArea className="h-[500px]">
+const ProjectsDataTable = ({ table, rows }: { table: any; rows: any[] }) => (
+  <ScrollArea className="h-[450px]">
     <Table>
       <TableHeader className="sticky top-0 z-10 bg-background shadow-sm">
         {table.getHeaderGroups().map((headerGroup: any) => (
@@ -337,19 +362,22 @@ const ProjectsDataTable = ({
         ))}
       </TableHeader>
       <TableBody>
-        {table.getRowModel().rows?.length ? (
-          table.getRowModel().rows.map((row: any) => (
-            <TableRow key={row.id}>
-              {row.getVisibleCells().map((cell: any) => (
-                <TableCell key={cell.id}>
-                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                </TableCell>
-              ))}
-            </TableRow>
-          ))
+        {rows?.length ? (
+          rows.map((row: any) => {
+            table.prepareRow?.(row)
+            return (
+              <TableRow key={row.id}>
+                {row.getVisibleCells().map((cell: any) => (
+                  <TableCell key={cell.id}>
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                  </TableCell>
+                ))}
+              </TableRow>
+            )
+          })
         ) : (
           <TableRow>
-            <TableCell colSpan={columns.length} className="h-24 text-center">
+            <TableCell colSpan={table.getAllColumns().length} className="h-24 text-center">
               No history projects.
             </TableCell>
           </TableRow>

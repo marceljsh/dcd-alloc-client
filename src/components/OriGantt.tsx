@@ -411,10 +411,7 @@ export default function Component({
       );
     });
 
-    /* filter employees based on selected roles */
-    const filteredEmployees = employees
-      .getValues()
-      .filter((employee) => selectedRoles.includes(employee.role));
+    const filteredEmployees = employees.getValues().filter(employee => selectedRoles.includes(employee.role))
 
     return filteredEmployees.map((employee) => ({
       employee,
@@ -481,10 +478,7 @@ export default function Component({
         {/* Project Filter Dropdown */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button
-              variant="outline"
-              className="gap-1 bg-foreground text-background"
-            >
+            <Button data-testid="project-filter-dropdown" variant="outline" className="gap-1 bg-foreground text-background">
               <Filter className="h-4 w-4" />
               Project ({selectedProjectsLabel})
             </Button>
@@ -495,6 +489,7 @@ export default function Component({
             {projects.getValues().map((project) => (
               <DropdownMenuCheckboxItem
                 key={project.id}
+                data-testid={`project-filter-item-${project.id}`}   // ⬅️ Tambahan
                 checked={selectedProjects.includes(project.id)}
                 onSelect={(e) => e.preventDefault()}
                 onCheckedChange={(checked) =>
@@ -527,19 +522,20 @@ export default function Component({
             <DropdownMenuSeparator />
             {roles.map((role) => (
               <DropdownMenuCheckboxItem
-                key={role}
-                checked={selectedRoles.includes(role)}
-                onSelect={(e) => e.preventDefault()}
-                onCheckedChange={(checked) =>
-                  setSelectedRoles(
-                    checked
-                      ? [...selectedRoles, role]
-                      : selectedRoles.filter((r) => r !== role)
-                  )
-                }
-              >
-                {role}
-              </DropdownMenuCheckboxItem>
+              key={role}
+              data-testid={`role-filter-item-${role.replace(/\s+/g, '-')}`}   // ⬅️ Tambahan
+              checked={selectedRoles.includes(role)}
+              onSelect={(e) => e.preventDefault()}
+              onCheckedChange={(checked) =>
+                setSelectedRoles(
+                  checked
+                    ? [...selectedRoles, role]
+                    : selectedRoles.filter((r) => r !== role)
+                )
+              }
+            >
+              {role}
+            </DropdownMenuCheckboxItem>
             ))}
           </DropdownMenuContent>
         </DropdownMenu>
@@ -563,9 +559,7 @@ export default function Component({
                   {/* This container handles both scrolls */}
                   <div
                     style={{
-                      minWidth: `${
-                        employeeColumnFixedW + employeeColumnWidth
-                      }px`,
+                      minWidth: `${employeeColumnFixedW + employeeColumnWidth}px`,
                     }}
                   >
                     {/* Headers Section - Sticky Top */}
@@ -629,9 +623,7 @@ export default function Component({
                                     weekday: "short",
                                   })}
                                 </div>
-                                <div className="text-gray-600">
-                                  {date.getDate()}
-                                </div>
+                                <div className="text-gray-600">{date.getDate()}</div>
                               </div>
                             ))}
                           </div>
@@ -641,150 +633,128 @@ export default function Component({
 
                     {/* Employee Rows and Task Bars */}
                     <TooltipProvider>
-                      {tasksByEmployee.map(
-                        ({ employee, tasks: employeeTasks }) => {
-                          // Hanya tampilkan baris jika ada tugas atau jika peran tersebut terpilih (untuk menampilka nama karyawan tanpa tugas)
-                          // Periksa apakah peran karyawan ada di selectedRoles
-                          if (!selectedRoles.includes(employee.role))
-                            return null;
+                      {tasksByEmployee.map(({ employee, tasks: employeeTasks }) => {
+                        if (!selectedRoles.includes(employee.role)) return null;
 
-                          const taskLevels = getTaskLevels(employeeTasks);
-                          const maxLevel = Math.max(
-                            ...Object.values(taskLevels),
-                            0
-                          );
-                          const rowHeight = Math.max(
-                            60,
-                            (maxLevel + 1) * 28 + 20
-                          );
+                        const taskLevels = getTaskLevels(employeeTasks);
+                        const maxLevel = Math.max(...Object.values(taskLevels), 0);
+                        const rowHeight = Math.max(60, (maxLevel + 1) * 28 + 20);
 
-                          return (
-                            <div
-                              key={employee.id}
-                              style={{ minHeight: `${rowHeight}px` }}
-                              className="flex border-b"
-                            >
-                              {/* Employee Info (left column) - Sticky Left (scrolls vertically) */}
-                              <div className="w-64 p-4 border-r flex flex-col justify-center bg-white sticky left-0 z-10">
-                                <div className="font-medium">
-                                  {employee.name}
-                                </div>
-                                <Badge
-                                  variant="outline"
-                                  className={`w-fit mt-1 ${getRoleColor(
-                                    employee.role
-                                  )}`}
-                                >
-                                  {employee.role}
-                                </Badge>
+                        return (
+                          <div
+                            key={employee.id}
+                            data-testid={`employee-row-${employee.id}`}
+                            style={{ minHeight: `${rowHeight}px` }}
+                            className="flex border-b"
+                          >
+                            {/* Employee Info (left column) - Sticky Left */}
+                            <div className="w-64 p-4 border-r flex flex-col justify-center bg-white sticky left-0 z-10">
+                              <div
+                                data-testid={`employee-name-${employee.id}`}
+                                className="font-medium"
+                              >
+                                {employee.name}
+                              </div>
+                              <Badge
+                                data-testid={`employee-role-badge-${employee.id}`}
+                                variant="outline"
+                                className={`w-fit mt-1 ${getRoleColor(employee.role)}`}
+                              >
+                                {employee.role}
+                              </Badge>
+                            </div>
+
+                            {/* Task Timeline Area */}
+                            <div className="flex-1 relative">
+                              {/* Daily background columns */}
+                              <div className="absolute inset-0 flex">
+                                {dailyHeaders.map((date, index) => (
+                                  <div
+                                    key={index}
+                                    className={`border-r ${
+                                      isWeekend(date) ? "bg-gray-50" : "bg-white"
+                                    }`}
+                                    style={{ width: `${dayWidth}px` }}
+                                  />
+                                ))}
                               </div>
 
-                              {/* Task Timeline Area */}
-                              <div className="flex-1 relative">
-                                {/* Daily background columns */}
-                                <div className="absolute inset-0 flex">
-                                  {dailyHeaders.map((date, index) => (
-                                    <div
-                                      key={index}
-                                      className={`border-r ${
-                                        isWeekend(date)
-                                          ? "bg-gray-50"
-                                          : "bg-white"
-                                      }`}
-                                      style={{ width: `${dayWidth}px` }}
-                                    />
-                                  ))}
-                                </div>
+                              {/* Task bars */}
+                              <div className="relative p-2">
+                                {employeeTasks.map((task) => {
+                                  const position = getTaskPosition(task);
+                                  const level = taskLevels[task.id];
+                                  const topOffset = level * 28 + 8;
 
-                                {/* Task bars */}
-                                <div className="relative p-2">
-                                  {employeeTasks.map((task) => {
-                                    const position = getTaskPosition(task);
-                                    const level = taskLevels[task.id];
-                                    const topOffset = level * 28 + 8;
+                                  const taskStart = new Date(
+                                    task.startDate
+                                  ).toLocaleDateString();
+                                  const taskEnd = new Date(
+                                    task.endDate
+                                  ).toLocaleDateString();
 
-                                    const taskStart = new Date(
-                                      task.startDate
-                                    ).toLocaleDateString();
-                                    const taskEnd = new Date(
-                                      task.endDate
-                                    ).toLocaleDateString();
+                                  const stage = stages.get(task.stageId);
+                                  const project = stage
+                                    ? projects.get(stage.projectId)
+                                    : null;
+                                  if (!stage || !project) return null;
 
-                                    const stage = stages.get(task.stageId)!;
-                                    const project = projects.get(
-                                      stage.projectId
-                                    )!;
-
-                                    return (
-                                      <Tooltip key={task.id}>
-                                        <TooltipTrigger asChild>
-                                          <div
-                                            className={cn(
-                                              "absolute h-5 px-1 flex items-center",
-                                              "text-white text-xs cursor-pointer transition-all hover:opacity-80",
-                                              getTaskColor(
-                                                projects
-                                                  .getKeys()
-                                                  .indexOf(project.id)
-                                              )
-                                            )}
-                                            style={{
-                                              left: position.left,
-                                              width: position.width,
-                                              top: `${topOffset}px`,
-                                              zIndex:
-                                                hoveredTask === task.id
-                                                  ? 15
-                                                  : 5,
-                                            }}
-                                            onMouseEnter={() =>
-                                              setHoveredTask(task.id)
-                                            }
-                                            onMouseLeave={() =>
-                                              setHoveredTask(null)
-                                            }
-                                          >
-                                            <span className="truncate">
-                                              {task.name}
-                                            </span>
-                                          </div>
-                                        </TooltipTrigger>
-                                        <TooltipContent
-                                          side="top"
-                                          className="max-w-xs"
+                                  return (
+                                    <Tooltip key={task.id}>
+                                      <TooltipTrigger asChild>
+                                        <div
+                                          data-testid={`task-bar-${task.id}`}
+                                          className={cn(
+                                            "absolute h-5 px-1 flex items-center",
+                                            "text-white text-xs cursor-pointer transition-all hover:opacity-80",
+                                            getTaskColor(
+                                              projects.getKeys().indexOf(project.id)
+                                            )
+                                          )}
+                                          style={{
+                                            left: position.left,
+                                            width: position.width,
+                                            top: `${topOffset}px`,
+                                            zIndex: hoveredTask === task.id ? 15 : 5,
+                                          }}
+                                          onMouseEnter={() => setHoveredTask(task.id)}
+                                          onMouseLeave={() => setHoveredTask(null)}
                                         >
-                                          <div className="space-y-2">
-                                            <div className="font-semibold">
-                                              {task.name}
+                                          {task.name}
+                                        </div>
+                                      </TooltipTrigger>
+
+                                      <TooltipContent>
+                                        <div className="space-y-2">
+                                          <div className="font-semibold">
+                                            {task.name}
+                                          </div>
+                                          <div className="space-y-1 text-sm">
+                                            <div className="flex items-center gap-2">
+                                              <Calendar className="h-3 w-3" />
+                                              <span>{`${taskStart} - ${taskEnd}`}</span>
                                             </div>
-                                            <div className="space-y-1 text-sm">
-                                              <div className="flex items-center gap-2">
-                                                <Calendar className="h-3 w-3" />
-                                                <span>{`${taskStart} - ${taskEnd}`}</span>
-                                              </div>
-                                              <div className="flex items-center gap-2">
-                                                <Zap className="h-3 w-3" />
-                                                <span>
-                                                  {task.storyPoints} story
-                                                  points
-                                                </span>
-                                              </div>
-                                              <div className="flex items-center gap-2">
-                                                <User className="h-3 w-3" />
-                                                <span>{`${project.name} • ${stage.name}`}</span>
-                                              </div>
+                                            <div className="flex items-center gap-2">
+                                              <Zap className="h-3 w-3" />
+                                              <span>
+                                                {task.storyPoints} story points
+                                              </span>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                              <User className="h-3 w-3" />
+                                              <span>{`${project.name} • ${stage.name}`}</span>
                                             </div>
                                           </div>
-                                        </TooltipContent>
-                                      </Tooltip>
-                                    );
-                                  })}
-                                </div>
+                                        </div>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  );
+                                })}
                               </div>
                             </div>
-                          );
-                        }
-                      )}
+                          </div>
+                        );
+                      })}
                     </TooltipProvider>
                   </div>
                 </div>
@@ -792,9 +762,9 @@ export default function Component({
             </div>
           </CardContent>
         </Card>
+
       )}
 
-      {/* Project Summary */}
       <div className="grid gap-4 mx-auto [grid-template-columns:repeat(auto-fit,minmax(200px,1fr))]">
         {projects
           .getValues()

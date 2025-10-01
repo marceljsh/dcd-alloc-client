@@ -1,6 +1,6 @@
 "use client";
 
-import { ComponentType, ReactNode, useMemo, useState } from "react";
+import { ComponentType, ReactNode, useMemo, useState,useRef } from "react"
 import {
   ColumnDef,
   flexRender,
@@ -32,34 +32,15 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import {
-  Search,
-  Plus,
-  MoreHorizontal,
-  Edit,
-  Trash2,
-  Mail,
-  Phone,
-  Calendar,
-  MapPin,
-  Filter,
-  Table2,
-  Grid3X3,
-} from "lucide-react";
-import { initials } from "@/lib/strings";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { toast } from "sonner";
-import { Toaster } from "@/components/ui/sonner";
+} from "@/components/ui/dropdown-menu"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
+import { Search, Plus, MoreHorizontal, Edit, Trash2, Mail, Phone, Calendar, MapPin, Filter, Table2, Grid3X3 } from "lucide-react"
+import { initials } from "@/lib/strings"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { toast } from "sonner"
+import { DateRangePicker } from "@/components/ui/date-range-picker"
+import { Toaster } from "@/components/ui/sonner"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -69,27 +50,22 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+} from "@/components/ui/alert-dialog"
 import {
-  employeeLevels,
-  EmployeeRole,
-  employeeRoles,
-  EmploymentStatus,
-  employmentStatuses,
-} from "@/types/common";
-import rawEmployees from "@/data/employees.json";
-import {
-  ContractEmployee,
-  EmployeeRow,
-  PermanentEmployee,
-} from "@/types/employee";
-import {
-  AddEmployeeFormValues,
-  AddEmployeeForm,
-} from "@/components/employee/AddEmployeeForm";
-import { Separator } from "@/components/ui/separator";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import EmployeeHeatmap from "@/components/employee/EmployeeHeatmap";
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationPrevious,
+  PaginationNext,
+} from "@/components/ui/pagination";
+import { employeeLevels, EmployeeRole, employeeRoles, EmploymentStatus, employmentStatuses } from "@/types/common"
+import rawEmployees from "@/data/employees.json"
+import { ContractEmployee, EmployeeRow, PermanentEmployee } from "@/types/employee"
+import { AddEmployeeFormValues, AddEmployeeForm } from "@/components/employee/AddEmployeeForm"
+import { Separator } from "@/components/ui/separator"
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
+import EmployeeHeatmap from "@/components/employee/EmployeeHeatmap"
 
 type ViewMode = "table" | "heatmap";
 
@@ -104,13 +80,60 @@ export default function ResourcesPage() {
   );
   const [viewMode, setViewMode] = useState<ViewMode>("table");
 
-  const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
-  const [selectedLevels, setSelectedLevels] = useState<string[]>([]);
-  const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
+  const [selectedRoles, setSelectedRoles] = useState<string[]>([])
+  const [selectedLevels, setSelectedLevels] = useState<string[]>([])
+  const [selectedStatuses, setSelectedStatuses] = useState<string[]>([])
+  const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({
+      from: undefined,
+      to: undefined,
+  })
 
-  const [sorting, setSorting] = useState<SortingState>([]);
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
-  const [globalFilter, setGlobalFilter] = useState("");
+  const [sorting, setSorting] = useState<SortingState>([])
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
+  const [globalFilter, setGlobalFilter] = useState('')
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const filteredEmployees = useMemo(() => {
+    return employees.filter(employee => {
+      if (globalFilter && !employee.name.toLowerCase().includes(globalFilter.toLowerCase())) {
+        return false;
+      }
+      if (selectedRoles.length > 0 && !selectedRoles.includes(employee.role)) {
+        return false;
+      }
+      if (selectedLevels.length > 0 && !selectedLevels.includes(employee.level)) {
+        return false;
+      }
+      if (selectedStatuses.length > 0 && !selectedStatuses.includes(employee.status)) {
+        return false;
+      }
+      return true;
+    });
+  }, [employees, globalFilter, selectedRoles, selectedLevels, selectedStatuses]);
+
+  const scrollRef = useRef<HTMLDivElement>(null)
+
+  const onMouseDown = (e: React.MouseEvent) => {
+    if (!scrollRef.current) return
+    const startX = e.pageX - scrollRef.current.offsetLeft
+    const scrollLeft = scrollRef.current.scrollLeft
+
+    const onMouseMove = (moveEvent: MouseEvent) => {
+      const x = moveEvent.pageX - scrollRef.current!.offsetLeft
+      const walk = (x - startX) * 1.2
+      scrollRef.current!.scrollLeft = scrollLeft - walk
+    }
+
+    const onMouseUp = () => {
+      document.removeEventListener("mousemove", onMouseMove)
+      document.removeEventListener("mouseup", onMouseUp)
+    }
+
+    document.addEventListener("mousemove", onMouseMove)
+    document.addEventListener("mouseup", onMouseUp)
+  }
+
+
 
   const columns = useMemo<ColumnDef<EmployeeRow>[]>(
     () => [
@@ -156,11 +179,10 @@ export default function ResourcesPage() {
   );
 
   const table = useReactTable({
-    data: employees,
+    data: filteredEmployees,
     columns,
-    state: { sorting, columnFilters, globalFilter },
+    state: { sorting, globalFilter },
     onSortingChange: setSorting,
-    onColumnFiltersChange: setColumnFilters,
     onGlobalFilterChange: setGlobalFilter,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
@@ -172,6 +194,21 @@ export default function ResourcesPage() {
       },
     },
   });
+
+    const allFilteredAndSortedRows = table.getSortedRowModel().rows
+    const itemsPerPage = 10
+    const totalPages = Math.ceil(allFilteredAndSortedRows.length / itemsPerPage)
+    const paginatedRows = allFilteredAndSortedRows.slice(
+      (currentPage - 1) * itemsPerPage,
+      currentPage * itemsPerPage
+    )
+
+  // Fungsi untuk menangani navigasi halaman
+  const handlePageChange = (page) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
+  };
 
   const handleAddEmployee = (data: AddEmployeeFormValues) => {
     const employee = createEmployee(data);
@@ -186,43 +223,22 @@ export default function ResourcesPage() {
     toast.success(`${employee.name} has been removed.`);
   };
 
-  const handleFilterChange =
-    (
-      columnId: string,
-      currentSelection: string[],
-      setter: React.Dispatch<React.SetStateAction<string[]>>,
-    ) =>
-    (value: string, checked: boolean) => {
-      const newSelection = checked
-        ? [...currentSelection, value]
-        : currentSelection.filter((item) => item !== value);
+  const handleDropdownFilterChange = (
+    setter: React.Dispatch<React.SetStateAction<string[]>>
+  ) => (value: string, checked: boolean) => {
+    setter(prev =>
+      checked ? [...prev, value] : prev.filter(item => item !== value)
+    );
+  };
 
-      setter(newSelection);
-      table
-        .getColumn(columnId)
-        ?.setFilterValue(newSelection.length > 0 ? newSelection : undefined);
-    };
-
-  const handleRoleFilterChange = handleFilterChange(
-    "role",
-    selectedRoles,
-    setSelectedRoles,
-  );
-  const handleLevelFilterChange = handleFilterChange(
-    "level",
-    selectedLevels,
-    setSelectedLevels,
-  );
-  const handleStatusFilterChange = handleFilterChange(
-    "status",
-    selectedStatuses,
-    setSelectedStatuses,
-  );
+  const handleRoleFilterChange = handleDropdownFilterChange(setSelectedRoles);
+  const handleLevelFilterChange = handleDropdownFilterChange(setSelectedLevels);
+  const handleStatusFilterChange = handleDropdownFilterChange(setSelectedStatuses);
 
   return (
-    <div className="space-y-6 mx-10">
+    <div className="space-y-2 mx-10">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between space-y-2">
         <div>
           <h1 className="text-3xl font-bold">Resources</h1>
           <p className="text-muted-foreground">
@@ -243,35 +259,31 @@ export default function ResourcesPage() {
           title="Contract Resources"
           value={
             <>
-              {employees.filter((emp) => emp.status === "Contract").length}
-              <span className="text-base font-normal">{` / ${employees.length}`}</span>
+            {filteredEmployees.filter((emp) => emp.status === "Contract").length}
+            <span className="text-base font-normal">{` / ${filteredEmployees.length}`}</span>
             </>
           }
           description="Members"
         />
         <StatCard
           title="Software Engineer"
-          value={
-            employees.filter((emp) => emp.role === "Software Engineer").length
-          }
-          description="Skilled Coders"
+          value={filteredEmployees.filter((emp) => emp.role === 'Software Engineer').length}
+          description="People"
         />
         <StatCard
           title="Data Engineer"
-          value={employees.filter((emp) => emp.role === "Data Engineer").length}
-          description="Keen Minds"
+          value={filteredEmployees.filter((emp) => emp.role === 'Data Engineer').length}
+          description="People"
         />
         <StatCard
           title="System Analyst"
-          value={
-            employees.filter((emp) => emp.role === "System Analyst").length
-          }
+          value={filteredEmployees.filter((emp) => emp.role === 'System Analyst').length}
           description="People"
         />
       </div>
 
       {/* Table */}
-      <Card className="py-4">
+      <Card className="py-2">
         <CardHeader className="flex flex-row items-center justify-between">
           <div className="flex items-center gap-4">
             <CardTitle className="text-xl">Team Members</CardTitle>
@@ -290,31 +302,35 @@ export default function ResourcesPage() {
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Role Filter */}
+
+
+           {viewMode === "heatmap" ? (
+               <DateRangePicker
+                 dateRange={dateRange}
+                 onDateRangeChange={setDateRange}
+                 placeholder={<span className="font-semibold">Period</span>}
+                 data-testid="date-range-picker"
+               />
+             ) : null}
+
             <FilterDropdown
               label="Role"
               options={employeeRoles}
               selected={selectedRoles}
               onChange={handleRoleFilterChange}
             />
-
-            {/* Level Filter */}
             <FilterDropdown
               label="Level"
               options={employeeLevels}
               selected={selectedLevels}
               onChange={handleLevelFilterChange}
             />
-
-            {/* Status Filter */}
             <FilterDropdown
               label="Status"
               options={employmentStatuses}
               selected={selectedStatuses}
               onChange={handleStatusFilterChange}
             />
-
-            {/* Search Input */}
             <div className="relative">
               <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
@@ -326,21 +342,19 @@ export default function ResourcesPage() {
             </div>
           </div>
         </CardHeader>
-
         <CardContent>
-          <ScrollArea className="h-[500px]">
-            {viewMode === "heatmap" ? (
-              <EmployeeHeatmap
-                employees={employees.map((emp) => {
-                  return {
-                    ...emp,
-                    utilization: Math.random() * 100,
-                    currentProjects: [],
-                    hoursThisWeek: 0,
-                  };
-                })}
-              />
-            ) : (
+              {viewMode === "heatmap" ? (
+                <div className="relative rounded-md">
+                  <EmployeeHeatmap 
+                    employees={filteredEmployees.map(emp => ({
+                      ...emp,
+                      utilization: Math.random() * 100,
+                      currentProjects: [],
+                      hoursThisWeek: 0,
+                    }))}
+                  />
+                </div>
+              )  : (
               <Table>
                 <TableHeader className="sticky top-0 z-10 bg-background shadow-sm">
                   {table.getHeaderGroups().map((headerGroup) => (
@@ -369,21 +383,17 @@ export default function ResourcesPage() {
                     </TableRow>
                   ))}
                 </TableHeader>
-
                 <TableBody>
-                  {table.getRowModel().rows?.length ? (
-                    table.getRowModel().rows.map((row) => (
-                      <TableRow key={row.id}>
-                        {row.getVisibleCells().map((cell) => (
-                          <TableCell key={cell.id}>
-                            {flexRender(
-                              cell.column.columnDef.cell,
-                              cell.getContext(),
-                            )}
-                          </TableCell>
-                        ))}
-                      </TableRow>
-                    ))
+                {paginatedRows?.length ? (
+                  paginatedRows.map(row => (
+                    <TableRow key={row.id}>
+                      {row.getVisibleCells().map(cell => (
+                    <TableCell key={cell.id}>
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))
                   ) : (
                     <TableRow>
                       <TableCell
@@ -397,24 +407,55 @@ export default function ResourcesPage() {
                 </TableBody>
               </Table>
             )}
-          </ScrollArea>
         </CardContent>
-      </Card>
 
+        {viewMode === 'table' && (
+          <div className="px-6 pb-4">
+            <Pagination>
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    aria-disabled={currentPage === 1}
+                    tabIndex={currentPage === 1 ? -1 : undefined}
+                    className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
+                  />
+                </PaginationItem>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                  <PaginationItem key={page}>
+                    <PaginationLink
+                      onClick={() => handlePageChange(page)}
+                      isActive={page === currentPage}
+                    >
+                      {page}
+                    </PaginationLink>
+                  </PaginationItem>
+                ))}
+                <PaginationItem>
+                  <PaginationNext
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    aria-disabled={currentPage === totalPages}
+                    tabIndex={currentPage === totalPages ? -1 : undefined}
+                    className={currentPage === totalPages ? "pointer-events-none opacity-50" : ""}
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          </div>
+        )}
+      </Card>
       <EmployeeDetailDialog
         employee={selectedEmployee}
         onClose={() => setSelectedEmployee(null)}
         getRoleColor={getRoleColor}
         initials={initials}
       />
-
       <DeleteEmployeeDialog
         employee={employeeToDelete}
         isOpen={!!employeeToDelete}
         onOpenChange={() => setEmployeeToDelete(null)}
         onDelete={handleDeleteEmployee}
       />
-
       <Toaster theme="light" position="top-center" richColors />
     </div>
   );

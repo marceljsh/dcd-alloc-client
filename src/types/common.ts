@@ -6,6 +6,7 @@ export const employeeRoles = [
   "Data Engineer",
   "System Analyst",
 ] as const;
+
 export const employeeLevels = ["Junior", "Middle", "Senior"] as const;
 export const employmentStatuses = ["Contract", "Permanent"] as const;
 export const projectCategories = ["Small", "Medium", "Big"] as const;
