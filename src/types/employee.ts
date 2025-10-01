@@ -29,7 +29,7 @@ export interface ContractEmployee extends EmployeeBase {
   status: "Contract";
   contractFilePath?: string;
   contractStartDate: string;
-  contractEndDate: string;
+  contractEndDate: string | null;
 }
 
 export type EmployeeRow = PermanentEmployee | ContractEmployee;
@@ -40,6 +40,20 @@ export type EmployeeUtilization = EmployeeRow & {
   hoursThisWeek: number;
 };
 
+export function normalizeEmployeeUtilization(raw: any): EmployeeUtilization {
+  return {
+    ...raw,
+    status: raw.status as EmploymentStatus, // fix string
+    contractEndDate: raw.contractEndDate ?? null,
+    currentProjects: (raw.currentProjects ?? []) as string[],
+    utilization: raw.utilization ?? 0,
+    hoursThisWeek: raw.hoursThisWeek ?? 0,
+  };
+}
+
+export type NewEmployee =
+  | (Omit<PermanentEmployee, "createdAt" | "updatedAt"> & { status: "Permanent" })
+  | (Omit<ContractEmployee, "createdAt" | "updatedAt"> & { status: "Contract" });
 
 export function createEmployeeRow({
   status,
@@ -47,13 +61,14 @@ export function createEmployeeRow({
 }: NewEmployee): EmployeeRow {
   switch (status) {
     case "Permanent":
-      return { ...data } as PermanentEmployee;
+      return { ...data, status: "Permanent" } as PermanentEmployee;
     case "Contract":
       return {
         ...data,
-        contractFilePath: data.contractFilePath ?? "",
-        contractStartDate: data.contractStartDate ?? "",
-        contractEndDate: data.contractEndDate ?? "",
+        status: "Contract",
+        contractFilePath: (data as any).contractFilePath ?? "",
+        contractStartDate: (data as any).contractStartDate ?? "",
+        contractEndDate: (data as any).contractEndDate ?? "",
       } as ContractEmployee;
 
     default:

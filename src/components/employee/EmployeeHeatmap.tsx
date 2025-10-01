@@ -70,8 +70,6 @@ export default function EmployeeHeatmap({
   selectedEndDate,
 }: EmployeeHeatmapProps) {
   const [viewMode, setViewMode] = useState<"week" | "day">("week");
-  const scrollRef = useRef<HTMLDivElement | null>(null);
-
   const dateRanges = useMemo(() => {
   const ranges: DateRange[] = [];
   const today = new Date();

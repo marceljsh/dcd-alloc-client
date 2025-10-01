@@ -11,16 +11,17 @@ interface DateRangePickerProps {
   dateRange: { from: Date | undefined; to: Date | undefined }
   onDateRangeChange: (range: { from: Date | undefined; to: Date | undefined }) => void
   placeholder?: string
+  className?: string
 }
 
 export function getWorkdaysRange() {
-  const startMonday = startOfWeek(new Date(), { weekStartsOn: 1 }) // Senin minggu ini
+  const startMonday = startOfWeek(new Date(), { weekStartsOn: 1 }) 
   return Array.from({ length: 5 }).map((_, idx) => {
     const day = addDays(startMonday, idx)
     return {
       start: day,
       end: day,
-      label: format(day, "EEE, MMM d"), // Mon, Sep 23
+      label: format(day, "EEE, MMM d"),
     }
   })
 }
@@ -28,11 +29,11 @@ export function getWorkdaysRange() {
 export function DateRangePicker({
   dateRange,
   onDateRangeChange,
-  placeholder = "Select start and end dates",
+  placeholder = "Period",
+  className,
 }: DateRangePickerProps) {
   const [open, setOpen] = React.useState(false)
 
-  // 🔑 Helper: cek apakah tanggal ada di kuartal & return range kuartal
   const getQuarterRange = (date: Date) => {
     return {
       from: startOfQuarter(date),
@@ -43,7 +44,6 @@ export function DateRangePicker({
   const handleStartDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = e.target.value ? new Date(e.target.value) : undefined
     if (selected) {
-      // otomatis set dari awal-kuartal ke akhir-kuartal
       const quarterRange = getQuarterRange(selected)
       onDateRangeChange(quarterRange)
     } else {

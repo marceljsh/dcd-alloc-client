@@ -69,14 +69,11 @@ export const useProject = () => {
     projectDetails: store.projectDetails,
     expandedItems: store.expandedItems,
 
-    // Form state
     form: store.form,
 
-    // Computed
     dates: store.getDates(),
     groupedDates: store.getGroupedDates(),
 
-    // Actions
     handleAction,
     handleFormSubmit,
     openAddActivity,
