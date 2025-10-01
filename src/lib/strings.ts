@@ -22,7 +22,7 @@ export function title(str: string): string {
 
 export function formatRole(role: EmployeeRole): string {
   switch (role) {
-    case "SLA": return "System Analyst";
+    case "SLA": return "Solution Analyst";
     case "DTE": return "Data Engineer";
     case "SWE": return "Software Engineer";
   }

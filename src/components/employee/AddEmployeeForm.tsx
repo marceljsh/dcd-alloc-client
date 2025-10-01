@@ -24,6 +24,8 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { employeeLevelOpt, employeeRoleOpt, EmploymentStatus, employmentStatusOpt } from "@/types/common";
 import { TeamInfo } from "@/types/employee";
+import { ApiResponse } from "@/types/api";
+import { formatEmploymentStatus, formatLevel, formatRole } from "@/lib/strings";
 
 async function getSignedUploadUrl(args: { path: string; bucket?: string }) {
   const res = await fetch("/api/storage/signed-upload-url", {
@@ -58,16 +60,15 @@ async function uploadViaSignedUrlWithToken(
   }
 }
 
-// get team options by fetching "localhost:8080/api/my/teams/as-dropdown" with schema a list of `{"id": 0, "name": "some-string"}`
-
 const schema = z.object({
   name: z.string().min(1, "Name is required"),
+  nip: z.string().min(1, "NIP is required"),
   email: z.email("Invalid email"),
   role: z.enum(employeeRoleOpt, "Role is required"),
   level: z.enum(employeeLevelOpt, "Level is required"),
   status: z.enum(employmentStatusOpt, "Status is required"),
-  team: z.string("Team is required"),
-  phone: z.string()
+  teamId: z.number('Team is required'),
+  phoneNumber: z.string()
     .min(1, "Phone number is required")
     .regex(/^\+?[0-9\s]+$/, "Invalid phone number"),
   location: z.string().min(1, "Location is required"),
@@ -94,12 +95,13 @@ export function AddEmployeeForm({ onSubmit, onCancel }: AddEmployeeFormProps) {
     shouldUnregister: true, // removes fields when unmounted (good for contract fields)
     defaultValues: {
       name: "",
+      nip: "",
       email: "",
       role: undefined,
       level: undefined,
       status: undefined,
-      team: undefined,
-      phone: "",
+      teamId: undefined,
+      phoneNumber: "",
       location: "",
       joinDate: "",
     },
@@ -111,17 +113,29 @@ export function AddEmployeeForm({ onSubmit, onCancel }: AddEmployeeFormProps) {
 
   useEffect(() => {
     const fetchTeams = async () => {
+      const token = localStorage.getItem('token')
+      if (!token) throw new Error('You are not authenticated')
+
       try {
-        const res = await fetch("http://localhost:8080/api/my/teams/as-dropdown");
-        if (!res.ok) throw new Error("Failed to fetch teams");
-        const data: TeamInfo[] = await res.json();
-        setTeams(data);
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/my/teams/as-dropdown`, {
+          method: 'GET',
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+        });
+        if (!res.ok)
+          throw new Error('Failed to fetch teams');
+
+        const fetched: ApiResponse<TeamInfo[]> = await res.json();
+        if (!fetched.success || !fetched.data)
+          throw new Error(fetched.message || 'Failed to fetch teams');
+
+        setTeams(fetched.data.sort((a, b) => a.name.localeCompare(b.name)));
       } catch (err) {
-        console.error("Error fetching teams:", err);
+        console.error('Error fetching teams:', err)
+        toast.error(err instanceof Error ? err.message : 'An error occurred while fetching teams')
       }
-    };
-    fetchTeams();
-  }, []);
+    }
+    fetchTeams()
+  }, [])
 
   async function uploadContractFileIfNeeded(currentStatus: EmploymentStatus): Promise<string | undefined> {
     if (currentStatus !== "CR" || !contractFile) return undefined;
@@ -190,6 +204,29 @@ export function AddEmployeeForm({ onSubmit, onCancel }: AddEmployeeFormProps) {
           )}
         />
 
+        {/* NIP */}
+        <FormField
+          control={form.control}
+          name="nip"
+          render={({ field }) => (
+            <FormItem className="grid grid-cols-4 items-center gap-4">
+              <FormLabel className="text-left">NIP</FormLabel>
+              <div className="col-span-3">
+                <FormControl>
+                  <Input
+                    {...field}
+                    onChange={(e) => {
+                      field.onChange(e);
+                      form.clearErrors("nip");
+                    }}
+                  />
+                </FormControl>
+                <FormMessage />
+              </div>
+            </FormItem>
+          )}
+        />
+
         {/* Email */}
         <FormField
           control={form.control}
@@ -237,7 +274,7 @@ export function AddEmployeeForm({ onSubmit, onCancel }: AddEmployeeFormProps) {
                   <SelectContent>
                     {employeeRoleOpt.map((role) => (
                       <SelectItem key={role} value={role}>
-                        {role}
+                        {formatRole(role)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -271,7 +308,7 @@ export function AddEmployeeForm({ onSubmit, onCancel }: AddEmployeeFormProps) {
                   <SelectContent>
                     {employeeLevelOpt.map((level) => (
                       <SelectItem key={level} value={level}>
-                        {level}
+                        {formatLevel(level)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -305,7 +342,7 @@ export function AddEmployeeForm({ onSubmit, onCancel }: AddEmployeeFormProps) {
                   <SelectContent>
                     {employmentStatusOpt.map((status) => (
                       <SelectItem key={status} value={status}>
-                        {status}
+                        {formatEmploymentStatus(status)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -319,17 +356,17 @@ export function AddEmployeeForm({ onSubmit, onCancel }: AddEmployeeFormProps) {
         {/* Team */}
         <FormField
           control={form.control}
-          name="team"
+          name="teamId"
           render={({ field }) => (
             <FormItem className="grid grid-cols-4 items-center gap-4">
               <FormLabel className="text-left">Team</FormLabel>
               <div className="col-span-3">
                 <Select
                   onValueChange={(val) => {
-                    field.onChange(val);
-                    form.clearErrors("team");
+                    field.onChange(Number(val));
+                    form.clearErrors("teamId");
                   }}
-                  defaultValue={field.value}
+                  defaultValue={String(field.value)}
                 >
                   <FormControl>
                     <SelectTrigger>
@@ -338,7 +375,7 @@ export function AddEmployeeForm({ onSubmit, onCancel }: AddEmployeeFormProps) {
                   </FormControl>
                   <SelectContent>
                     {teams.map((team) => (
-                      <SelectItem key={team.id} value={team.name}>
+                      <SelectItem key={team.id} value={String(team.id)}>
                         {team.name}
                       </SelectItem>
                     ))}
@@ -353,7 +390,7 @@ export function AddEmployeeForm({ onSubmit, onCancel }: AddEmployeeFormProps) {
         {/* Phone */}
         <FormField
           control={form.control}
-          name="phone"
+          name="phoneNumber"
           render={({ field }) => (
             <FormItem className="grid grid-cols-4 items-center gap-4">
               <FormLabel className="text-left">Phone</FormLabel>
@@ -363,7 +400,7 @@ export function AddEmployeeForm({ onSubmit, onCancel }: AddEmployeeFormProps) {
                     {...field}
                     onChange={(e) => {
                       field.onChange(e);
-                      form.clearErrors("phone");
+                      form.clearErrors("phoneNumber");
                     }}
                   />
                 </FormControl>

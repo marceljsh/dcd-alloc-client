@@ -283,13 +283,13 @@ export default function ResourcesPage() {
 
           <div className="flex items-center gap-2">
             {/* Role Filter */}
-            <FilterDropdown label="Role" options={employeeRoleOpt} selected={selectedRoles} onChange={handleRoleFilterChange} />
+            <FilterDropdown label="Role" options={employeeRoleOpt} selected={selectedRoles} onChange={handleRoleFilterChange} formatter={formatRole} />
 
             {/* Level Filter */}
-            <FilterDropdown label="Level" options={employeeLevelOpt} selected={selectedLevels} onChange={handleLevelFilterChange} />
+            <FilterDropdown label="Level" options={employeeLevelOpt} selected={selectedLevels} onChange={handleLevelFilterChange} formatter={formatLevel} />
 
             {/* Status Filter */}
-            <FilterDropdown label="Status" options={employmentStatusOpt} selected={selectedStatuses} onChange={handleStatusFilterChange} />
+            <FilterDropdown label="Status" options={employmentStatusOpt} selected={selectedStatuses} onChange={handleStatusFilterChange} formatter={formatEmploymentStatus} />
 
             {/* Search Input */}
             <div className="relative">
@@ -407,11 +407,12 @@ const StatCard = ({ title, value, description }: { title: string, value: ReactNo
   </Card>
 )
 
-const FilterDropdown = <T extends string>({ label, options, selected, onChange }: {
+const FilterDropdown = <T extends string>({ label, options, selected, onChange, formatter }: {
   label: string,
   options: readonly T[],
   selected: readonly T[],
-  onChange: (option: T, checked: boolean) => void
+  onChange: (option: T, checked: boolean) => void,
+  formatter?: (option: T) => string
 }) => (
   <DropdownMenu>
     <DropdownMenuTrigger asChild>
@@ -427,7 +428,7 @@ const FilterDropdown = <T extends string>({ label, options, selected, onChange }
       <DropdownMenuSeparator />
       {options.map((opt) => (
         <DropdownMenuCheckboxItem key={opt} checked={selected.includes(opt)} onCheckedChange={(checked) => onChange(opt, !!checked)}>
-          {opt}
+          {formatter ? formatter(opt) : opt}
         </DropdownMenuCheckboxItem>
       ))}
     </DropdownMenuContent>
