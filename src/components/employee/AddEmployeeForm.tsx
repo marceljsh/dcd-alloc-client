@@ -137,7 +137,6 @@ export function AddEmployeeForm({ onSubmit, onCancel }: AddEmployeeFormProps) {
       return publicUrl || undefined;
     } catch (err) {
       toast.error("Failed to upload contract file");
-      console.error(err);
       return undefined;
     }
   }

@@ -105,8 +105,6 @@ export function ActivityForm({
   }>({ isOpen: false });
 
   const handleFormSubmit = (data: ActivityFormData) => {
-    console.log("Form Data Submitted:", data);
-    console.log(uuidv4());
     const entity = createActivity(data);
 
     if (mode === "Edit" && formDetails && "subActivities" in formDetails) {

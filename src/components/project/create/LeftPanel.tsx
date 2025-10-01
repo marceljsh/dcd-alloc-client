@@ -104,6 +104,7 @@ export function ActivitiesPanel({
     }
     setDeleteDialog({ isOpen: false, type: "activity" });
   };
+
   return (
     <ScrollArea className="h-full w-full">
       <div>

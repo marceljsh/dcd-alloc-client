@@ -1,7 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatWorkloadHours } from "@/lib/utils";
-import { Activity, TeamMember } from "@/types/projects";
+import { TeamMember } from "@/types/projects";
 import { Calendar, Clock, User } from "lucide-react";
 
 const getLevelBadgeVariant = (level: string) => {
@@ -17,20 +17,11 @@ const getLevelBadgeVariant = (level: string) => {
   }
 };
 
-const getActivityById = (
-  activities: Activity[],
-  activityId: number,
-): Activity | undefined => {
-  return activities.find((activity) => activity.id === activityId);
-};
+export default function TeamMemberCard({ member }: { member: TeamMember }) {
+  if (!member) {
+    return <div>Member data is undefined</div>;
+  }
 
-export default function TeamMemberCard({
-  member,
-  activities,
-}: {
-  member: TeamMember;
-  activities: Activity[];
-}) {
   return (
     <Card className="border-2 py-6">
       <CardHeader className="pb-3">
@@ -84,39 +75,45 @@ export default function TeamMemberCard({
             Assigned Activities & Timeline
           </p>
           <div className="space-y-3">
-            {member.assigned_activities.map((assignedActivity, actIndex) => {
-              const activity = getActivityById(
-                activities,
-                assignedActivity.activity_id,
-              );
-              if (!activity) return null;
-
-              return (
-                <div
-                  key={actIndex}
-                  className="border rounded-lg p-3 bg-muted/20"
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="font-medium">{activity.name}</span>
-                    <Badge variant="secondary" className="text-xs">
-                      {formatWorkloadHours(assignedActivity.workload_hours)}
-                    </Badge>
-                  </div>
-                  <div className="flex items-center space-x-4 text-sm text-muted-foreground">
-                    <div className="flex items-center space-x-1">
-                      <Calendar className="h-3 w-3" />
-                      <span>{activity.date_range}</span>
+            {member.assigned_activities &&
+            member.assigned_activities.length > 0 ? (
+              member.assigned_activities.map((subActivity, actIndex) => {
+                return (
+                  <div
+                    key={actIndex}
+                    className="border rounded-lg p-3 bg-muted/20"
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-medium">{subActivity.name}</span>
+                      <Badge variant="secondary" className="text-xs">
+                        {formatWorkloadHours(subActivity.workload)}
+                      </Badge>
                     </div>
-                    <div className="flex items-center space-x-1">
-                      <Clock className="h-3 w-3" />
-                      <span>
-                        {formatWorkloadHours(assignedActivity.workload_hours)}
-                      </span>
+                    <div className="flex items-center space-x-4 text-sm text-muted-foreground">
+                      <div className="flex items-center space-x-1">
+                        <Calendar className="h-3 w-3" />
+                        <span>
+                          {subActivity.start_date} - {subActivity.end_date}
+                        </span>
+                      </div>
+                      <div className="flex items-center space-x-1">
+                        <Clock className="h-3 w-3" />
+                        <span>{formatWorkloadHours(subActivity.workload)}</span>
+                      </div>
+                      <div className="flex items-center space-x-1">
+                        <Badge variant="outline" className="text-xs">
+                          {subActivity.minimum_level}
+                        </Badge>
+                      </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })
+            ) : (
+              <div className="text-sm text-muted-foreground">
+                No assigned activities
+              </div>
+            )}
           </div>
         </div>
       </CardContent>

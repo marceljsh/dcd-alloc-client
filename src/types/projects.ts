@@ -116,8 +116,14 @@ export type TeamMember = {
   total_working_days: number;
   utilization_rate: string;
   assigned_activities: {
-    activity_id: number;
-    workload_hours: number;
+    id: string;
+    name: string;
+    start_date: string;
+    end_date: string;
+    workload: number;
+    fte: number;
+    role: string;
+    minimum_level: string;
   }[];
 };
 
@@ -129,7 +135,7 @@ export type Activity = {
 
 export type ProjectResultsProps = {
   teamComposition: TeamMember[];
-  activities: Activity[];
+  activities?: Activity[];
   summary?: TeamCompositionSummary;
   isLoading?: boolean;
   onNext: () => void;

@@ -29,7 +29,6 @@ export default function SignInPage() {
     const password = formData.get("password") as string;
 
     const isDevelopment = process.env.NODE_ENV === "development";
-    console.log(process.env.NODE_ENV);
 
     const loginPromise = new Promise<void>((resolve, reject) => {
       if (isDevelopment) {
