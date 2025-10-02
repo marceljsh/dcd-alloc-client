@@ -15,14 +15,14 @@ export interface ProjectRow {
   endDate: string;
   createdAt: string;
   updatedAt: string;
-  deletedAt?: string; // optional for soft delete
+  deletedAt?: string; 
 }
 
 export interface StageRow {
   id: number;
   projectId: number;
   name: string;
-  ordinal: number; // ordering within project
+  ordinal: number; 
   createdAt: string;
   updatedAt: string;
 }

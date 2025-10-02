@@ -1,5 +1,5 @@
 import { EmployeeUtilization } from "@/types/employee";
-import { useMemo, useState, useRef } from "react";
+import { useMemo, useState } from "react";
 import {
   Table,
   TableBody,
@@ -20,11 +20,15 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { startOfYear, endOfYear, eachWeekOfInterval, eachDayOfInterval, isToday, format } from 'date-fns';
 
 const COL1_WIDTH = 192;
 const COL4_WIDTH = 128;
 const HEATMAP_COL_MIN = 88;
+
+interface EmployeeHeatmapProps {
+  employees: EmployeeUtilization[];
+}
+
 
 function hashStringToInt(s: string) {
   let h = 0;
@@ -45,18 +49,20 @@ function generateUtilizationForRange(
     typeof employee.utilization === "number" ? employee.utilization : 0;
 
   return dateRanges.map((range, idx) => {
-    const seedStr = `${
-      employee.id ?? employee.name ?? ""
-    }::${range.start.toISOString()}::${idx}`;
-    const seed = hashStringToInt(seedStr);
-    const varianceRange = viewMode === "day" ? 20 : 30;
-    const offset = (seed % varianceRange) - Math.floor(varianceRange / 2);
-    let util = base + offset;
-    const day = range.start.getDay();
-    if (day === 0 || day === 6) util *= 0.85;
-    return Math.max(0, Math.min(150, Number(util)));
-  });
+    const seedStr = `${
+      employee.id ?? employee.name ?? ""
+    }::${range.start.toISOString()}::${idx}`;
+    const seed = hashStringToInt(seedStr);
+    const varianceRange = viewMode === "day" ? 20 : 30;
+    const offset = (seed % varianceRange) - Math.floor(varianceRange / 2);
+    let util = base + offset;
+    const day = range.start.getDay();
+    if (day === 0 || day === 6) util *= 0.85;
+    return Math.max(0, Math.min(150, Number(util)));
+  });
 }
+
+
 
 interface EmployeeHeatmapProps {
   employees: EmployeeUtilization[];
@@ -71,58 +77,58 @@ export default function EmployeeHeatmap({
 }: EmployeeHeatmapProps) {
   const [viewMode, setViewMode] = useState<"week" | "day">("week");
   const dateRanges = useMemo(() => {
-  const ranges: DateRange[] = [];
-  const today = new Date();
+    const ranges: DateRange[] = [];
+    const today = new Date();
 
-  const start = selectedStartDate
-    ? new Date(selectedStartDate)
-    : viewMode === "week"
-    ? startOfQuarter(today) 
-    : today;               
+    const start = selectedStartDate
+      ? new Date(selectedStartDate)
+      : viewMode === "week"
+      ? startOfQuarter(today)
+      : today;
 
-  const end = selectedEndDate
-    ? new Date(selectedEndDate)
-    : endOfQuarter(today);   
+    const end = selectedEndDate
+      ? new Date(selectedEndDate)
+      : endOfQuarter(today);
 
-  let current = new Date(start);
-  current.setHours(0, 0, 0, 0);
+    const current = new Date(start);
+    current.setHours(0, 0, 0, 0);
 
-  if (viewMode === "week") {
-    current.setDate(current.getDate() - current.getDay());
-    while (current.getTime() <= end.getTime()) {
-      const weekStart = new Date(current);
-      const weekEnd = new Date(current);
-      weekEnd.setDate(current.getDate() + 6);
-      ranges.push({
-        label: `${weekStart.toLocaleDateString("en-US", {
-          month: "short",
-          day: "numeric",
-        })} - ${weekEnd.toLocaleDateString("en-US", {
-          month: "short",
-          day: "numeric",
-        })}`,
-        start: weekStart,
-        end: weekEnd,
-      });
-      current.setDate(current.getDate() + 7);
+    if (viewMode === "week") {
+      current.setDate(current.getDate() - current.getDay());
+      while (current.getTime() <= end.getTime()) {
+        const weekStart = new Date(current);
+        const weekEnd = new Date(current);
+        weekEnd.setDate(current.getDate() + 6);
+        ranges.push({
+          label: `${weekStart.toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+          })} - ${weekEnd.toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+          })}`,
+          start: weekStart,
+          end: weekEnd,
+        });
+        current.setDate(current.getDate() + 7);
+      }
+    } else {
+      while (current.getTime() <= end.getTime()) {
+        const day = new Date(current);
+        ranges.push({
+          label: day.toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+          }),
+          start: day,
+          end: day,
+        });
+        current.setDate(current.getDate() + 1);
+      }
     }
-  } else {
-    while (current.getTime() <= end.getTime()) {
-      const day = new Date(current);
-      ranges.push({
-        label: day.toLocaleDateString("en-US", {
-          month: "short",
-          day: "numeric",
-        }),
-        start: day,
-        end: day,
-      });
-      current.setDate(current.getDate() + 1);
-    }
-  }
 
-  return ranges;
-}, [viewMode, selectedStartDate, selectedEndDate]);
+    return ranges;
+  }, [viewMode, selectedStartDate, selectedEndDate]);
 
   return (
     <div className="space-y-6">

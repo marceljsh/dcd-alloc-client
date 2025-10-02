@@ -3,6 +3,10 @@
 import { useMemo, useState } from "react";
 import {
   ColumnDef,
+  Table as ReactTable,
+  Row,
+  HeaderGroup,
+  Cell,
   flexRender,
   getCoreRowModel,
   getFilteredRowModel,
@@ -24,7 +28,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Search, Users, Filter } from "lucide-react";
+import { Search, Users, Filter, Plus } from "lucide-react";
 
 import {
   DropdownMenu,
@@ -37,6 +41,11 @@ import { ProjectRow } from "@/types/projects";
 import rawProjects from "@/data/projects.json";
 import { ProjectCategory, ProjectPriority } from "@/types/common";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
+
+type ProjectsDataTableProps<TData> = {
+  table: ReactTable<TData>;
+  rows: Row<TData>[];
+};
 
 const allProjects: ProjectRow[] = rawProjects as ProjectRow[];
 const initialHistory = allProjects; 
@@ -71,8 +80,13 @@ const PageHeader = ({ onAddProject }: { onAddProject: () => void }) => (
       <h1 className="text-3xl font-bold" data-testid="page-title">History</h1>
       <p className="text-muted-foreground">Manage your last projects and track their result</p>
     </div>
+    {/* Tambahkan button dan panggil onAddProject saat di-klik */}
+    <Button onClick={onAddProject}>
+      <Plus className="mr-2 h-4 w-4" />
+      Add Project
+    </Button>
   </div>
-)
+);
 
 export default function HistoryPage() {
   const [history] = useState<ProjectRow[]>(initialHistory);
@@ -102,10 +116,11 @@ export default function HistoryPage() {
           <div className="font-medium">{row.getValue("name")}</div>
         ),
       },
-      { accessorKey: "team", header: "Team" },
+      { accessorKey: "team", header: "Team", filterFn: "arrIncludesSome", },
       {
         accessorKey: "category",
         header: "Category",
+        filterFn: "arrIncludesSome",
         cell: ({ row }) => (
           <Badge
             variant="outline"
@@ -118,6 +133,7 @@ export default function HistoryPage() {
       {
         accessorKey: "priority",
         header: "Priority",
+        filterFn: "arrIncludesSome",
         cell: ({ row }) => (
           <Badge
             variant="outline"
@@ -207,7 +223,6 @@ export default function HistoryPage() {
     }
   };
 
-  useMemo(() => setCurrentPage(1), [globalFilter, columnFilters, sorting])
   const handleCategoryChange = handleFilterChange("category", selectedCategories, setSelectedCategories)
   const handlePriorityChange = handleFilterChange("priority", selectedPriorities, setSelectedPriorities)
   const handleTeamChange = handleFilterChange("team", selectedTeams, setSelectedTeams)
@@ -333,13 +348,13 @@ export default function HistoryPage() {
   );
 }
 
-const ProjectsDataTable = ({ table, rows }: { table: any; rows: any[] }) => (
+const ProjectsDataTable = <TData,>({ table, rows }: ProjectsDataTableProps<TData>) => (
   <ScrollArea className="h-[450px]">
     <Table>
       <TableHeader className="sticky top-0 z-10 bg-background shadow-sm">
-        {table.getHeaderGroups().map((headerGroup: any) => (
+        {table.getHeaderGroups().map((headerGroup: HeaderGroup<TData>) => (
           <TableRow key={headerGroup.id}>
-            {headerGroup.headers.map((header: any) => (
+            {headerGroup.headers.map((header) => (
               <TableHead
                 key={header.id}
                 className={
@@ -363,18 +378,15 @@ const ProjectsDataTable = ({ table, rows }: { table: any; rows: any[] }) => (
       </TableHeader>
       <TableBody>
         {rows?.length ? (
-          rows.map((row: any) => {
-            table.prepareRow?.(row)
-            return (
-              <TableRow key={row.id}>
-                {row.getVisibleCells().map((cell: any) => (
-                  <TableCell key={cell.id}>
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </TableCell>
-                ))}
-              </TableRow>
-            )
-          })
+          rows.map((row: Row<TData>) => (
+            <TableRow key={row.id}>
+              {row.getVisibleCells().map((cell: Cell<TData, unknown>) => (
+                <TableCell key={cell.id}>
+                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                </TableCell>
+              ))}
+            </TableRow>
+          ))
         ) : (
           <TableRow>
             <TableCell colSpan={table.getAllColumns().length} className="h-24 text-center">

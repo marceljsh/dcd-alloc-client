@@ -40,17 +40,6 @@ export type EmployeeUtilization = EmployeeRow & {
   hoursThisWeek: number;
 };
 
-export function normalizeEmployeeUtilization(raw: any): EmployeeUtilization {
-  return {
-    ...raw,
-    status: raw.status as EmploymentStatus, // fix string
-    contractEndDate: raw.contractEndDate ?? null,
-    currentProjects: (raw.currentProjects ?? []) as string[],
-    utilization: raw.utilization ?? 0,
-    hoursThisWeek: raw.hoursThisWeek ?? 0,
-  };
-}
-
 export type NewEmployee =
   | (Omit<PermanentEmployee, "createdAt" | "updatedAt"> & { status: "Permanent" })
   | (Omit<ContractEmployee, "createdAt" | "updatedAt"> & { status: "Contract" });
@@ -62,14 +51,17 @@ export function createEmployeeRow({
   switch (status) {
     case "Permanent":
       return { ...data, status: "Permanent" } as PermanentEmployee;
-    case "Contract":
+
+    case "Contract": {
+      const contractData = data as Extract<NewEmployee, { status: "Contract" }>;
       return {
-        ...data,
+        ...contractData,
         status: "Contract",
-        contractFilePath: (data as any).contractFilePath ?? "",
-        contractStartDate: (data as any).contractStartDate ?? "",
-        contractEndDate: (data as any).contractEndDate ?? "",
+        contractFilePath: contractData.contractFilePath ?? "",
+        contractStartDate: contractData.contractStartDate ?? "",
+        contractEndDate: contractData.contractEndDate ?? "",
       } as ContractEmployee;
+    }
 
     default:
       throw new Error("Invalid employee status");

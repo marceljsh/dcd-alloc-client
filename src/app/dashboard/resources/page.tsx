@@ -1,6 +1,7 @@
 "use client";
 
-import { ComponentType, ReactNode, useMemo, useState,useRef } from "react"
+import { ComponentType, ReactNode, useMemo, useState } from "react";
+
 import {
   ColumnDef,
   flexRender,
@@ -9,7 +10,6 @@ import {
   getSortedRowModel,
   useReactTable,
   SortingState,
-  ColumnFiltersState,
 } from "@tanstack/react-table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -32,15 +32,34 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Label } from "@/components/ui/label"
-import { Search, Plus, MoreHorizontal, Edit, Trash2, Mail, Phone, Calendar, MapPin, Filter, Table2, Grid3X3 } from "lucide-react"
-import { initials } from "@/lib/strings"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { toast } from "sonner"
-import { DateRangePicker } from "@/components/ui/date-range-picker"
-import { Toaster } from "@/components/ui/sonner"
+} from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import {
+  Search,
+  Plus,
+  MoreHorizontal,
+  Edit,
+  Trash2,
+  Mail,
+  Phone,
+  Calendar,
+  MapPin,
+  Filter,
+  Table2,
+  Grid3X3,
+} from "lucide-react";
+import { initials } from "@/lib/strings";
+import { toast } from "sonner";
+import { DateRangePicker } from "@/components/ui/date-range-picker";
+import { Toaster } from "@/components/ui/sonner";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -50,7 +69,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
+} from "@/components/ui/alert-dialog";
 import {
   Pagination,
   PaginationContent,
@@ -59,81 +78,88 @@ import {
   PaginationPrevious,
   PaginationNext,
 } from "@/components/ui/pagination";
-import { employeeLevels, EmployeeRole, employeeRoles, EmploymentStatus, employmentStatuses } from "@/types/common"
-import rawEmployees from "@/data/employees.json"
-import { ContractEmployee, EmployeeRow, PermanentEmployee } from "@/types/employee"
-import { AddEmployeeFormValues, AddEmployeeForm } from "@/components/employee/AddEmployeeForm"
-import { Separator } from "@/components/ui/separator"
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
-import EmployeeHeatmap from "@/components/employee/EmployeeHeatmap"
+import {
+  employeeLevels,
+  EmployeeRole,
+  employeeRoles,
+  EmploymentStatus,
+  employmentStatuses,
+} from "@/types/common";
+import rawEmployees from "@/data/employees.json";
+import {
+  ContractEmployee,
+  EmployeeRow,
+  PermanentEmployee,
+} from "@/types/employee";
+import {
+  AddEmployeeFormValues,
+  AddEmployeeForm,
+} from "@/components/employee/AddEmployeeForm";
+import { Separator } from "@/components/ui/separator";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import EmployeeHeatmap from "@/components/employee/EmployeeHeatmap";
 
 type ViewMode = "table" | "heatmap";
+type RawEmployee = PermanentEmployee | ContractEmployee;
 
 export default function ResourcesPage() {
   const [employees, setEmployees] = useState<EmployeeRow[]>(initialEmployees);
   const [selectedEmployee, setSelectedEmployee] = useState<EmployeeRow | null>(
-    null,
+    null
   );
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [employeeToDelete, setEmployeeToDelete] = useState<EmployeeRow | null>(
-    null,
+    null
   );
   const [viewMode, setViewMode] = useState<ViewMode>("table");
 
-  const [selectedRoles, setSelectedRoles] = useState<string[]>([])
-  const [selectedLevels, setSelectedLevels] = useState<string[]>([])
-  const [selectedStatuses, setSelectedStatuses] = useState<string[]>([])
-  const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({
-      from: undefined,
-      to: undefined,
-  })
+  const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
+  const [selectedLevels, setSelectedLevels] = useState<string[]>([]);
+  const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
+  const [dateRange, setDateRange] = useState<{
+    from: Date | undefined;
+    to: Date | undefined;
+  }>({
+    from: undefined,
+    to: undefined,
+  });
 
-  const [sorting, setSorting] = useState<SortingState>([])
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
-  const [globalFilter, setGlobalFilter] = useState('')
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [globalFilter, setGlobalFilter] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
 
   const filteredEmployees = useMemo(() => {
-    return employees.filter(employee => {
-      if (globalFilter && !employee.name.toLowerCase().includes(globalFilter.toLowerCase())) {
+    return employees.filter((employee) => {
+      if (
+        globalFilter &&
+        !employee.name.toLowerCase().includes(globalFilter.toLowerCase())
+      ) {
         return false;
       }
       if (selectedRoles.length > 0 && !selectedRoles.includes(employee.role)) {
         return false;
       }
-      if (selectedLevels.length > 0 && !selectedLevels.includes(employee.level)) {
+      if (
+        selectedLevels.length > 0 &&
+        !selectedLevels.includes(employee.level)
+      ) {
         return false;
       }
-      if (selectedStatuses.length > 0 && !selectedStatuses.includes(employee.status)) {
+      if (
+        selectedStatuses.length > 0 &&
+        !selectedStatuses.includes(employee.status)
+      ) {
         return false;
       }
       return true;
     });
-  }, [employees, globalFilter, selectedRoles, selectedLevels, selectedStatuses]);
-
-  const scrollRef = useRef<HTMLDivElement>(null)
-
-  const onMouseDown = (e: React.MouseEvent) => {
-    if (!scrollRef.current) return
-    const startX = e.pageX - scrollRef.current.offsetLeft
-    const scrollLeft = scrollRef.current.scrollLeft
-
-    const onMouseMove = (moveEvent: MouseEvent) => {
-      const x = moveEvent.pageX - scrollRef.current!.offsetLeft
-      const walk = (x - startX) * 1.2
-      scrollRef.current!.scrollLeft = scrollLeft - walk
-    }
-
-    const onMouseUp = () => {
-      document.removeEventListener("mousemove", onMouseMove)
-      document.removeEventListener("mouseup", onMouseUp)
-    }
-
-    document.addEventListener("mousemove", onMouseMove)
-    document.addEventListener("mouseup", onMouseUp)
-  }
-
-
+  }, [
+    employees,
+    globalFilter,
+    selectedRoles,
+    selectedLevels,
+    selectedStatuses,
+  ]);
 
   const columns = useMemo<ColumnDef<EmployeeRow>[]>(
     () => [
@@ -175,7 +201,7 @@ export default function ResourcesPage() {
         ),
       },
     ],
-    [],
+    []
   );
 
   const table = useReactTable({
@@ -195,16 +221,15 @@ export default function ResourcesPage() {
     },
   });
 
-    const allFilteredAndSortedRows = table.getSortedRowModel().rows
-    const itemsPerPage = 10
-    const totalPages = Math.ceil(allFilteredAndSortedRows.length / itemsPerPage)
-    const paginatedRows = allFilteredAndSortedRows.slice(
-      (currentPage - 1) * itemsPerPage,
-      currentPage * itemsPerPage
-    )
+  const allFilteredAndSortedRows = table.getSortedRowModel().rows;
+  const itemsPerPage = 10;
+  const totalPages = Math.ceil(allFilteredAndSortedRows.length / itemsPerPage);
+  const paginatedRows = allFilteredAndSortedRows.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
-  // Fungsi untuk menangani navigasi halaman
-  const handlePageChange = (page) => {
+  const handlePageChange = (page: number) => {
     if (page >= 1 && page <= totalPages) {
       setCurrentPage(page);
     }
@@ -223,17 +248,18 @@ export default function ResourcesPage() {
     toast.success(`${employee.name} has been removed.`);
   };
 
-  const handleDropdownFilterChange = (
-    setter: React.Dispatch<React.SetStateAction<string[]>>
-  ) => (value: string, checked: boolean) => {
-    setter(prev =>
-      checked ? [...prev, value] : prev.filter(item => item !== value)
-    );
-  };
+  const handleDropdownFilterChange =
+    (setter: React.Dispatch<React.SetStateAction<string[]>>) =>
+    (value: string, checked: boolean) => {
+      setter((prev) =>
+        checked ? [...prev, value] : prev.filter((item) => item !== value)
+      );
+    };
 
   const handleRoleFilterChange = handleDropdownFilterChange(setSelectedRoles);
   const handleLevelFilterChange = handleDropdownFilterChange(setSelectedLevels);
-  const handleStatusFilterChange = handleDropdownFilterChange(setSelectedStatuses);
+  const handleStatusFilterChange =
+    handleDropdownFilterChange(setSelectedStatuses);
 
   return (
     <div className="space-y-2 mx-10">
@@ -259,30 +285,41 @@ export default function ResourcesPage() {
           title="Contract Resources"
           value={
             <>
-            {filteredEmployees.filter((emp) => emp.status === "Contract").length}
-            <span className="text-base font-normal">{` / ${filteredEmployees.length}`}</span>
+              {
+                filteredEmployees.filter((emp) => emp.status === "Contract")
+                  .length
+              }
+              <span className="text-base font-normal">{` / ${filteredEmployees.length}`}</span>
             </>
           }
           description="Members"
         />
         <StatCard
           title="Software Engineer"
-          value={filteredEmployees.filter((emp) => emp.role === 'Software Engineer').length}
+          value={
+            filteredEmployees.filter((emp) => emp.role === "Software Engineer")
+              .length
+          }
           description="People"
         />
         <StatCard
           title="Data Engineer"
-          value={filteredEmployees.filter((emp) => emp.role === 'Data Engineer').length}
+          value={
+            filteredEmployees.filter((emp) => emp.role === "Data Engineer")
+              .length
+          }
           description="People"
         />
         <StatCard
           title="System Analyst"
-          value={filteredEmployees.filter((emp) => emp.role === 'System Analyst').length}
+          value={
+            filteredEmployees.filter((emp) => emp.role === "System Analyst")
+              .length
+          }
           description="People"
         />
       </div>
 
-      {/* Table */}
       <Card className="py-2">
         <CardHeader className="flex flex-row items-center justify-between">
           <div className="flex items-center gap-4">
@@ -302,16 +339,14 @@ export default function ResourcesPage() {
           </div>
 
           <div className="flex items-center gap-2">
-
-
-           {viewMode === "heatmap" ? (
-               <DateRangePicker
-                 dateRange={dateRange}
-                 onDateRangeChange={setDateRange}
-                 placeholder={<span className="font-semibold">Period</span>}
-                 data-testid="date-range-picker"
-               />
-             ) : null}
+            {viewMode === "heatmap" ? (
+              <DateRangePicker
+                dateRange={dateRange}
+                onDateRangeChange={setDateRange}
+                placeholder="Period"
+                data-testid="date-range-picker"
+              />
+            ) : null}
 
             <FilterDropdown
               label="Role"
@@ -343,73 +378,78 @@ export default function ResourcesPage() {
           </div>
         </CardHeader>
         <CardContent>
-              {viewMode === "heatmap" ? (
-                <div className="relative rounded-md">
-                  <EmployeeHeatmap 
-                    employees={filteredEmployees.map(emp => ({
-                      ...emp,
-                      utilization: Math.random() * 100,
-                      currentProjects: [],
-                      hoursThisWeek: 0,
-                    }))}
-                  />
-                </div>
-              )  : (
-              <Table>
-                <TableHeader className="sticky top-0 z-10 bg-background shadow-sm">
-                  {table.getHeaderGroups().map((headerGroup) => (
-                    <TableRow key={headerGroup.id} className="hover:bg-white">
-                      {headerGroup.headers.map((header) => (
-                        <TableHead
-                          key={header.id}
-                          className={
-                            header.column.getCanSort()
-                              ? "cursor-pointer select-none"
-                              : ""
-                          }
-                          onClick={header.column.getToggleSortingHandler()}
-                        >
-                          <div className="flex items-center gap-2">
-                            {flexRender(
-                              header.column.columnDef.header,
-                              header.getContext(),
-                            )}
-                            {{ asc: "▲", desc: "▼" }[
-                              header.column.getIsSorted() as string
-                            ] ?? null}
-                          </div>
-                        </TableHead>
+          {viewMode === "heatmap" ? (
+            <div className="relative rounded-md">
+              <EmployeeHeatmap
+                selectedStartDate={dateRange.from}
+                selectedEndDate={dateRange.to}
+                employees={filteredEmployees.map((emp) => ({
+                  ...emp,
+                  utilization: Math.random() * 100,
+                  currentProjects: [],
+                  hoursThisWeek: 0,
+                }))}
+              />
+            </div>
+          ) : (
+            <Table>
+              <TableHeader className="sticky top-0 z-10 bg-background shadow-sm">
+                {table.getHeaderGroups().map((headerGroup) => (
+                  <TableRow key={headerGroup.id} className="hover:bg-white">
+                    {headerGroup.headers.map((header) => (
+                      <TableHead
+                        key={header.id}
+                        className={
+                          header.column.getCanSort()
+                            ? "cursor-pointer select-none"
+                            : ""
+                        }
+                        onClick={header.column.getToggleSortingHandler()}
+                      >
+                        <div className="flex items-center gap-2">
+                          {flexRender(
+                            header.column.columnDef.header,
+                            header.getContext()
+                          )}
+                          {{ asc: "▲", desc: "▼" }[
+                            header.column.getIsSorted() as string
+                          ] ?? null}
+                        </div>
+                      </TableHead>
+                    ))}
+                  </TableRow>
+                ))}
+              </TableHeader>
+              <TableBody>
+                {paginatedRows?.length ? (
+                  paginatedRows.map((row) => (
+                    <TableRow key={row.id}>
+                      {row.getVisibleCells().map((cell) => (
+                        <TableCell key={cell.id}>
+                          {flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext()
+                          )}
+                        </TableCell>
                       ))}
                     </TableRow>
-                  ))}
-                </TableHeader>
-                <TableBody>
-                {paginatedRows?.length ? (
-                  paginatedRows.map(row => (
-                    <TableRow key={row.id}>
-                      {row.getVisibleCells().map(cell => (
-                    <TableCell key={cell.id}>
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell
+                      colSpan={columns.length}
+                      className="h-24 text-center"
+                    >
+                      No results.
                     </TableCell>
-                  ))}
-                </TableRow>
-              ))
-                  ) : (
-                    <TableRow>
-                      <TableCell
-                        colSpan={columns.length}
-                        className="h-24 text-center"
-                      >
-                        No results.
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            )}
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
 
-        {viewMode === 'table' && (
+        {viewMode === "table" && (
           <div className="px-6 pb-4">
             <Pagination>
               <PaginationContent>
@@ -418,25 +458,33 @@ export default function ResourcesPage() {
                     onClick={() => handlePageChange(currentPage - 1)}
                     aria-disabled={currentPage === 1}
                     tabIndex={currentPage === 1 ? -1 : undefined}
-                    className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
+                    className={
+                      currentPage === 1 ? "pointer-events-none opacity-50" : ""
+                    }
                   />
                 </PaginationItem>
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                  <PaginationItem key={page}>
-                    <PaginationLink
-                      onClick={() => handlePageChange(page)}
-                      isActive={page === currentPage}
-                    >
-                      {page}
-                    </PaginationLink>
-                  </PaginationItem>
-                ))}
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                  (page) => (
+                    <PaginationItem key={page}>
+                      <PaginationLink
+                        onClick={() => handlePageChange(page)}
+                        isActive={page === currentPage}
+                      >
+                        {page}
+                      </PaginationLink>
+                    </PaginationItem>
+                  )
+                )}
                 <PaginationItem>
                   <PaginationNext
                     onClick={() => handlePageChange(currentPage + 1)}
                     aria-disabled={currentPage === totalPages}
                     tabIndex={currentPage === totalPages ? -1 : undefined}
-                    className={currentPage === totalPages ? "pointer-events-none opacity-50" : ""}
+                    className={
+                      currentPage === totalPages
+                        ? "pointer-events-none opacity-50"
+                        : ""
+                    }
                   />
                 </PaginationItem>
               </PaginationContent>
@@ -510,8 +558,8 @@ const createEmployee = ({
   }
 };
 
-const initialEmployees: EmployeeRow[] = rawEmployees.map(
-  ({ status, ...data }: any) => {
+const initialEmployees: EmployeeRow[] = (rawEmployees as RawEmployee[]).map(
+  ({ status, ...data }: RawEmployee) => {
     switch (status) {
       case "Permanent":
         return { status, ...data } as PermanentEmployee;
@@ -520,7 +568,7 @@ const initialEmployees: EmployeeRow[] = rawEmployees.map(
       default:
         throw new Error("Invalid employee status");
     }
-  },
+  }
 );
 
 const AddEmployeeDialog = ({
@@ -738,7 +786,9 @@ const EmployeeDetailDialog = ({
           <DialogTitle className="flex items-center space-x-3">
             <Avatar>
               <AvatarFallback
-                className={`font-mono text-background ${getRoleColor(employee.role)}`}
+                className={`font-mono text-background ${getRoleColor(
+                  employee.role
+                )}`}
               >
                 {initials(employee.name)}
               </AvatarFallback>
@@ -758,7 +808,9 @@ const EmployeeDetailDialog = ({
           <DetailItem icon={MapPin} value={employee.location} />
           <DetailItem
             icon={Calendar}
-            value={`Joined ${new Date(employee.joinDate).toLocaleDateString("id-ID")}`}
+            value={`Joined ${new Date(employee.joinDate).toLocaleDateString(
+              "id-ID"
+            )}`}
           />
 
           {employee.status === "Contract" && (
@@ -778,7 +830,7 @@ const ContractDetails = ({ employee }: { employee: ContractEmployee }) => (
     <p className="text-md font-semibold">Contract Details</p>
     <div className="grid grid-cols-2 gap-4">
       <ContractField label="Start" value={employee.contractStartDate} />
-      <ContractField label="End" value={employee.contractEndDate} />
+      <ContractField label="End" value={employee.contractEndDate ?? ""} />
 
       <div className="col-span-2">
         <Label className="text-xs text-muted-foreground">Contract File</Label>

@@ -30,7 +30,6 @@ export function DateRangePicker({
   dateRange,
   onDateRangeChange,
   placeholder = "Period",
-  className,
 }: DateRangePickerProps) {
   const [open, setOpen] = React.useState(false)
 
@@ -85,7 +84,7 @@ export function DateRangePicker({
               format(dateRange.from, "dd/MM/yyyy")
             )
           ) : (
-            <span>{placeholder}</span>
+            <span className="font-semibold">{placeholder}</span>
           )}
         </Button>
       </PopoverTrigger>

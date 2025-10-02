@@ -405,9 +405,8 @@ export default function Component({
         return false;
       }
       return (
-        (selectedProjects.length === 0 ||
-          selectedProjects.includes(stage.projectId)) &&
-        (selectedRoles.length === 0 || selectedRoles.includes(employee.role))
+        (selectedProjects.length === 0 || selectedProjects.includes(stage.projectId)) &&
+        (selectedRoles.length === 0 || selectedRoles.includes(employee?.role ?? ""))
       );
     });
 

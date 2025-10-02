@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState,useEffect, useCallback } from "react"
-import type React from "react"
+import { useMemo, useState, useEffect, useCallback } from "react";
+import type React from "react";
 import {
   type ColumnDef,
   flexRender,
@@ -11,6 +11,8 @@ import {
   useReactTable,
   type SortingState,
   type ColumnFiltersState,
+  Table as TanstackTable,
+  Row, Header, HeaderGroup,
 } from "@tanstack/react-table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -32,7 +34,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from "@/components/ui/dropdown-menu";
 import {
   Pagination,
   PaginationContent,
@@ -41,19 +43,75 @@ import {
   PaginationPrevious,
   PaginationNext,
 } from "@/components/ui/pagination";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Label } from "@/components/ui/label"
-import { Search, Plus, MoreHorizontal, Edit, Trash2, Calendar, Users, Target, Clock, Filter } from "lucide-react"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import type { ProjectRow } from "@/types/project"
-import rawProjects from "@/data/projects.json"
-import type { ProjectCategory, ProjectPriority } from "@/types/common"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { toast } from "sonner"
-import { Toaster } from "@/components/ui/sonner"
-import { AddProjectForm } from "@/components/project/AddProjectForm"
-import ProjectTimeline from "@/components/ProjectTimeline"
-import { useRouter } from "next/navigation"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import {
+  Search,
+  Plus,
+  MoreHorizontal,
+  Edit,
+  Trash2,
+  Calendar,
+  Users,
+  Target,
+  Clock,
+} from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import type { ProjectRow } from "@/types/projects";
+import rawProjects from "@/data/projects.json";
+import type { ProjectCategory, ProjectPriority } from "@/types/common";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { toast } from "sonner";
+import { Toaster } from "@/components/ui/sonner";
+import ProjectTimeline from "@/components/ProjectTimeline";
+import { useRouter } from "next/navigation";
+
+type ProjectsDataTableProps<TData> = {
+  table: TanstackTable<TData>;
+  columns: ColumnDef<TData, unknown>[];
+  paginatedRows: Row<TData>[];
+};
+
+type Stats = {
+  totalProjects: number;
+  totalBudget: number;
+  bigSizedRatio: number;
+  criticalPriorityRatio: number;
+};
+
+type Filters = {
+  categories: string[];
+  priorities: string[];
+  teams: string[];
+};
+
+type FilterOption = {
+  options: string[];
+  selected: string[];
+  onChange: (value: string, checked: boolean) => void;
+};
+
+interface FilterDropdownProps {
+  title: string;
+  filter: FilterOption;
+}
+
+interface TableToolbarProps {
+  globalFilter: string;
+  setGlobalFilter: (value: string) => void;
+  filters: {
+    categories: FilterOption;
+    priorities: FilterOption;
+    teams: FilterOption;
+  };
+  filterValues: Filters;
+}
 
 export const PROJECT_CATEGORY_OPTIONS = ["Small", "Medium", "Big"] as const;
 export const PROJECT_PRIORITY_OPTIONS = [
@@ -97,7 +155,7 @@ const colors = [
   "bg-pink-500",
   "bg-indigo-500",
   "bg-orange-500",
-]
+];
 
 const formatRupiah = (n: number) => {
   if (n >= 1_000_000_000) {
@@ -122,10 +180,12 @@ export default function ProjectsPage() {
   const [selectedPriorities, setSelectedPriorities] = useState<string[]>([]);
   const [selectedTeams, setSelectedTeams] = useState<string[]>([]);
 
-  const [projects, setProjects] = useState<ProjectRow[]>(() => rawProjects as ProjectRow[])
-  const [sorting, setSorting] = useState<SortingState>([])
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
-  const [globalFilter, setGlobalFilter] = useState("")
+  const [projects, setProjects] = useState<ProjectRow[]>(
+    () => rawProjects as ProjectRow[]
+  );
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const [globalFilter, setGlobalFilter] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
 
   const handleArchive = useCallback(
@@ -146,62 +206,133 @@ export default function ProjectsPage() {
     [router, setProjects]
   );
 
-  const columns = useMemo<ColumnDef<ProjectRow>[]>(() => [
-    { accessorKey: "code", header: "Project Code", enableGlobalFilter: true,
-      cell: ({ row }) => <div className="font-mono">{row.getValue("code")}</div> },
-    { accessorKey: "name", header: "Name", enableGlobalFilter: true,
-      cell: ({ row }) => <div className="font-medium">{row.getValue("name")}</div> },
-    { accessorKey: "team", header: "Team", filterFn: "arrIncludesSome" },
-    { accessorKey: "category", header: "Category",
-      cell: ({ row }) => <Badge variant="outline" className={getCategoryColor(row.getValue("category"))}>{row.getValue("category")}</Badge>,
-      filterFn: "arrIncludesSome" },
-    { accessorKey: "priority", header: "Priority",
-      cell: ({ row }) => <Badge variant="outline" className={getPriorityColor(row.getValue("priority"))}>{row.getValue("priority")}</Badge>,
-      filterFn: "arrIncludesSome" },
-    { accessorKey: "crew", header: "Crew",
-      cell: ({ row }) => <div className="flex items-center space-x-1"><Users className="h-4 w-4 text-muted-foreground" /><span>{row.getValue("crew")}</span></div> },
-    { accessorKey: "budgetCode", header: "Budget Code", enableGlobalFilter: true,
-      cell: ({ row }) => <div className="font-mono">{row.getValue("budgetCode")}</div> },
-    { accessorKey: "budget", header: "Budget",
-      cell: ({ row }) => `$${(row.getValue("budget") as number).toLocaleString()}` },
-    { accessorKey: "startDate", header: "Start Date",
-      cell: ({ row }) => new Date(row.getValue("startDate")).toLocaleDateString("id-ID") },
-    { accessorKey: "endDate", header: "End Date",
-      cell: ({ row }) => new Date(row.getValue("endDate")).toLocaleDateString("id-ID") },
-    {
-      id: "actions",
-      cell: ({ row }) => {
-        const project = row.original
-        const openDialog = (dialog: ActiveDialog) => {
-          setSelectedProject(project)
-          setActiveDialog(dialog)
-        }
+  const columns = useMemo<ColumnDef<ProjectRow>[]>(
+    () => [
+      {
+        accessorKey: "code",
+        header: "Project Code",
+        enableGlobalFilter: true,
+        cell: ({ row }) => (
+          <div className="font-mono">{row.getValue("code")}</div>
+        ),
+      },
+      {
+        accessorKey: "name",
+        header: "Name",
+        enableGlobalFilter: true,
+        cell: ({ row }) => (
+          <div className="font-medium">{row.getValue("name")}</div>
+        ),
+      },
+      { accessorKey: "team", header: "Team", filterFn: "arrIncludesSome" },
+      {
+        accessorKey: "category",
+        header: "Category",
+        cell: ({ row }) => (
+          <Badge
+            variant="outline"
+            className={getCategoryColor(row.getValue("category"))}
+          >
+            {row.getValue("category")}
+          </Badge>
+        ),
+        filterFn: "arrIncludesSome",
+      },
+      {
+        accessorKey: "priority",
+        header: "Priority",
+        cell: ({ row }) => (
+          <Badge
+            variant="outline"
+            className={getPriorityColor(row.getValue("priority"))}
+          >
+            {row.getValue("priority")}
+          </Badge>
+        ),
+        filterFn: "arrIncludesSome",
+      },
+      {
+        accessorKey: "crew",
+        header: "Crew",
+        cell: ({ row }) => (
+          <div className="flex items-center space-x-1">
+            <Users className="h-4 w-4 text-muted-foreground" />
+            <span>{row.getValue("crew")}</span>
+          </div>
+        ),
+      },
+      {
+        accessorKey: "budgetCode",
+        header: "Budget Code",
+        enableGlobalFilter: true,
+        cell: ({ row }) => (
+          <div className="font-mono">{row.getValue("budgetCode")}</div>
+        ),
+      },
+      {
+        accessorKey: "budget",
+        header: "Budget",
+        cell: ({ row }) =>
+          `$${(row.getValue("budget") as number).toLocaleString()}`,
+      },
+      {
+        accessorKey: "startDate",
+        header: "Start Date",
+        cell: ({ row }) =>
+          new Date(row.getValue("startDate")).toLocaleDateString("id-ID"),
+      },
+      {
+        accessorKey: "endDate",
+        header: "End Date",
+        cell: ({ row }) =>
+          new Date(row.getValue("endDate")).toLocaleDateString("id-ID"),
+      },
+      {
+        id: "actions",
+        cell: ({ row }) => {
+          const project = row.original;
+          const openDialog = (dialog: ActiveDialog) => {
+            setSelectedProject(project);
+            setActiveDialog(dialog);
+          };
           return (
             <DropdownMenu>
-              <DropdownMenuTrigger asChild >
-                <Button data-testid={`menu-button-${project.code}`} variant="ghost" className="h-8 w-8 p-0">
+              <DropdownMenuTrigger asChild>
+                <Button
+                  data-testid={`menu-button-${project.code}`}
+                  variant="ghost"
+                  className="h-8 w-8 p-0"
+                >
                   <span className="sr-only">Open menu</span>
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start">
                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                <DropdownMenuItem data-testid="view-details-project" onClick={() => openDialog("detail")}>
+                <DropdownMenuItem
+                  data-testid="view-details-project"
+                  onClick={() => openDialog("detail")}
+                >
                   <Edit className="mr-2 h-4 w-4" /> View Details
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   data-testid="view-details-timeline"
                   role="menuitem"
                   onClick={() => {
-                    setSelectedProject(project);   // pilih project yang ingin ditampilkan
-                    setActiveDialog("timeline");   // buka dialog timeline
+                    setSelectedProject(project); // pilih project yang ingin ditampilkan
+                    setActiveDialog("timeline"); // buka dialog timeline
                   }}
                 >
                   <Calendar className="mr-2 h-4 w-4" />
-                  <span>View Timeline</span> {/* teks utuh agar query byText berhasil */}
+                  <span>View Timeline</span>{" "}
+                  {/* teks utuh agar query byText berhasil */}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem data-testid="archive" className="text-red-400" onClick={() => handleArchive(project)}>
+                <DropdownMenuItem
+                  data-testid="archive"
+                  className="text-red-400"
+                  onClick={() => handleArchive(project)}
+                >
                   <Trash2 className="mr-2 h-4 w-4 text-red-400" /> Archive
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -224,11 +355,13 @@ export default function ProjectsPage() {
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     globalFilterFn: (row, columnId, filterValue) => {
-      if (!filterValue) return true
-      const searchable = ["code", "name", "budgetCode"]
+      if (!filterValue) return true;
+      const searchable = ["code", "name", "budgetCode"];
       return searchable.some((key) =>
-        String(row.getValue(key)).toLowerCase().includes(filterValue.toLowerCase())
-      )
+        String(row.getValue(key))
+          .toLowerCase()
+          .includes(filterValue.toLowerCase())
+      );
     },
     filterFns: {
       arrIncludesSome: (row, columnId, value) => {
@@ -236,23 +369,26 @@ export default function ProjectsPage() {
         return value.includes(row.getValue(columnId));
       },
     },
-  })
+  });
 
-  const allFilteredAndSortedRows = table.getSortedRowModel().rows
-  const itemsPerPage = 10
-  const totalPages = Math.ceil(allFilteredAndSortedRows.length / itemsPerPage)
+  const allFilteredAndSortedRows = table.getSortedRowModel().rows;
+  const itemsPerPage = 10;
+  const totalPages = Math.ceil(allFilteredAndSortedRows.length / itemsPerPage);
   const paginatedRows = allFilteredAndSortedRows.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
-  )
+  );
 
-  const handlePageChange = (page) => {
-    if (page >= 1 && page <= totalPages) {
-      setCurrentPage(page);
-    }
+  const handlePageChange = (page: number | string) => {
+  const pageNum = Number(page);
+  if (pageNum >= 1 && pageNum <= totalPages) {
+    setCurrentPage(pageNum);
+  }
   };
 
-  useEffect(() => { setCurrentPage(1) }, [globalFilter, columnFilters])
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [globalFilter, columnFilters]);
 
   const handleFilterChange =
     (
@@ -287,7 +423,7 @@ export default function ProjectsPage() {
     setSelectedTeams
   );
 
-  const handleAddProject = (e: MouseEvent) => {
+  const handleAddProject = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
     router.push("projects/new");
   };
@@ -312,7 +448,6 @@ export default function ProjectsPage() {
     [projects]
   );
 
-  // --- RENDER ---
   return (
     <div className="space-y-6 mx-10">
       <PageHeader onAddProject={handleAddProject} />
@@ -324,24 +459,33 @@ export default function ProjectsPage() {
           setGlobalFilter={setGlobalFilter}
           filters={{
             categories: {
-              options: PROJECT_CATEGORY_OPTIONS,
+              options: [...PROJECT_CATEGORY_OPTIONS],
               selected: selectedCategories,
               onChange: handleCategoryChange,
             },
             priorities: {
-              options: PROJECT_PRIORITY_OPTIONS,
+              options: [...PROJECT_PRIORITY_OPTIONS],
               selected: selectedPriorities,
               onChange: handlePriorityChange,
             },
             teams: {
-              options: TEAM_OPTIONS,
+              options: [ ...TEAM_OPTIONS ],
               selected: selectedTeams,
               onChange: handleTeamChange,
             },
           }}
+          filterValues={{
+            categories: selectedCategories,
+            priorities: selectedPriorities,
+            teams: selectedTeams,
+        }}
         />
-      <CardContent>
-          <ProjectsDataTable table={table} columns={columns} paginatedRows={paginatedRows} />
+        <CardContent>
+          <ProjectsDataTable
+            table={table}
+            columns={columns}
+            paginatedRows={paginatedRows}
+          />
           {totalPages > 1 && (
             <div className="flex justify-center mt-4">
               <Pagination>
@@ -349,10 +493,14 @@ export default function ProjectsPage() {
                   {/* Previous disabled saat halaman pertama */}
                   <PaginationItem>
                     <PaginationPrevious
-                        onClick={() => handlePageChange(currentPage - 1)}
-                        aria-disabled={currentPage === 1}
-                        tabIndex={currentPage === 1 ? -1 : undefined}
-                        className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
+                      onClick={() => handlePageChange(currentPage - 1)}
+                      aria-disabled={currentPage === 1}
+                      tabIndex={currentPage === 1 ? -1 : undefined}
+                      className={
+                        currentPage === 1
+                          ? "pointer-events-none opacity-50"
+                          : ""
+                      }
                     />
                   </PaginationItem>
 
@@ -371,11 +519,15 @@ export default function ProjectsPage() {
                   {/* Next disabled saat halaman terakhir */}
                   <PaginationItem>
                     <PaginationNext
-                    onClick={() => handlePageChange(currentPage + 1)}
-                    aria-disabled={currentPage === totalPages}
-                    tabIndex={currentPage === totalPages ? -1 : undefined}
-                    className={currentPage === totalPages ? "pointer-events-none opacity-50" : ""}
-                  />
+                      onClick={() => handlePageChange(currentPage + 1)}
+                      aria-disabled={currentPage === totalPages}
+                      tabIndex={currentPage === totalPages ? -1 : undefined}
+                      className={
+                        currentPage === totalPages
+                          ? "pointer-events-none opacity-50"
+                          : ""
+                      }
+                    />
                   </PaginationItem>
                 </PaginationContent>
               </Pagination>
@@ -390,11 +542,13 @@ export default function ProjectsPage() {
         isOpen={activeDialog === "detail"}
         onClose={handleCloseDialog}
       />
-      <ProjectTimelineDialog
-        project={selectedProject}
-        isOpen={activeDialog === "timeline"}
-        onClose={() => setActiveDialog(null)}
-      />
+      {selectedProject && (
+        <ProjectTimelineDialog
+          project={selectedProject}
+          isOpen={activeDialog === "timeline"}
+          onClose={() => setActiveDialog(null)}
+        />
+      )}
 
       <Toaster position="top-center" />
     </div>
@@ -404,12 +558,16 @@ export default function ProjectsPage() {
 const PageHeader = ({
   onAddProject,
 }: {
-  onAddProject: (e: MouseEvent) => void;
+  onAddProject: (e: React.MouseEvent<HTMLButtonElement>) => void;
 }) => (
   <div className="flex items-center justify-between">
     <div>
-      <h1 className="text-3xl font-bold" data-testid="page-title">Projects</h1>
-      <p className="text-muted-foreground">Manage your projects and track their progress</p>
+      <h1 className="text-3xl font-bold" data-testid="page-title">
+        Projects
+      </h1>
+      <p className="text-muted-foreground">
+        Manage your projects and track their progress
+      </p>
     </div>
     <Button onClick={onAddProject} data-testid="add-project-button">
       <Plus className="h-4 w-4 mr-2" />
@@ -418,7 +576,7 @@ const PageHeader = ({
   </div>
 );
 
-const StatCards = ({ stats }: { stats: any }) => (
+const StatCards = ({ stats }: { stats: Stats }) => (
   <div className="grid gap-3 md:grid-cols-4">
     <Card className="py-4 gap-0" data-testid="stat-total-projects">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -471,71 +629,82 @@ const StatCards = ({ stats }: { stats: any }) => (
   </div>
 );
 
-const FilterDropdown = ({ title, filter }: { title: string; filter: any }) => (
-  <DropdownMenu>
-    <DropdownMenuTrigger asChild>
-      <Button
-        variant="outline"
-        className="flex items-center gap-2 bg-transparent"
-      >
-        <Filter className="h-4 w-4" /> {title}
-        {filter.selected.length > 0 && (
-          <Badge variant="secondary" className="rounded-full px-2">
-            {filter.selected.length}
-          </Badge>
-        )}
-      </Button>
-    </DropdownMenuTrigger>
-    <DropdownMenuContent align="end">
-      {filter.options.map((option: string) => (
-        <DropdownMenuCheckboxItem
-          key={option}
-          checked={filter.selected.includes(option)}
-          onCheckedChange={(checked) => filter.onChange(option, !!checked)}
-        >
-          {option}
-        </DropdownMenuCheckboxItem>
-      ))}
-    </DropdownMenuContent>
-  </DropdownMenu>
-);
+  const FilterDropdown: React.FC<FilterDropdownProps> = ({ title, filter }) => (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" className="flex items-center gap-2 bg-transparent">
+          {title}
+          {filter.selected.length > 0 && (
+            <Badge variant="secondary" className="rounded-full px-2">
+              {filter.selected.length}
+            </Badge>
+          )}
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        {filter.options.map((option) => (
+          <DropdownMenuCheckboxItem
+            key={option}
+            checked={filter.selected.includes(option)}
+            onCheckedChange={(checked) => filter.onChange(option, !!checked)}
+          >
+            {option}
+          </DropdownMenuCheckboxItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
 
-const TableToolbar = ({
+  const TableToolbar: React.FC<TableToolbarProps> = ({
   globalFilter,
   setGlobalFilter,
   filters,
-}: {
-  globalFilter: string;
-  setGlobalFilter: (value: string) => void;
-  filters: any;
-}) => (
-  <CardHeader className="flex flex-row items-center justify-between">
-    <CardTitle className="text-xl">Project Portfolio</CardTitle>
-    <div className="flex items-center gap-2">
-      <FilterDropdown title="Category" filter={filters.categories} data-testid="filter-category" />
-      <FilterDropdown title="Priority" filter={filters.priorities} data-testid="filter-priority" />
-      <FilterDropdown title="Team" filter={filters.teams} data-testid="filter-team"/>
-      <div className="relative">
-        <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-        <Input
-          data-testid="search-input"
-          placeholder="Search projects..."
-          value={globalFilter}
-          onChange={(e) => setGlobalFilter(e.target.value)}
-          className="pl-8"
+}) => {
+  return (
+    <CardHeader className="flex flex-row items-center justify-between">
+      <CardTitle className="text-xl">Project Portfolio</CardTitle>
+      <div className="flex items-center gap-2">
+        <FilterDropdown
+          title="Category"
+          filter={filters.categories}
+          data-testid="filter-category"
         />
+        <FilterDropdown
+          title="Priority"
+          filter={filters.priorities}
+          data-testid="filter-priority"
+        />
+        <FilterDropdown
+          title="Team"
+          filter={filters.teams}
+          data-testid="filter-team"
+        />
+        <div className="relative">
+          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            data-testid="search-input"
+            placeholder="Search projects..."
+            value={globalFilter}
+            onChange={(e) => setGlobalFilter(e.target.value)}
+            className="pl-8"
+          />
+        </div>
       </div>
-    </div>
-  </CardHeader>
-);
+    </CardHeader>
+  );
+};
 
-const ProjectsDataTable = ({ table, columns, paginatedRows }: { table: any; columns: any[]; paginatedRows: any[] }) => (
+const ProjectsDataTable = <TData,>({
+  table,
+  columns,
+  paginatedRows,
+}: ProjectsDataTableProps<TData>) => (
   <ScrollArea className="h-[500px]">
     <Table data-testid="project-table">
       <TableHeader className="sticky top-0 z-10 bg-background shadow-sm">
-        {table.getHeaderGroups().map((headerGroup: any) => (
+        {table.getHeaderGroups().map((headerGroup: HeaderGroup<TData>) => (
           <TableRow key={headerGroup.id} className="hover:bg-white">
-            {headerGroup.headers.map((header: any) => (
+            {headerGroup.headers.map((header: Header<TData, unknown>) => (
               <TableHead
                 key={header.id}
                 className={
@@ -559,9 +728,9 @@ const ProjectsDataTable = ({ table, columns, paginatedRows }: { table: any; colu
       </TableHeader>
       <TableBody>
         {paginatedRows?.length ? (
-          paginatedRows.map(row => (
+          paginatedRows.map((row) => (
             <TableRow key={row.id}>
-              {row.getVisibleCells().map(cell => (
+              {row.getVisibleCells().map((cell) => (
                 <TableCell key={cell.id}>
                   {flexRender(cell.column.columnDef.cell, cell.getContext())}
                 </TableCell>
@@ -570,25 +739,15 @@ const ProjectsDataTable = ({ table, columns, paginatedRows }: { table: any; colu
           ))
         ) : (
           <TableRow>
-            <TableCell colSpan={columns.length} className="h-24 text-center">No results.</TableCell>
+            <TableCell colSpan={columns.length} className="h-24 text-center">
+              No results.
+            </TableCell>
           </TableRow>
         )}
       </TableBody>
     </Table>
   </ScrollArea>
-)
-
-const AddProjectDialog = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => (
-  <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-    <DialogContent className="sm:max-w-[425px]" data-testid="add-project-dialog">
-      <DialogHeader>
-        <DialogTitle>Add New Project</DialogTitle>
-        <DialogDescription>Create a new project to track progress and manage resources.</DialogDescription>
-      </DialogHeader>
-      <AddProjectForm onCancel={onClose} />
-    </DialogContent>
-  </Dialog>
-)
+);
 
 const ProjectDetailDialog = ({
   project,
@@ -610,36 +769,39 @@ const ProjectDetailDialog = ({
   };
 
   const subactivities = [
-  {
-    name: "UI Design",
-    role: "System Analyst",
-    workload: 120,
-    employees: [
-      { name: "Alice", imageUrl: "" },
-      { name: "Bob", imageUrl: "" },
-      { name: "Charlie", imageUrl: "" },
-      { name: "Diana", imageUrl: "" },
-    ],
-    fte: "0.8x",
-    startDate: "15/02/25",
-    endDate: "28/02/25",
-    status: "In Progress",
-  },
-  {
-    name: "API Dev",
-    role: "Data Engineer",
-    workload: 200,
-    employees: [{ name: "Charlie", imageUrl: "" }],
-    fte: "1.2x",
-    startDate: "15/03/25",
-    endDate: "29/03/25",
-    status: "Pending",
-  },
-]
+    {
+      name: "UI Design",
+      role: "System Analyst",
+      workload: 120,
+      employees: [
+        { name: "Alice", imageUrl: "" },
+        { name: "Bob", imageUrl: "" },
+        { name: "Charlie", imageUrl: "" },
+        { name: "Diana", imageUrl: "" },
+      ],
+      fte: "0.8x",
+      startDate: "15/02/25",
+      endDate: "28/02/25",
+      status: "In Progress",
+    },
+    {
+      name: "API Dev",
+      role: "Data Engineer",
+      workload: 200,
+      employees: [{ name: "Charlie", imageUrl: "" }],
+      fte: "1.2x",
+      startDate: "15/03/25",
+      endDate: "29/03/25",
+      status: "Pending",
+    },
+  ];
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto" data-testid="project-detail-dialog">
+      <DialogContent
+        className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto"
+        data-testid="project-detail-dialog"
+      >
         <DialogHeader>
           <DialogTitle className="text-xl font-semibold">
             {project.name}
@@ -677,9 +839,15 @@ const ProjectDetailDialog = ({
             </div>
 
             <div className="space-y-1">
-              <Label className="text-sm font-medium text-muted-foreground">Start Date</Label>
+              <Label className="text-sm font-medium text-muted-foreground">
+                Start Date
+              </Label>
               <p className="text-sm">
-                {new Date(project.startDate).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}
+                {new Date(project.startDate).toLocaleDateString("en-GB", {
+                  day: "numeric",
+                  month: "long",
+                  year: "numeric",
+                })}
               </p>
             </div>
           </div>
@@ -700,9 +868,15 @@ const ProjectDetailDialog = ({
             </div>
 
             <div className="space-y-1">
-              <Label className="text-sm font-medium text-muted-foreground">End Date</Label>
+              <Label className="text-sm font-medium text-muted-foreground">
+                End Date
+              </Label>
               <p className="text-sm">
-                {new Date(project.endDate).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}
+                {new Date(project.endDate).toLocaleDateString("en-GB", {
+                  day: "numeric",
+                  month: "long",
+                  year: "numeric",
+                })}
               </p>
             </div>
           </div>
@@ -720,7 +894,11 @@ const ProjectDetailDialog = ({
                 Overall Progress
               </Label>
               <div className="w-full bg-gray-200 rounded-full h-2">
-                <div className="bg-blue-600 h-2 rounded-full transition-all duration-300" style={{ width: "65%" }} data-testid="progress-bar"/>
+                <div
+                  className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                  style={{ width: "65%" }}
+                  data-testid="progress-bar"
+                />
               </div>
             </div>
 
@@ -793,44 +971,58 @@ const ProjectDetailDialog = ({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                {subactivities.map((activity, index) => (
-                  <TableRow key={index} data-testid={`subactivity-row-${index}`}>
-                    <TableCell className="text-sm">{activity.name}</TableCell>
-                    <TableCell className="text-sm">{activity.role}</TableCell>
-                    <TableCell className="text-sm">{activity.workload} hrs</TableCell>
-                    <TableCell>
-                      <div className="flex -space-x-1">
-                        {activity.employees.slice(0, 2).map((emp, i) => {
-                          const colorClass = colors[i % colors.length]
-                          return (
-                            <Avatar
-                              key={i}
-                              className="h-6 w-6 border-2 border-white shadow-sm hover:scale-105 transition-transform duration-150"
-                            >
-                              <AvatarImage src={emp.imageUrl || ""} alt={emp.name} />
-                              <AvatarFallback className={`${colorClass} text-white text-xs font-semibold`}>
-                                {emp.name[0]}
+                  {subactivities.map((activity, index) => (
+                    <TableRow
+                      key={index}
+                      data-testid={`subactivity-row-${index}`}
+                    >
+                      <TableCell className="text-sm">{activity.name}</TableCell>
+                      <TableCell className="text-sm">{activity.role}</TableCell>
+                      <TableCell className="text-sm">
+                        {activity.workload} hrs
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex -space-x-1">
+                          {activity.employees.slice(0, 2).map((emp, i) => {
+                            const colorClass = colors[i % colors.length];
+                            return (
+                              <Avatar
+                                key={i}
+                                className="h-6 w-6 border-2 border-white shadow-sm hover:scale-105 transition-transform duration-150"
+                              >
+                                <AvatarImage
+                                  src={emp.imageUrl || ""}
+                                  alt={emp.name}
+                                />
+                                <AvatarFallback
+                                  className={`${colorClass} text-white text-xs font-semibold`}
+                                >
+                                  {emp.name[0]}
+                                </AvatarFallback>
+                              </Avatar>
+                            );
+                          })}
+
+                          {activity.employees.length > 2 && (
+                            <Avatar className="h-6 w-6 border-2 border-white bg-gray-300 shadow-sm hover:scale-105 transition-transform duration-150">
+                              <AvatarFallback className="text-[10px] text-gray-700 font-medium">
+                                +{activity.employees.length - 2}
                               </AvatarFallback>
                             </Avatar>
-                          )
-                        })}
+                          )}
+                        </div>
+                      </TableCell>
 
-                        {activity.employees.length > 2 && (
-                          <Avatar className="h-6 w-6 border-2 border-white bg-gray-300 shadow-sm hover:scale-105 transition-transform duration-150">
-                            <AvatarFallback className="text-[10px] text-gray-700 font-medium">
-                              +{activity.employees.length - 2}
-                            </AvatarFallback>
-                          </Avatar>
-                        )}
-                      </div>
-                    </TableCell>
-
-                    <TableCell className="text-sm">{activity.fte}</TableCell>
-                    <TableCell className="text-sm">{activity.startDate}</TableCell>
-                    <TableCell className="text-sm">{activity.endDate}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
+                      <TableCell className="text-sm">{activity.fte}</TableCell>
+                      <TableCell className="text-sm">
+                        {activity.startDate}
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        {activity.endDate}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
               </Table>
             </div>
           </div>
@@ -853,7 +1045,10 @@ const ProjectTimelineDialog = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-7xl" data-testid="project-timeline-dialog">
+      <DialogContent
+        className="sm:max-w-7xl"
+        data-testid="project-timeline-dialog"
+      >
         <DialogHeader>
           <DialogTitle>Timeline: {project.name}</DialogTitle>
           <DialogDescription>Visualisasi timeline</DialogDescription>

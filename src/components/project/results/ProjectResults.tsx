@@ -91,7 +91,7 @@ const sampleTeamComposition: TeamMember[] = [
 
 export type ProjectResultsProps = {
   teamComposition: TeamMember[];
-  activities: Activity[];
+  activities?: Activity[];
   summary?: TeamCompositionSummary;
   isLoading?: boolean;
   onNext: () => void;

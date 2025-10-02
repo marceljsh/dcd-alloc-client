@@ -1,6 +1,7 @@
 "use client";
 
 import type React from "react";
+import type { EmployeeRole, EmployeeLevel, Team } from "@/types/common";
 import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,6 +19,7 @@ import {
   Pie,
   Cell,
   LabelList,
+  PieLabelRenderProps,
 } from "recharts";
 import {
   Users,
@@ -47,6 +49,60 @@ import {
 } from "@/lib/data";
 import EmployeeHeatmap from "@/components/employee/EmployeeHeatmap";
 
+type WorkloadData = {
+  role: string;
+  junior: number;
+  middle: number;
+  senior: number;
+};
+
+type RoleUtilization = {
+  role: string;
+  count: number;
+  Allocated: number;
+  Idle: number;
+  Overload: number;
+};
+
+type TeamDistribution = {
+  team: string;
+  projects: number;
+  budget: number;
+  crew: number;
+};
+
+type PriorityBudgetAnalysis = {
+  priority: string;
+  count: number;
+  totalBudget: number;
+  avgBudget: number;
+  totalCrew: number;
+};
+
+type MyTooltipPayload = {
+  payload?: {
+    progress: number;
+    [key: string]: unknown;
+  };
+  name?: string;
+  value?: number;
+};
+
+interface ProjectDistribution {
+  [key: string]: string | number;
+  category: string;
+  count: number;
+  budget: number;
+}
+
+type TeamUtilization = {
+  team: string;
+  totalCapacity: number;
+  utilizedCapacity: number;
+  employeeCount: number;
+  utilizationRate: number;
+};
+
 const COLORS = [
   "#8884d8",
   "#82ca9d",
@@ -55,6 +111,21 @@ const COLORS = [
   "#f43f5e",
   "#14b8a6",
 ];
+
+type ProductivityTrendItem = {
+  month: string;
+  [role: string]: string | number;
+};
+
+type TeamWorkload = {
+  team: string;
+  employees: number;
+  projects: number;
+  totalBudget: number;
+  totalCrew: number;
+  avgProjectSize: number;
+  workloadScore: number;
+};
 
 const getProgressColor = (progress: number) => {
   if (progress >= 70) return "#4ade80"; // hijau
@@ -71,43 +142,13 @@ const formatRupiah = (amount: number): string => {
   }).format(amount);
 };
 
-interface SummaryItem {
-  title: string;
-  value: string | number;
-  icon: React.ComponentType<any>;
-  color: string;
-  desc: { label: string; value: string | number; color?: string }[];
-}
-
-const initials = (name: string): string => {
-  return name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase();
+type ProjectRow = {
+  team: string; // sekarang fleksibel
 };
 
-const ProjectTable: React.FC<{ filteredProjects: any[] }> = ({
-  filteredProjects,
-}) => {
+const ProjectTable: React.FC<{ filteredProjects: ProjectRow[] }> = ({}) => {
   return <div className="space-y-2" data-testid="project-table"></div>;
 };
-
-const weeks = ["W1", "W2", "W3", "W4", "W5", "W6"];
-const heatmapData = ["Junior", "Middle", "Senior"].map((role) => {
-  const roleMembers = getEmployees().filter((emp) => emp.role === role);
-  return {
-    role,
-    weeklyUtilization: weeks.map(() => {
-      const avg =
-        roleMembers.length > 0
-          ? roleMembers.reduce((acc, emp) => acc + emp.utilization, 0) /
-            roleMembers.length
-          : 0;
-      return avg;
-    }),
-  };
-});
 
 const transformDataForCharts = (
   employees: EmployeeType[],
@@ -148,7 +189,7 @@ const transformDataForCharts = (
     };
   });
 
-  const fteWorkloadData = employees.reduce((acc, emp) => {
+  const fteWorkloadData = employees.reduce<WorkloadData[]>((acc, emp) => {
     const workloadMultipliers: Record<string, number> = {
       junior: 0.8,
       middle: 1.0,
@@ -171,7 +212,8 @@ const transformDataForCharts = (
 
     const existing = acc.find((item) => item.role === emp.role);
     if (existing) {
-      existing[level] = (existing[level] || 0) + projectHours;
+      existing[level as "junior" | "middle" | "senior"] =
+        (existing[level as "junior" | "middle" | "senior"] || 0) + projectHours;
     } else {
       acc.push({
         role: emp.role,
@@ -181,7 +223,7 @@ const transformDataForCharts = (
       });
     }
     return acc;
-  }, [] as any[]);
+  }, [] as WorkloadData[]);
 
   const fteUtilizationByTeam = employees.reduce((acc, emp) => {
     const level = emp.role.toLowerCase().includes("senior")
@@ -223,9 +265,9 @@ const transformDataForCharts = (
       });
     }
     return acc;
-  }, [] as any[]);
+  }, [] as TeamUtilization[]);
 
-  const roleUtilization = employees.reduce((acc, emp) => {
+  const roleUtilization = employees.reduce<RoleUtilization[]>((acc, emp) => {
     const empProjects = projects.filter((p) => p.team === emp.team);
     const totalBudget = empProjects.reduce((sum, p) => sum + p.budget, 0);
     const avgBudgetPerEmployee =
@@ -261,18 +303,25 @@ const transformDataForCharts = (
       });
     }
     return acc;
-  }, [] as any[]);
+  }, []);
 
-  const projectDistribution = projects.reduce((acc, proj) => {
-    const existing = acc.find((item) => item.category === proj.category);
-    if (existing) {
-      existing.count += 1;
-      existing.budget += proj.budget;
-    } else {
-      acc.push({ category: proj.category, count: 1, budget: proj.budget });
-    }
-    return acc;
-  }, [] as any[]);
+  const projectDistribution = projects.reduce<ProjectDistribution[]>(
+    (acc, proj) => {
+      const existing = acc.find((item) => item.category === proj.category);
+      if (existing) {
+        existing.count += 1;
+        existing.budget += proj.budget;
+      } else {
+        acc.push({
+          category: proj.category,
+          count: 1,
+          budget: proj.budget,
+        });
+      }
+      return acc;
+    },
+    []
+  );
 
   const teamDistribution = projects.reduce((acc, proj) => {
     const existing = acc.find((item) => item.team === proj.team);
@@ -289,45 +338,51 @@ const transformDataForCharts = (
       });
     }
     return acc;
-  }, [] as any[]);
+  }, [] as TeamDistribution[]);
 
-  const productivityTrend = Array.from({ length: 12 }, (_, i) => {
-    const month = new Date(2024, i).toLocaleString("default", {
-      month: "short",
-    });
-    const monthProjects = projects.filter((p) => {
-      const startMonth = new Date(p.startDate).getMonth();
-      const endMonth = new Date(p.endDate).getMonth();
-      return i >= startMonth && i <= endMonth;
-    });
+  const productivityTrend: ProductivityTrendItem[] = Array.from(
+    { length: 12 },
+    (_, i) => {
+      const month = new Date(2024, i).toLocaleString("default", {
+        month: "short",
+      });
 
-    const roleProductivity = employees.reduce((acc, emp) => {
-      const empTeamProjects = monthProjects.filter((p) => p.team === emp.team);
-      const productivity =
-        empTeamProjects.length > 0
-          ? Math.min(
-              100,
-              empTeamProjects.reduce((sum, p) => sum + p.budget, 0) /
-                empTeamProjects.length /
-                1000
-            )
-          : Math.max(30, 60 - i * 2);
+      const monthProjects = projects.filter((p) => {
+        const startMonth = new Date(p.startDate).getMonth();
+        const endMonth = new Date(p.endDate).getMonth();
+        return i >= startMonth && i <= endMonth;
+      });
 
-      if (!acc[emp.role]) acc[emp.role] = [];
-      acc[emp.role].push(productivity);
-      return acc;
-    }, {} as Record<string, number[]>);
+      const roleProductivity = employees.reduce((acc, emp) => {
+        const empTeamProjects = monthProjects.filter(
+          (p) => p.team === emp.team
+        );
+        const productivity =
+          empTeamProjects.length > 0
+            ? Math.min(
+                100,
+                empTeamProjects.reduce((sum, p) => sum + p.budget, 0) /
+                  empTeamProjects.length /
+                  1000
+              )
+            : Math.max(30, 60 - i * 2);
 
-    const result: any = { month };
-    Object.keys(roleProductivity).forEach((role) => {
-      const avgProductivity =
-        roleProductivity[role].reduce((sum, val) => sum + val, 0) /
-        roleProductivity[role].length;
-      result[role] = Math.round(avgProductivity);
-    });
+        if (!acc[emp.role]) acc[emp.role] = [];
+        acc[emp.role].push(productivity);
+        return acc;
+      }, {} as Record<string, number[]>);
 
-    return result;
-  });
+      const result: ProductivityTrendItem = { month };
+      Object.keys(roleProductivity).forEach((role) => {
+        const avgProductivity =
+          roleProductivity[role].reduce((sum, val) => sum + val, 0) /
+          roleProductivity[role].length;
+        result[role] = Math.round(avgProductivity);
+      });
+
+      return result;
+    }
+  );
 
   const stackedData = projectTimeline.map((p) => ({
     ...p,
@@ -360,7 +415,7 @@ const transformDataForCharts = (
     };
   });
 
-  const teamWorkload = employees.reduce((acc, emp) => {
+  const teamWorkload = employees.reduce<TeamWorkload[]>((acc, emp) => {
     const empProjects = projects.filter((p) => p.team === emp.team);
     const totalBudget = empProjects.reduce((sum, p) => sum + p.budget, 0);
     const totalCrew = empProjects.reduce((sum, p) => sum + p.crew, 0);
@@ -386,7 +441,7 @@ const transformDataForCharts = (
       });
     }
     return acc;
-  }, [] as any[]);
+  }, []);
 
   const priorityBudgetAnalysis = projects.reduce((acc, proj) => {
     const existing = acc.find((item) => item.priority === proj.priority);
@@ -405,10 +460,18 @@ const transformDataForCharts = (
       });
     }
     return acc;
-  }, [] as any[]);
+  }, [] as PriorityBudgetAnalysis[]);
+
+  type SkillDistribution = {
+    skill: string;
+    total: number;
+    senior: number;
+    middle: number;
+    junior: number;
+  };
 
   const skillsDistribution = employees
-    .reduce((acc, emp) => {
+    .reduce((acc: SkillDistribution[], emp) => {
       let skillCategory = "Other";
       if (emp.role.toLowerCase().includes("data engineer"))
         skillCategory = "Data Engineer";
@@ -426,20 +489,23 @@ const transformDataForCharts = (
           : "Middle");
 
       const existing = acc.find((item) => item.skill === skillCategory);
+
+      const key = level.toLowerCase() as "senior" | "middle" | "junior";
+
       if (existing) {
         existing.total++;
-        existing[level.toLowerCase()]++;
+        existing[key] = existing[key] + 1; // ✅ aman, number + 1
       } else {
         acc.push({
           skill: skillCategory,
           total: 1,
-          senior: level === "Senior" ? 1 : 0,
-          middle: level === "Middle" ? 1 : 0,
-          junior: level === "Junior" ? 1 : 0,
+          senior: key === "senior" ? 1 : 0,
+          middle: key === "middle" ? 1 : 0,
+          junior: key === "junior" ? 1 : 0,
         });
       }
       return acc;
-    }, [] as any[])
+    }, [])
     .sort((a, b) => b.total - a.total);
 
   return {
@@ -550,36 +616,6 @@ export default function Page() {
     [filteredEmployees, filteredProjects]
   );
 
-  const dateRanges = useMemo(() => {
-    const ranges = [];
-    const startDate = new Date();
-    startDate.setDate(startDate.getDate() - 35);
-
-    for (let i = 0; i < 6; i++) {
-      const weekStart = new Date(startDate);
-      weekStart.setDate(startDate.getDate() + i * 7);
-      const weekEnd = new Date(weekStart);
-      weekEnd.setDate(weekStart.getDate() + 6);
-
-      const startLabel = weekStart.toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-      });
-      const endLabel = weekEnd.toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-      });
-
-      ranges.push({
-        label: `${startLabel} - ${endLabel}`,
-        start: weekStart,
-        end: weekEnd,
-      });
-    }
-
-    return ranges;
-  }, []);
-
   const uniqueRoles = [
     "All",
     ...Array.from(new Set(employees.map((emp) => emp.role))),
@@ -615,7 +651,7 @@ export default function Page() {
               acc.push({ label: proj.category, value: "1" });
             }
             return acc;
-          }, [] as any[])
+          }, [] as { label: string; value: string }[])
           .sort((a, b) => Number.parseInt(b.value) - Number.parseInt(a.value))
           .slice(0, 3),
       },
@@ -633,7 +669,7 @@ export default function Page() {
               acc.push({ label: proj.team, raw: proj.budget });
             }
             return acc;
-          }, [] as any[])
+          }, [] as { label: string; raw: number }[])
           .map((item) => ({
             label: item.label,
             value: formatRupiah(item.raw),
@@ -659,7 +695,7 @@ export default function Page() {
               acc.push({ label: proj.priority, value: "1" });
             }
             return acc;
-          }, [] as any[])
+          }, [] as { label: string; value: string }[])
           .sort((a, b) => Number.parseInt(b.value) - Number.parseInt(a.value))
           .slice(0, 3),
       },
@@ -710,7 +746,7 @@ export default function Page() {
               acc.push({ label: emp.role, value: "1" });
             }
             return acc;
-          }, [] as any[])
+          }, [] as { label: string; value: string }[])
           .sort((a, b) => Number.parseInt(b.value) - Number.parseInt(a.value))
           .slice(0, 3),
       },
@@ -730,7 +766,7 @@ export default function Page() {
               acc.push({ label: role, value: "1" });
             }
             return acc;
-          }, [] as any[])
+          }, [] as { label: string; value: string }[])
           .sort((a, b) => parseInt(b.value) - parseInt(a.value))
           .slice(0, 3),
       },
@@ -762,7 +798,7 @@ export default function Page() {
               });
             }
             return acc;
-          }, [] as any[])
+          }, [] as { label: string; value: string }[])
           .sort((a, b) => parseFloat(b.value) - parseFloat(a.value))
           .slice(0, 3),
       },
@@ -781,7 +817,7 @@ export default function Page() {
                 acc.push({ label: emp.role, value: "1" });
               }
               return acc;
-            }, [] as any[])
+            }, [] as { label: string; value: string }[])
             .sort((a, b) => Number(b.value) - Number(a.value))[0]?.label ||
           "N/A",
         icon: UserCheck,
@@ -798,25 +834,12 @@ export default function Page() {
               acc.push({ label: emp.role, value: "1" });
             }
             return acc;
-          }, [] as any[])
+          }, [] as { label: string; value: string }[])
           .sort((a, b) => Number(b.value) - Number(a.value))
           .slice(0, 3),
       },
     ];
   }, [filteredEmployees, filteredProjects]);
-
-  const overutilizedEmployeesData = useMemo(() => {
-    const overutilizedEmployees = filteredEmployees
-      .filter((emp) => emp.utilization > 100)
-      .sort((a, b) => b.utilization - a.utilization);
-    const uniqueRoles = [
-      ...new Set(overutilizedEmployees.map((emp) => emp.role)),
-    ].sort();
-
-    const allRoles = ["All", ...uniqueRoles];
-
-    return { overutilizedEmployees, allRoles };
-  }, [filteredEmployees]);
 
   return (
     <div className="space-y-3 mx-10">
@@ -1022,9 +1045,7 @@ export default function Page() {
                           {d.label}
                         </span>
                         <span
-                          className={`font-semibold ${
-                            d.color || "text-gray-900"
-                          } text-xs flex-shrink-0`}
+                          className={`font-semibold ${"text-gray-900"} text-xs flex-shrink-0`}
                         >
                           {d.value}
                         </span>
@@ -1061,8 +1082,8 @@ export default function Page() {
                       dataKey="budget"
                       nameKey="category"
                       labelLine={false}
-                      label={({ percent }: any) =>
-                        `${(percent * 100).toFixed(0)}%`
+                      label={({ percent }: PieLabelRenderProps) =>
+                        `${(Number(percent) * 100).toFixed(0)}%`
                       }
                       isAnimationActive
                       animationBegin={300}
@@ -1268,14 +1289,19 @@ export default function Page() {
                         borderRadius: "8px",
                         boxShadow: "0 2px 6px rgba(0,0,0,0.1)",
                       }}
-                      formatter={(value: number, name: string, props: any) => [
+                      formatter={(
+                        value: number,
+                        name: string,
+                        props: MyTooltipPayload
+                      ) => [
                         name === "completed"
-                          ? `${props.payload.progress}% (${value} days)`
+                          ? `${props.payload?.progress ?? 0}% (${value} days)`
                           : `${value} days remaining`,
                         name === "completed" ? "Completed" : "Remaining",
                       ]}
                       labelFormatter={(label: string) => `Project: ${label}`}
                     />
+
                     <Bar
                       dataKey="remaining"
                       stackId="a"
@@ -1571,13 +1597,22 @@ export default function Page() {
             </CardHeader>
             <CardContent>
               <EmployeeHeatmap
+                selectedStartDate={dateRange.from ?? new Date()}
+                selectedEndDate={dateRange.to ?? new Date()}
                 employees={filteredEmployees
+                  .filter((emp) => emp.status === "Contract")
                   .sort((a, b) => a.team.localeCompare(b.team))
                   .slice(0, 5)
                   .map((emp) => ({
                     ...emp,
+                    role: emp.role as EmployeeRole,
+                    level: emp.level as EmployeeLevel,
+                    team: emp.team as Team,
+                    status: "Contract" as const,
+                    contractStartDate: emp.contractStartDate || "",
+                    contractEndDate: emp.contractEndDate || "",
                     utilization: Math.random() * 100,
-                    currentProjects: [],
+                    currentProjects: [] as string[],
                     hoursThisWeek: 0,
                   }))}
               />

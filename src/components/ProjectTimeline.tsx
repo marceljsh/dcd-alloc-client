@@ -6,13 +6,11 @@ import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/comp
 import { Calendar, User, Zap, Layers } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-// Type Definitions
 type Employee = { id: number; name: string; role: string }
 type Task = { id: number; name: string; employeeId: number; startDate: string; endDate: string; storyPoints: number }
 type Stage = { id: number; name: string; tasks: Task[] }
 type Project = { id: number; name: string; stages: Stage[] }
 
-// Sample Data
 const employees: Employee[] = [
   { id: 1, name: 'Alice Johnson', role: 'System Analyst' },
   { id: 2, name: 'Bob Smith', role: 'Data Engineer' },
