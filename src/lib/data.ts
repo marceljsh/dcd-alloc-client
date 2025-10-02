@@ -1,5 +1,4 @@
 import employeesData from "../data/employees.json"
-import projectsData from "../data/projects.json"
 
 export interface Employee {
   utilization: number
@@ -20,28 +19,8 @@ export interface Employee {
   contractEndDate: string | null
 }
 
-export interface Project {
-  id: number
-  code: string
-  name: string
-  team: string
-  category: string
-  priority: string
-  crew: number
-  budgetCode: string
-  budget: number
-  startDate: string
-  endDate: string
-  createdAt: string
-  updatedAt: string
-}
-
 export const getEmployees = (): Employee[] => {
   return employeesData as Employee[]
-}
-
-export const getProjects = (): Project[] => {
-  return projectsData as Project[]
 }
 
 // Future: Replace with actual database calls

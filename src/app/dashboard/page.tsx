@@ -1,7 +1,7 @@
 "use client";
 
 import type React from "react";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
@@ -30,22 +30,12 @@ import {
   TrendingUp,
   Clock,
 } from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-
-import {
-  getEmployees,
-  getProjects,
-  type Employee as EmployeeType,
-  type Project as ProjectType,
-} from "@/lib/data";
+import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { getEmployees, type Employee as EmployeeType } from "@/lib/data";
 import EmployeeHeatmap from "@/components/employee/EmployeeHeatmap";
+import { Project } from "@/types/projects";
+import { toast } from "sonner";
+import { ApiResponse } from "@/types/api";
 
 const COLORS = [
   "#8884d8",
@@ -111,7 +101,7 @@ const heatmapData = ["Junior", "Middle", "Senior"].map((role) => {
 
 const transformDataForCharts = (
   employees: EmployeeType[],
-  projects: ProjectType[]
+  projects: Project[]
 ) => {
   const projectTimeline = projects.map((proj) => {
     const start = new Date(proj.startDate);
@@ -144,7 +134,7 @@ const transformDataForCharts = (
           ? "Upcoming"
           : "In Progress",
       budget: proj.budget,
-      crew: proj.crew,
+      crew: proj.totalCrew,
     };
   });
 
@@ -160,12 +150,12 @@ const transformDataForCharts = (
     const baseWorkload = 8;
     const adjustedWorkload = baseWorkload * workloadMultipliers[level];
 
-    const empProjects = projects.filter((p) => p.team === emp.team);
+    const empProjects = projects.filter((p) => p.team.name === emp.team);
     const projectHours =
       empProjects.length > 0
         ? Math.min(
             adjustedWorkload * 1.5,
-            empProjects.reduce((sum, p) => sum + p.crew * 2, 0)
+            empProjects.reduce((sum, p) => sum + p.totalCrew * 2, 0)
           )
         : adjustedWorkload * 0.6;
 
@@ -197,12 +187,12 @@ const transformDataForCharts = (
 
     const baseWorkload = 8;
     const adjustedWorkload = baseWorkload * workloadMultipliers[level];
-    const empProjects = projects.filter((p) => p.team === emp.team);
+    const empProjects = projects.filter((p) => p.team.name === emp.team);
     const utilization =
       empProjects.length > 0
         ? Math.min(
             120,
-            (empProjects.reduce((sum, p) => sum + p.crew, 0) /
+            (empProjects.reduce((sum, p) => sum + p.totalCrew, 0) /
               empProjects.length) *
               100
           )
@@ -226,12 +216,12 @@ const transformDataForCharts = (
   }, [] as any[]);
 
   const roleUtilization = employees.reduce((acc, emp) => {
-    const empProjects = projects.filter((p) => p.team === emp.team);
+    const empProjects = projects.filter((p) => p.team.name === emp.team);
     const totalBudget = empProjects.reduce((sum, p) => sum + p.budget, 0);
     const avgBudgetPerEmployee =
       totalBudget /
       Math.max(
-        empProjects.reduce((sum, p) => sum + p.crew, 0),
+        empProjects.reduce((sum, p) => sum + p.totalCrew, 0),
         1
       );
 
@@ -279,13 +269,13 @@ const transformDataForCharts = (
     if (existing) {
       existing.projects += 1;
       existing.budget += proj.budget;
-      existing.crew += proj.crew;
+      existing.crew += proj.totalCrew;
     } else {
       acc.push({
         team: proj.team,
         projects: 1,
         budget: proj.budget,
-        crew: proj.crew,
+        crew: proj.totalCrew,
       });
     }
     return acc;
@@ -302,7 +292,7 @@ const transformDataForCharts = (
     });
 
     const roleProductivity = employees.reduce((acc, emp) => {
-      const empTeamProjects = monthProjects.filter((p) => p.team === emp.team);
+      const empTeamProjects = monthProjects.filter((p) => p.team.name === emp.team);
       const productivity =
         empTeamProjects.length > 0
           ? Math.min(
@@ -344,9 +334,9 @@ const transformDataForCharts = (
       return i >= startMonth && i <= endMonth;
     });
 
-    const totalCrew = monthProjects.reduce((sum, p) => sum + p.crew, 0);
+    const totalCrew = monthProjects.reduce((sum, p) => sum + p.totalCrew, 0);
     const availableEmployees = employees.filter((emp) =>
-      monthProjects.some((p) => p.team === emp.team)
+      monthProjects.some((p) => p.team.name === emp.team)
     ).length;
 
     return {
@@ -361,9 +351,9 @@ const transformDataForCharts = (
   });
 
   const teamWorkload = employees.reduce((acc, emp) => {
-    const empProjects = projects.filter((p) => p.team === emp.team);
+    const empProjects = projects.filter((p) => p.team.name === emp.team);
     const totalBudget = empProjects.reduce((sum, p) => sum + p.budget, 0);
-    const totalCrew = empProjects.reduce((sum, p) => sum + p.crew, 0);
+    const totalCrew = empProjects.reduce((sum, p) => sum + p.totalCrew, 0);
     const avgProjectSize =
       empProjects.length > 0 ? totalBudget / empProjects.length : 0;
 
@@ -394,14 +384,14 @@ const transformDataForCharts = (
       existing.count += 1;
       existing.totalBudget += proj.budget;
       existing.avgBudget = existing.totalBudget / existing.count;
-      existing.totalCrew += proj.crew;
+      existing.totalCrew += proj.totalCrew;
     } else {
       acc.push({
         priority: proj.priority,
         count: 1,
         totalBudget: proj.budget,
         avgBudget: proj.budget,
-        totalCrew: proj.crew,
+        totalCrew: proj.totalCrew,
       });
     }
     return acc;
@@ -460,7 +450,7 @@ const transformDataForCharts = (
 
 export default function Page() {
   const employees = getEmployees();
-  const projects = getProjects();
+  const [projects, setProjects] = useState<Project[]>([]);
   const [searchProject, setSearchProject] = useState("");
 
   const [viewMode, setViewMode] = useState<"projects" | "resources">(
@@ -468,13 +458,35 @@ export default function Page() {
   );
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
   const [selectedProjects, setSelectedProjects] = useState<string[]>([]);
-  const [dateRange, setDateRange] = useState<{
-    from: Date | undefined;
-    to: Date | undefined;
-  }>({
+  const [dateRange, setDateRange] = useState<{ from: Date | undefined, to: Date | undefined }>({
     from: undefined,
     to: undefined,
   });
+
+  useEffect(() => {
+    const fetchProjects = async () => {
+      const token = localStorage.getItem('token')
+      if (!token) return;
+
+      try {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/my/projects/all-actives`, {
+          method: 'GET',
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+        if (!res.ok) throw new Error('Failed to fetch projects');
+
+        const fetched: ApiResponse<Project[]> = await res.json()
+        if (!fetched.success || !fetched.data) throw new Error(fetched.message || 'Failed to fetch projects');
+
+        setProjects(fetched.data);
+      } catch (error) {
+        console.error("Error fetching projects:", error);
+        toast.error(error instanceof Error ? error.message : 'Error fetching projects');
+      }
+    }
+
+    fetchProjects()
+  }, [])
 
   const filteredProjects = useMemo(() => {
     let data = projects;
@@ -506,7 +518,7 @@ export default function Page() {
     }
 
     if (filteredProjects.length < projects.length) {
-      const projectTeams = new Set(filteredProjects.map((p) => p.team));
+      const projectTeams = new Set(filteredProjects.map((p) => p.team.name));
       data = data.filter((emp) => projectTeams.has(emp.team));
     }
 
@@ -597,7 +609,7 @@ export default function Page() {
     const avgBudgetPerProject =
       filteredProjects.length > 0 ? totalBudget / filteredProjects.length : 0;
     const highPriorityProjects = filteredProjects.filter(
-      (p) => p.priority === "Critical" || p.priority === "High"
+      (p) => p.priority === "CRITICAL" || p.priority === "HIGH"
     );
 
     return [
@@ -685,13 +697,13 @@ export default function Page() {
       (emp) => emp.status === "Active"
     );
     const totalCrewNeeded = filteredProjects.reduce(
-      (sum, p) => sum + p.crew,
+      (sum, p) => sum + p.totalCrew,
       0
     );
     const utilizationRate =
       totalEmployees > 0 ? (totalCrewNeeded / totalEmployees) * 100 : 0;
     const availableEmployees = activeEmployees.filter((emp) => {
-      const empProjects = filteredProjects.filter((p) => p.team === emp.team);
+      const empProjects = filteredProjects.filter((p) => p.team.name === emp.team);
       return empProjects.length === 0;
     });
 
@@ -742,10 +754,10 @@ export default function Page() {
         desc: filteredEmployees
           .reduce((acc, emp) => {
             const empProjects = filteredProjects.filter(
-              (p) => p.team === emp.team
+              (p) => p.team.name === emp.team
             );
             const totalCrewNeeded = empProjects.reduce(
-              (sum, p) => sum + p.crew,
+              (sum, p) => sum + p.totalCrew,
               0
             );
 
@@ -771,7 +783,7 @@ export default function Page() {
         value:
           filteredEmployees
             .filter((emp) =>
-              new Set(filteredProjects.map((p) => p.team)).has(emp.team)
+              new Set(filteredProjects.map((p) => p.team.name)).has(emp.team)
             )
             .reduce((acc, emp) => {
               const existing = acc.find((item) => item.label === emp.role);
@@ -788,7 +800,7 @@ export default function Page() {
         color: "text-blue-600",
         desc: filteredEmployees
           .filter((emp) =>
-            new Set(filteredProjects.map((p) => p.team)).has(emp.team)
+            new Set(filteredProjects.map((p) => p.team.name)).has(emp.team)
           )
           .reduce((acc, emp) => {
             const existing = acc.find((item) => item.label === emp.role);
@@ -881,51 +893,6 @@ export default function Page() {
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button
-              variant="outline"
-              className="gap-1 h-10 bg-white"
-              data-testid="role-filter-button"
-            >
-              <Filter className="h-4 w-4" />
-              Role ({selectedRoles.length || "All"})
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            className="w-56"
-            data-testid="role-filter-dropdown"
-          >
-            <DropdownMenuLabel>Filter by Role</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuCheckboxItem
-              checked={selectedRoles.length === 0}
-              onCheckedChange={() => setSelectedRoles([])}
-              data-testid="role-filter-all-item"
-            >
-              All Roles
-            </DropdownMenuCheckboxItem>
-            {uniqueRoles.slice(1).map((role) => (
-              <DropdownMenuCheckboxItem
-                key={role}
-                checked={selectedRoles.includes(role)}
-                onCheckedChange={(checked) => {
-                  setSelectedRoles(
-                    checked
-                      ? [...selectedRoles, role]
-                      : selectedRoles.filter((item) => item !== role)
-                  );
-                }}
-                data-testid={`role-filter-item-${role
-                  .toLowerCase()
-                  .replace(/\s/g, "-")}`}
-              >
-                {role}
-              </DropdownMenuCheckboxItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
             <Button variant="outline" className="gap-1 h-10 bg-white">
               <Filter className="w-4 h-4" />
               Project ({selectedProjects.length || "All"})
@@ -977,10 +944,7 @@ export default function Page() {
         </DropdownMenu>
       </div>
 
-      <div
-        className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-3"
-        data-testid="summary-cards-container"
-      >
+      <div data-testid="summary-cards-container" className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-3">
         {(viewMode === "projects" ? projectSummary : resourceSummary).map(
           (item, i) => (
             <Card
@@ -1019,7 +983,7 @@ export default function Page() {
                         className="flex justify-between items-center gap-1"
                       >
                         <span className="text-gray-600 truncate flex-1 text-xs">
-                          {d.label}
+                          {d.label instanceof Object ? d.label.name : d.label}
                         </span>
                         <span
                           className={`font-semibold ${
