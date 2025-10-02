@@ -89,8 +89,7 @@ const generateDummyProject = (): Project => {
   return { id: 1, name: 'Project Alpha', stages }
 }
 
-export default function ProjectTimeline() {
-  const [project, setProject] = useState<Project>(generateDummyProject)
+export default function ProjectTimeline({ project }: { project: Project }) {
   const dayWidth = 32
   const tasks = project.stages.flatMap(s => s.tasks)
 
@@ -308,7 +307,7 @@ export default function ProjectTimeline() {
 
                         return (
                           <Tooltip key={task.id}>
-                            <TooltipTrigger asChild> 
+                            <TooltipTrigger asChild>
                               <div
                                 draggable
                                 onMouseDown={(e) => handleMouseDown(task, e)}

@@ -45,58 +45,37 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Label } from "@/components/ui/label"
 import { Search, Plus, MoreHorizontal, Edit, Trash2, Calendar, Users, Target, Clock, Filter } from "lucide-react"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import type { ProjectRow } from "@/types/project"
 import rawProjects from "@/data/projects.json"
-import type { ProjectCategory, ProjectPriority } from "@/types/common"
+import { ProjectCategory, projectCategoryOpt, ProjectPriority, projectPriorityOpt } from "@/types/common"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { toast } from "sonner"
 import { Toaster } from "@/components/ui/sonner"
-import { AddProjectForm } from "@/components/project/AddProjectForm"
 import ProjectTimeline from "@/components/ProjectTimeline"
 import { useRouter } from "next/navigation"
-
-export const PROJECT_CATEGORY_OPTIONS = ["Small", "Medium", "Big"] as const;
-export const PROJECT_PRIORITY_OPTIONS = [
-  "Low",
-  "Medium",
-  "High",
-  "Critical",
-] as const;
-export const TEAM_OPTIONS = ["DMA", "NCM", "CRM", "CM", "FRM", "RRM"] as const;
+import { TeamInfo } from "@/types/employee";
+import { ApiResponse } from "@/types/api";
+import { Project } from "@/types/projects";
 
 const getCategoryColor = (category: ProjectCategory) => {
   switch (category) {
-    case "Small":
-      return "bg-blue-100 text-blue-800";
-    case "Medium":
-      return "bg-green-100 text-green-800";
-    case "Big":
-      return "bg-yellow-100 text-yellow-800";
+    case "SM": return "bg-blue-100 text-blue-800";
+    case "MD": return "bg-green-100 text-green-800";
+    case "LG": return "bg-yellow-100 text-yellow-800";
   }
 };
 
 const getPriorityColor = (priority: ProjectPriority) => {
   switch (priority) {
-    case "Low":
-      return "bg-green-100 text-green-800";
-    case "Medium":
-      return "bg-yellow-100 text-yellow-800";
-    case "High":
-      return "bg-orange-100 text-orange-800";
-    case "Critical":
-      return "bg-red-100 text-red-800";
+    case "LOW":      return "bg-green-100 text-green-800";
+    case "MEDIUM":   return "bg-yellow-100 text-yellow-800";
+    case "HIGH":     return "bg-orange-100 text-orange-800";
+    case "CRITICAL": return "bg-red-100 text-red-800";
   }
 };
 
 const colors = [
-  "bg-red-500",
-  "bg-blue-500",
-  "bg-green-500",
-  "bg-yellow-500",
-  "bg-purple-500",
-  "bg-pink-500",
-  "bg-indigo-500",
-  "bg-orange-500",
+  "bg-red-500", "bg-blue-500", "bg-green-500", "bg-yellow-500",
+  "bg-purple-500", "bg-pink-500", "bg-indigo-500", "bg-orange-500",
 ]
 
 const formatRupiah = (n: number) => {
@@ -114,22 +93,47 @@ type ActiveDialog = "add" | "detail" | "timeline" | null;
 export default function ProjectsPage() {
   const router = useRouter();
   const [activeDialog, setActiveDialog] = useState<ActiveDialog>(null);
-  const [selectedProject, setSelectedProject] = useState<ProjectRow | null>(
-    null
-  );
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
 
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [selectedPriorities, setSelectedPriorities] = useState<string[]>([]);
   const [selectedTeams, setSelectedTeams] = useState<string[]>([]);
 
-  const [projects, setProjects] = useState<ProjectRow[]>(() => rawProjects as ProjectRow[])
+  const [projects, setProjects] = useState<Project[]>([])
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [globalFilter, setGlobalFilter] = useState("")
   const [currentPage, setCurrentPage] = useState(1);
 
+  const [teams, setTeams] = useState<TeamInfo[]>([])
+  useEffect(() => {
+    const fetchTeams = async () => {
+      const token = localStorage.getItem('token')
+      if (!token) throw new Error('You are not authenticated')
+
+      try {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/my/teams/as-dropdown`, {
+          method: 'GET',
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+        });
+        if (!res.ok)
+          throw new Error('Failed to fetch teams');
+
+        const fetched: ApiResponse<TeamInfo[]> = await res.json();
+        if (!fetched.success || !fetched.data)
+          throw new Error(fetched.message || 'Failed to fetch teams');
+
+        setTeams(fetched.data.sort((a, b) => a.name.localeCompare(b.name)));
+      } catch (err) {
+        console.error('Error fetching teams:', err)
+        toast.error(err instanceof Error ? err.message : 'An error occurred while fetching teams')
+      }
+    }
+    fetchTeams()
+  }, [])
+
   const handleArchive = useCallback(
-    (project: ProjectRow) => {
+    (project: Project) => {
       const stored = JSON.parse(
         localStorage.getItem("archivedProjects") || "[]"
       );
@@ -146,7 +150,7 @@ export default function ProjectsPage() {
     [router, setProjects]
   );
 
-  const columns = useMemo<ColumnDef<ProjectRow>[]>(() => [
+  const columns = useMemo<ColumnDef<Project>[]>(() => [
     { accessorKey: "code", header: "Project Code", enableGlobalFilter: true,
       cell: ({ row }) => <div className="font-mono">{row.getValue("code")}</div> },
     { accessorKey: "name", header: "Name", enableGlobalFilter: true,
@@ -302,10 +306,10 @@ export default function ProjectsPage() {
       totalProjects: projects.length,
       totalBudget: projects.reduce((sum, p) => sum + p.budget, 0),
       bigSizedRatio: projects.length
-        ? projects.filter((p) => p.category === "Big").length / projects.length
+        ? projects.filter((p) => p.category === "LG").length / projects.length
         : 0,
       criticalPriorityRatio: projects.length
-        ? projects.filter((p) => p.priority === "Critical").length /
+        ? projects.filter((p) => p.priority === "CRITICAL").length /
           projects.length
         : 0,
     }),
@@ -324,17 +328,17 @@ export default function ProjectsPage() {
           setGlobalFilter={setGlobalFilter}
           filters={{
             categories: {
-              options: PROJECT_CATEGORY_OPTIONS,
+              options: projectCategoryOpt,
               selected: selectedCategories,
               onChange: handleCategoryChange,
             },
             priorities: {
-              options: PROJECT_PRIORITY_OPTIONS,
+              options: projectPriorityOpt,
               selected: selectedPriorities,
               onChange: handlePriorityChange,
             },
             teams: {
-              options: TEAM_OPTIONS,
+              options: teams,
               selected: selectedTeams,
               onChange: handleTeamChange,
             },
@@ -385,27 +389,19 @@ export default function ProjectsPage() {
       </Card>
 
       {/* Dialogs */}
-      <ProjectDetailDialog
-        project={selectedProject}
-        isOpen={activeDialog === "detail"}
-        onClose={handleCloseDialog}
-      />
-      <ProjectTimelineDialog
-        project={selectedProject}
-        isOpen={activeDialog === "timeline"}
-        onClose={() => setActiveDialog(null)}
-      />
+      {selectedProject && (
+        <ProjectDetailDialog project={selectedProject} isOpen={activeDialog === 'detail'} onClose={handleCloseDialog} />
+      )}
+      {/* {selectedProject && (
+        <ProjectTimelineDialog project={selectedProject} isOpen={activeDialog === "timeline"} onClose={() => setActiveDialog(null)} />
+      )} */}
 
       <Toaster position="top-center" />
     </div>
   );
 }
 
-const PageHeader = ({
-  onAddProject,
-}: {
-  onAddProject: (e: MouseEvent) => void;
-}) => (
+const PageHeader = ({ onAddProject }: { onAddProject: (e: MouseEvent) => void }) => (
   <div className="flex items-center justify-between">
     <div>
       <h1 className="text-3xl font-bold" data-testid="page-title">Projects</h1>
@@ -578,29 +574,7 @@ const ProjectsDataTable = ({ table, columns, paginatedRows }: { table: any; colu
   </ScrollArea>
 )
 
-const AddProjectDialog = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => (
-  <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-    <DialogContent className="sm:max-w-[425px]" data-testid="add-project-dialog">
-      <DialogHeader>
-        <DialogTitle>Add New Project</DialogTitle>
-        <DialogDescription>Create a new project to track progress and manage resources.</DialogDescription>
-      </DialogHeader>
-      <AddProjectForm onCancel={onClose} />
-    </DialogContent>
-  </Dialog>
-)
-
-const ProjectDetailDialog = ({
-  project,
-  isOpen,
-  onClose,
-}: {
-  project: ProjectRow | null;
-  isOpen: boolean;
-  onClose: () => void;
-}) => {
-  if (!project) return null;
-
+const ProjectDetailDialog = ({ project, isOpen, onClose }: { project: Project, isOpen: boolean, onClose: () => void }) => {
   const workloadData = {
     totalEstimated: 2400,
     allocatedFTE: 2050,
@@ -610,32 +584,32 @@ const ProjectDetailDialog = ({
   };
 
   const subactivities = [
-  {
-    name: "UI Design",
-    role: "System Analyst",
-    workload: 120,
-    employees: [
-      { name: "Alice", imageUrl: "" },
-      { name: "Bob", imageUrl: "" },
-      { name: "Charlie", imageUrl: "" },
-      { name: "Diana", imageUrl: "" },
-    ],
-    fte: "0.8x",
-    startDate: "15/02/25",
-    endDate: "28/02/25",
-    status: "In Progress",
-  },
-  {
-    name: "API Dev",
-    role: "Data Engineer",
-    workload: 200,
-    employees: [{ name: "Charlie", imageUrl: "" }],
-    fte: "1.2x",
-    startDate: "15/03/25",
-    endDate: "29/03/25",
-    status: "Pending",
-  },
-]
+    {
+      name: "UI Design",
+      role: "System Analyst",
+      workload: 120,
+      employees: [
+        { name: "Alice", imageUrl: "" },
+        { name: "Bob", imageUrl: "" },
+        { name: "Charlie", imageUrl: "" },
+        { name: "Diana", imageUrl: "" },
+      ],
+      fte: "0.8x",
+      startDate: "15/02/25",
+      endDate: "28/02/25",
+      status: "In Progress",
+    },
+    {
+      name: "API Dev",
+      role: "Data Engineer",
+      workload: 200,
+      employees: [{ name: "Charlie", imageUrl: "" }],
+      fte: "1.2x",
+      startDate: "15/03/25",
+      endDate: "29/03/25",
+      status: "Pending",
+    },
+  ]
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -689,7 +663,7 @@ const ProjectDetailDialog = ({
               <Label className="text-sm font-medium text-muted-foreground">
                 Crew
               </Label>
-              <p className="text-sm">{project.crew} members</p>
+              <p className="text-sm">{project.totalCrew} members</p>
             </div>
 
             <div className="space-y-1">
@@ -711,7 +685,7 @@ const ProjectDetailDialog = ({
             <Label className="text-sm font-medium text-muted-foreground">
               Assigned Team
             </Label>
-            <p className="text-sm">{project.team}</p>
+            <p className="text-sm">{project.team.name}</p>
           </div>
 
           <div className="grid grid-cols-2 gap-8">
@@ -840,28 +814,18 @@ const ProjectDetailDialog = ({
   );
 };
 
-const ProjectTimelineDialog = ({
-  project,
-  isOpen,
-  onClose,
-}: {
-  project: ProjectRow;
-  isOpen: boolean;
-  onClose: () => void;
-}) => {
-  if (!project) return null;
-
-  return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-7xl" data-testid="project-timeline-dialog">
-        <DialogHeader>
-          <DialogTitle>Timeline: {project.name}</DialogTitle>
-          <DialogDescription>Visualisasi timeline</DialogDescription>
-        </DialogHeader>
-        <div className="py-4 overflow-x-auto">
-          <ProjectTimeline project={project} />
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-};
+// const ProjectTimelineDialog = ({ project, isOpen, onClose }: { project: Project, isOpen: boolean, onClose: () => void }) => {
+//   return (
+//     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+//       <DialogContent className="sm:max-w-7xl" data-testid="project-timeline-dialog">
+//         <DialogHeader>
+//           <DialogTitle>Timeline: {project.name}</DialogTitle>
+//           <DialogDescription>Visualisasi timeline</DialogDescription>
+//         </DialogHeader>
+//         <div className="py-4 overflow-x-auto">
+//           <ProjectTimeline project={project} />
+//         </div>
+//       </DialogContent>
+//     </Dialog>
+//   );
+// };

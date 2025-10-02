@@ -38,11 +38,14 @@ import { GanttToolbar, FteViewMode } from "./GanttToolbar";
 
 import { initialProjectData } from "@/data/projects";
 import { useProject, useProjectDetails } from "@/hooks/projects/use-project";
-import { projectCategories, projectPriorities, teams } from "@/types/common";
+import { projectCategoryOpt, projectPriorityOpt } from "@/types/common";
 import { ProjectPlannerSkeleton } from "./ProjectPlannerSkeleton";
 import { NewItemButton } from "./NewItemButton";
 import { SubActivityForm } from "./SubActivityForm";
 import { ProjectActivity, ProjectSubActivity } from "@/types/projects";
+import { TeamInfo } from "@/types/employee";
+import { ApiResponse } from "@/types/api";
+import { toast } from "sonner";
 
 type ProjectPlannerProps = {
   onNext: () => void;
@@ -66,6 +69,33 @@ export function ProjectCreatePage({ onNext }: ProjectPlannerProps) {
     resetProject,
     initializeProject,
   } = useProject();
+  const [teams, setTeams] = useState<TeamInfo[]>([])
+
+  useEffect(() => {
+    const fetchTeams = async () => {
+      const token = localStorage.getItem('token')
+      if (!token) throw new Error('You are not authenticated')
+
+      try {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/my/teams/as-dropdown`, {
+          method: 'GET',
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+        });
+        if (!res.ok)
+          throw new Error('Failed to fetch teams');
+
+        const fetched: ApiResponse<TeamInfo[]> = await res.json();
+        if (!fetched.success || !fetched.data)
+          throw new Error(fetched.message || 'Failed to fetch teams');
+
+        setTeams(fetched.data.sort((a, b) => a.name.localeCompare(b.name)));
+      } catch (err) {
+        console.error('Error fetching teams:', err)
+        toast.error(err instanceof Error ? err.message : 'An error occurred while fetching teams')
+      }
+    }
+    fetchTeams()
+  }, [])
 
   const formatBudgetValue = (value: string) => {
     const rawValue = value.replace(/\D/g, "");
@@ -110,7 +140,7 @@ export function ProjectCreatePage({ onNext }: ProjectPlannerProps) {
     } else {
       setIsLoading(false);
     }
-    
+
   }, [initializeProject, activities.length]);
 
   if (isLoading) {
@@ -144,8 +174,8 @@ export function ProjectCreatePage({ onNext }: ProjectPlannerProps) {
                 </SelectTrigger>
                 <SelectContent>
                   {teams.map((team) => (
-                    <SelectItem key={team} value={team}>
-                      {team}
+                    <SelectItem key={team.id} value={team.id.toString()}>
+                      {team.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -182,7 +212,7 @@ export function ProjectCreatePage({ onNext }: ProjectPlannerProps) {
                   <SelectValue placeholder="Select priority" />
                 </SelectTrigger>
                 <SelectContent>
-                  {projectPriorities.map((priority) => (
+                  {projectPriorityOpt.map((priority) => (
                     <SelectItem key={priority} value={priority}>
                       {priority}
                     </SelectItem>
@@ -200,7 +230,7 @@ export function ProjectCreatePage({ onNext }: ProjectPlannerProps) {
                   <SelectValue placeholder="Select category" />
                 </SelectTrigger>
                 <SelectContent>
-                  {projectCategories.map((c) => (
+                  {projectCategoryOpt.map((c) => (
                     <SelectItem key={c} value={c.toLowerCase()}>
                       {c}
                     </SelectItem>

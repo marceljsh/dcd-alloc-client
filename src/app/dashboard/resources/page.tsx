@@ -1,12 +1,11 @@
 "use client";
 
-import { ComponentType, ReactNode, useMemo, useState,useRef, useEffect } from "react"
+import { ComponentType, ReactNode, useMemo, useState, useRef, useEffect } from "react"
 import {
   ColumnDef,
   flexRender,
   getCoreRowModel,
-  getFilteredRowModel,
-  getSortedRowModel,
+  getPaginationRowModel,
   useReactTable,
   SortingState,
   ColumnFiltersState,
@@ -36,7 +35,7 @@ import {
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Search, Plus, MoreHorizontal, Edit, Trash2, Mail, Phone, Calendar, MapPin, Filter, Table2, Grid3X3 } from "lucide-react"
-import { formatRole, initials } from "@/lib/strings"
+import { formatEmploymentStatus, formatLevel, formatRole, initials } from "@/lib/strings"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { toast } from "sonner"
 import { DateRangePicker } from "@/components/ui/date-range-picker"
@@ -59,7 +58,7 @@ import {
   PaginationPrevious,
   PaginationNext,
 } from "@/components/ui/pagination";
-import { EmployeeLevel, employeeLevelOpt, EmployeeRole, employeeRoleOpt, EmploymentStatus, employmentStatusOpt } from "@/types/common"
+import { EmployeeLevel, employeeLevelOpt, EmployeeRole, employeeRoleOpt, EmploymentStatus, employmentStatusOpt, ProjectCategory, ProjectPriority } from "@/types/common"
 import rawEmployees from "@/data/employees.json"
 import { Contract, Employee, EmployeeDetail, RawEmployee, RawEmployeeDetails } from "@/types/employee"
 import { AddEmployeeFormValues, AddEmployeeForm } from "@/components/employee/AddEmployeeForm"
@@ -70,14 +69,29 @@ import { ApiResponse, Paging } from "@/types/api";
 import { mapRawToEmployee, mapRawToEmployeeDetails } from "@/lib/mapper";
 
 type ViewMode = "table" | "heatmap";
+type EnumColumns =
+| EmployeeRole
+| EmployeeLevel
+| EmploymentStatus
+| ProjectCategory
+| ProjectPriority;
+
+/**
+ * NOTE:
+ * - This file implements server-side paging/sorting/filtering.
+ * - Endpoint builder uses NEXT_PUBLIC_API_URL if set, else falls back to "http://localhost".
+ * - Server query params: page (0-based), size, sort=field,asc (repeatable), keyword=<string>
+ */
 
 export default function ResourcesPage() {
+  // main data
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [employeeToDelete, setEmployeeToDelete] = useState<Employee | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("table");
 
+  // UI filters (these drive the keyword for server)
   const [selectedRoles, setSelectedRoles] = useState<EmployeeRole[]>([])
   const [selectedLevels, setSelectedLevels] = useState<EmployeeLevel[]>([])
   const [selectedStatuses, setSelectedStatuses] = useState<EmploymentStatus[]>([])
@@ -86,10 +100,37 @@ export default function ResourcesPage() {
       to: undefined,
   })
 
+  // --- Server-side table state (TanStack) ---
   const [sorting, setSorting] = useState<SortingState>([])
   const [globalFilter, setGlobalFilter] = useState('')
-  const [currentPage, setCurrentPage] = useState(1);
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
+  const [pageIndex, setPageIndex] = useState<number>(0) // 0-based for server
+  const [pageSize, setPageSize] = useState<number>(10)
 
+  // server response bookkeeping
+  const [totalElements, setTotalElements] = useState<number>(0)
+  const [pageCount, setPageCount] = useState<number>(0)
+  const [isLoading, setIsLoading] = useState<boolean>(false)
+
+  // debounce + abort
+  const debounceRef = useRef<number | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+  const SEARCH_DEBOUNCE_MS = 300;
+
+  // helper: build keyword from globalFilter + dropdown filters
+  const keyword = useMemo(() => {
+    const parts: string[] = [];
+    if (globalFilter && globalFilter.trim()) parts.push(globalFilter.trim());
+    // compose role/level/status as field:value tokens
+    selectedRoles.forEach(r => parts.push(`role:${r}`));
+    selectedLevels.forEach(l => parts.push(`level:${l}`));
+    selectedStatuses.forEach(s => parts.push(`status:${s}`));
+    // dateRange if needed (optional, commented)
+    // if (dateRange.from) parts.push(`from:${dateRange.from.toISOString().slice(0,10)}`);
+    return parts.join(" ");
+  }, [globalFilter, selectedRoles, selectedLevels, selectedStatuses]);
+
+  // columns same as before
   const columns = useMemo<ColumnDef<Employee>[]>(
     () => [
       {
@@ -108,8 +149,8 @@ export default function ResourcesPage() {
         cell: ({ row }) => <RoleBadge role={row.original.role} />,
         filterFn: "arrIncludesSome",
       },
-      { accessorKey: "level", header: "Level", filterFn: "arrIncludesSome" },
-      { accessorKey: "team", header: "Team" },
+      { accessorKey: "level", header: "Level", filterFn: "arrIncludesSome", cell: ({ row }) => formatLevel(row.original.level) },
+      { accessorKey: "team", header: "Team", cell: ({ row }) => row.original.team.name },
       {
         accessorKey: "status",
         header: "Status",
@@ -133,15 +174,39 @@ export default function ResourcesPage() {
     [],
   );
 
+  // --- TanStack table: manual (server-side) mode ---
   const table = useReactTable({
     data: employees,
     columns,
-    state: { sorting, globalFilter },
-    onSortingChange: setSorting,
-    onGlobalFilterChange: setGlobalFilter,
+    state: {
+      sorting,
+      globalFilter,
+      columnFilters,
+      pagination: { pageIndex, pageSize },
+    },
+    manualPagination: true,
+    pageCount,
+    manualSorting: true,
+    manualFiltering: true,
+    onSortingChange: (next) => {
+      setSorting(next);
+      setPageIndex(0); // reset
+    },
+    onGlobalFilterChange: (v) => {
+      setGlobalFilter(String(v ?? ""));
+      setPageIndex(0);
+    },
+    onColumnFiltersChange: (next) => {
+      setColumnFilters(next);
+      setPageIndex(0);
+    },
+    onPaginationChange: (updater) => {
+      const next = typeof updater === "function" ? updater({ pageIndex, pageSize }) : updater;
+      setPageIndex(next.pageIndex ?? 0);
+      setPageSize(next.pageSize ?? pageSize);
+    },
     getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
     filterFns: {
       arrIncludesSome: (row, columnId, value) => {
         if (!value || value.length === 0) return true;
@@ -150,18 +215,58 @@ export default function ResourcesPage() {
     },
   });
 
-  const fetchEmployees = async () => {
+  // --- Fetch logic (debounced + abort) ---
+  // Builds URL with page (0-based), size, repeated sort, keyword
+  function buildUrlForFetch({ pageIndex, pageSize, sorting, keyword }: {
+    pageIndex: number;
+    pageSize: number;
+    sorting: SortingState;
+    keyword: string;
+  }) {
+    // prefer NEXT_PUBLIC_API_URL if provided; otherwise use http://localhost
+    const base = process.env.NEXT_PUBLIC_API_URL
+      ? `${process.env.NEXT_PUBLIC_API_URL}/my/employees`
+      : `http://localhost/api/my/employees`;
+
+    const params = new URLSearchParams();
+    params.set("page", String(pageIndex));
+    params.set("size", String(pageSize));
+    for (const s of sorting) {
+      params.append("sort", `${s.id},${s.desc ? "desc" : "asc"}`);
+    }
+    if (keyword && keyword.trim()) params.set("keyword", keyword.trim());
+
+    return `${base}?${params.toString()}`;
+  }
+
+  // The core fetch function (non-debounced). Returns mapped employees and total count.
+  const fetchNow = async (opts?: { pageIndex?: number; pageSize?: number; sorting?: SortingState; keyword?: string }) => {
+    const pIndex = opts?.pageIndex ?? pageIndex;
+    const pSize = opts?.pageSize ?? pageSize;
+    const s = opts?.sorting ?? sorting;
+    const kw = opts?.keyword ?? keyword;
+
     try {
       const token = localStorage.getItem('token')
       if (!token) throw new Error('You are not authenticated')
 
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/my/employees`, {
+      // abort previous immediate fetch if any
+      if (abortRef.current) abortRef.current.abort();
+      const ac = new AbortController();
+      abortRef.current = ac;
+
+      setIsLoading(true);
+
+      const url = buildUrlForFetch({ pageIndex: pIndex, pageSize: pSize, sorting: s, keyword: kw });
+
+      const res = await fetch(url, {
         headers: { Authorization: `Bearer ${token}` },
-      })
+        signal: ac.signal,
+      });
 
       if (!res.ok) {
-        const errText = await res.text()
-        throw new Error(errText || 'Failed to fetch employees')
+        const text = await res.text().catch(() => "");
+        throw new Error(text || `HTTP ${res.status}`);
       }
 
       const fetched: ApiResponse<Paging<RawEmployee>> = await res.json()
@@ -169,28 +274,63 @@ export default function ResourcesPage() {
         throw new Error(fetched.message || 'Failed to fetch employees')
       }
 
-      const mapped: Employee[] = fetched.data.items.map(mapRawToEmployee)
-      setEmployees(mapped)
-    } catch (error) {
-      console.error('Error fetching employees:', error)
-      toast.error(error instanceof Error ? error.message : 'Failed to load employees')
+      const mapped: Employee[] = fetched.data.items.map((r: RawEmployee) => mapRawToEmployee(r));
+      setEmployees(mapped);
+      setTotalElements(fetched.data.meta.totalItems);
+      setPageCount(fetched.data.meta.totalPages);
+    } catch (err: any) {
+      if (err?.name === "AbortError") {
+        // aborted, ignore
+        return;
+      }
+      console.error("Error fetching employees (server-side):", err);
+      toast.error(err instanceof Error ? err.message : "Failed to load employees");
+      setEmployees([]);
+      setTotalElements(0);
+      setPageCount(0);
+    } finally {
+      setIsLoading(false);
     }
+  };
+
+  // Debounced effect so typing/filter/sort/paging triggers fetch with debounce
+  useEffect(() => {
+    if (debounceRef.current) window.clearTimeout(debounceRef.current);
+    debounceRef.current = window.setTimeout(() => {
+      fetchNow({ pageIndex, pageSize, sorting, keyword });
+    }, SEARCH_DEBOUNCE_MS);
+
+    return () => {
+      if (debounceRef.current) window.clearTimeout(debounceRef.current);
+    };
+    // stringify sorting because it's array of objects
+  }, [pageIndex, pageSize, JSON.stringify(sorting), keyword]);
+
+  // initial load
+  useEffect(() => {
+    // immediate load on mount
+    fetchNow({ pageIndex, pageSize, sorting, keyword });
+    // cleanup abort when component unmounts
+    return () => {
+      if (abortRef.current) abortRef.current.abort();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+
+  // The old fetchEmployees is repurposed to trigger a refresh (immediate)
+  const fetchEmployees = async () => {
+    await fetchNow({ pageIndex: 0, pageSize, sorting, keyword });
+    setPageIndex(0);
   }
 
-    const allFilteredAndSortedRows = table.getSortedRowModel().rows
-    const itemsPerPage = 10
-    const totalPages = Math.ceil(allFilteredAndSortedRows.length / itemsPerPage)
-    const paginatedRows = allFilteredAndSortedRows.slice(
-      (currentPage - 1) * itemsPerPage,
-      currentPage * itemsPerPage
-    )
-
+  // Add / Delete still call API and then refresh
   const handleAddEmployee = async (data: AddEmployeeFormValues) => {
     try {
       const token = localStorage.getItem('token')
       if (!token) throw new Error('You are not authenticated')
 
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/employees`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost'}/employees`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -212,7 +352,9 @@ export default function ResourcesPage() {
       setIsAddDialogOpen(false)
       toast.success(`${data.name} has been added`)
 
-      await fetchEmployees()
+      // refresh from server (go to first page)
+      setPageIndex(0);
+      await fetchNow({ pageIndex: 0, pageSize, sorting, keyword });
     } catch (error) {
       console.error('Error adding employee:', error)
       toast.error(error instanceof Error ? error.message : 'Failed to add employee')
@@ -224,7 +366,7 @@ export default function ResourcesPage() {
       const token = localStorage.getItem('token')
       if (!token) throw new Error('You are not authenticated')
 
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/employees/${employee.id}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost'}/employees/${employee.id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       })
@@ -236,19 +378,32 @@ export default function ResourcesPage() {
       toast.success(`${employee.name} has been removed.`)
       setEmployeeToDelete(null)
 
-      await fetchEmployees()
+      // refresh current page (ensure valid pageIndex)
+      const newPageIndex = Math.min(pageIndex, Math.max(0, pageCount - 1));
+      setPageIndex(newPageIndex)
+      await fetchNow({ pageIndex: newPageIndex, pageSize, sorting, keyword })
     } catch (error) {
       console.error('Error deleting employee:', error)
       toast.error(error instanceof Error ? error.message : `Failed to delete employee ${employee.name}`)
     }
   }
 
-  const handleDropdownFilterChange = (
-    setter: React.Dispatch<React.SetStateAction<string[]>>
-  ) => (value: string, checked: boolean) => {
-    setter(prev =>
-      checked ? [...prev, value] : prev.filter(item => item !== value)
-    );
+  // UI helper: dropdown filter setter
+  function handleDropdownFilterChange<T extends string>(
+    setter: React.Dispatch<React.SetStateAction<T[]>>
+  ) {
+    return (value: T, checked: boolean) => {
+      setter((prev) =>
+        checked ? [...prev, value] : prev.filter((item) => item !== value)
+      );
+      setPageIndex(0);
+    };
+  }
+
+  // Pagination UI binding: display is 1-based
+  const handlePageChange = (pageOneBased: number) => {
+    const newIndex = Math.max(0, pageOneBased - 1);
+    if (newIndex !== pageIndex) setPageIndex(newIndex);
   }
 
   return (
@@ -276,7 +431,7 @@ export default function ResourcesPage() {
           value={
             <>
             {employees.filter((emp) => emp.status === 'CR').length}
-            <span className="text-base font-normal">{` / ${employees.length}`}</span>
+            <span className="text-base font-normal">{` / ${totalElements}`}</span>
             </>
           }
           description="Members"
@@ -333,98 +488,104 @@ export default function ResourcesPage() {
               label="Role"
               options={employeeRoleOpt}
               selected={selectedRoles}
-              onChange={handleRoleFilterChange}
+              onChange={handleDropdownFilterChange(setSelectedRoles)}
             />
             <FilterDropdown
               label="Level"
               options={employeeLevelOpt}
               selected={selectedLevels}
-              onChange={handleLevelFilterChange}
+              onChange={handleDropdownFilterChange(setSelectedLevels)}
             />
             <FilterDropdown
               label="Status"
               options={employmentStatusOpt}
               selected={selectedStatuses}
-              onChange={handleStatusFilterChange}
+              onChange={handleDropdownFilterChange(setSelectedStatuses)}
             />
             <div className="relative">
               <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search resources..."
                 value={globalFilter}
-                onChange={(e) => setGlobalFilter(e.target.value)}
+                onChange={(e) => {
+                  setGlobalFilter(e.target.value);
+                }}
                 className="pl-8"
               />
             </div>
           </div>
         </CardHeader>
         <CardContent>
-              {viewMode === "heatmap" ? (
-                <div className="relative rounded-md">
-                  <EmployeeHeatmap
-                    selectedStartDate={dateRange.from}
-                    selectedEndDate={dateRange.to}
-                    employees={employees.map(emp => ({
-                      ...emp,
-                      utilization: Math.random() * 100,
-                      currentProjects: [],
-                      hoursThisWeek: 0,
-                    }))}
-                  />
-                </div>
-              )  : (
-              <Table>
-                <TableHeader className="sticky top-0 z-10 bg-background shadow-sm">
-                  {table.getHeaderGroups().map((headerGroup) => (
-                    <TableRow key={headerGroup.id} className="hover:bg-white">
-                      {headerGroup.headers.map((header) => (
-                        <TableHead
-                          key={header.id}
-                          className={
-                            header.column.getCanSort()
-                              ? "cursor-pointer select-none"
-                              : ""
-                          }
-                          onClick={header.column.getToggleSortingHandler()}
-                        >
-                          <div className="flex items-center gap-2">
-                            {flexRender(
-                              header.column.columnDef.header,
-                              header.getContext(),
-                            )}
-                            {{ asc: "▲", desc: "▼" }[
-                              header.column.getIsSorted() as string
-                            ] ?? null}
-                          </div>
-                        </TableHead>
-                      ))}
-                    </TableRow>
-                  ))}
-                </TableHeader>
-                <TableBody>
-                {paginatedRows?.length ? (
-                  paginatedRows.map(row => (
-                    <TableRow key={row.id}>
-                      {row.getVisibleCells().map(cell => (
-                    <TableCell key={cell.id}>
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
-                  ) : (
-                    <TableRow>
-                      <TableCell
-                        colSpan={columns.length}
-                        className="h-24 text-center"
+          {viewMode === "heatmap" ? (
+            <div className="relative rounded-md">
+              <EmployeeHeatmap
+                selectedStartDate={dateRange.from}
+                selectedEndDate={dateRange.to}
+                employees={employees.map(emp => ({
+                  ...emp,
+                  utilization: Math.random() * 100,
+                  currentProjects: [],
+                  hoursThisWeek: 0,
+                }))}
+              />
+            </div>
+          ) : (
+            <Table>
+              <TableHeader className="sticky top-0 z-10 bg-background">
+                {table.getHeaderGroups().map((headerGroup) => (
+                  <TableRow key={headerGroup.id} className="hover:bg-white">
+                    {headerGroup.headers.map((header) => (
+                      <TableHead
+                        key={header.id}
+                        className={
+                          header.column.getCanSort()
+                            ? "cursor-pointer select-none"
+                            : ""
+                        }
+                        onClick={header.column.getToggleSortingHandler()}
                       >
-                        No results.
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            )}
+                        <div className="flex items-center gap-2">
+                          {flexRender(
+                            header.column.columnDef.header,
+                            header.getContext(),
+                          )}
+                          {{ asc: "▲", desc: "▼" }[
+                            header.column.getIsSorted() as string
+                          ] ?? null}
+                        </div>
+                      </TableHead>
+                    ))}
+                  </TableRow>
+                ))}
+              </TableHeader>
+              <TableBody>
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={columns.length} className="h-24 text-center">Loading…</TableCell>
+                </TableRow>
+              ) : table.getRowModel().rows?.length ? (
+                table.getRowModel().rows.map(row => (
+                  <TableRow key={row.id}>
+                    {row.getVisibleCells().map(cell => (
+                  <TableCell key={cell.id}>
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                  </TableCell>
+                ))}
+              </TableRow>
+            ))
+                ) : (
+                  <TableRow>
+                    <TableCell
+                      colSpan={columns.length}
+                      className="h-24 text-center"
+                    >
+                      No results.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
 
         {viewMode === 'table' && (
@@ -433,17 +594,17 @@ export default function ResourcesPage() {
               <PaginationContent>
                 <PaginationItem>
                   <PaginationPrevious
-                    onClick={() => handlePageChange(currentPage - 1)}
-                    aria-disabled={currentPage === 1}
-                    tabIndex={currentPage === 1 ? -1 : undefined}
-                    className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
+                    onClick={() => handlePageChange((pageIndex + 1) - 1)}
+                    aria-disabled={pageIndex === 0}
+                    tabIndex={pageIndex === 0 ? -1 : undefined}
+                    className={pageIndex === 0 ? "pointer-events-none opacity-50" : ""}
                   />
                 </PaginationItem>
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                {Array.from({ length: pageCount }, (_, i) => i + 1).map((page) => (
                   <PaginationItem key={page}>
                     <PaginationLink
                       onClick={() => handlePageChange(page)}
-                      isActive={page === currentPage}
+                      isActive={page === pageIndex + 1}
                     >
                       {page}
                     </PaginationLink>
@@ -451,14 +612,17 @@ export default function ResourcesPage() {
                 ))}
                 <PaginationItem>
                   <PaginationNext
-                    onClick={() => handlePageChange(currentPage + 1)}
-                    aria-disabled={currentPage === totalPages}
-                    tabIndex={currentPage === totalPages ? -1 : undefined}
-                    className={currentPage === totalPages ? "pointer-events-none opacity-50" : ""}
+                    onClick={() => handlePageChange((pageIndex + 1) + 1)}
+                    aria-disabled={pageIndex + 1 === pageCount || pageCount === 0}
+                    tabIndex={pageIndex + 1 === pageCount ? -1 : undefined}
+                    className={pageIndex + 1 === pageCount ? "pointer-events-none opacity-50" : ""}
                   />
                 </PaginationItem>
               </PaginationContent>
             </Pagination>
+            <div className="mt-2 text-sm text-muted-foreground">
+              Showing page {pageIndex + 1} of {pageCount} — total {totalElements} items
+            </div>
           </div>
         )}
       </Card>
@@ -480,6 +644,8 @@ export default function ResourcesPage() {
     </div>
   );
 }
+
+/* ---------- helper components unchanged ---------- */
 
 const getRoleColor = (role: EmployeeRole): string => {
   switch (role) {
@@ -600,13 +766,13 @@ const IdentityCell = ({ employee }: { employee: Employee }) => (
 
 const RoleBadge = ({ role }: { role: EmployeeRole }) => (
   <Badge variant="outline" className={getRoleColor(role)}>
-    {role}
+    {formatRole(role)}
   </Badge>
 );
 
 const StatusBadge = ({ status }: { status: EmploymentStatus }) => (
   <Badge variant="outline" className={getStatusColor(status)}>
-    {status}
+    {formatEmploymentStatus(status)}
   </Badge>
 );
 
@@ -705,7 +871,7 @@ const EmployeeDetailDialog = ({ employee, onClose }: { employee: Employee, onClo
         const token = localStorage.getItem('token')
         if (!token) throw new Error('You are not authenticated')
 
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/employees/${employee.id}/detail`, {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost'}/employees/${employee.id}/detail`, {
           headers: { 'Authorization': `Bearer ${token}` },
         })
 
