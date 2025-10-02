@@ -1,4 +1,4 @@
-import { EmployeeLevel, EmployeeRole, EmploymentStatus } from "@/types/common";
+import { EmployeeLevel, EmployeeRole, EmploymentStatus, ProjectCategory, ProjectPriority } from "@/types/common";
 
 export function initials(str: string): string {
   const words = str.split(' ');
@@ -40,5 +40,22 @@ export function formatEmploymentStatus(status: EmploymentStatus): string {
   switch (status) {
     case "CR": return "Contract";
     case "OR": return "Permanent";
+  }
+}
+
+export function formatCategory(category: ProjectCategory): string {
+  switch (category) {
+    case "SM": return "Small";
+    case "MD": return "Medium";
+    case "LG": return "Large";
+  }
+}
+
+export function formatPriority(priority: ProjectPriority): string {
+  switch (priority) {
+    case "LOW": return "Low";
+    case "MEDIUM": return "Medium";
+    case "HIGH": return "High";
+    case "CRITICAL": return "Critical";
   }
 }
