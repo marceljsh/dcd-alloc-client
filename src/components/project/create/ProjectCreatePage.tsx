@@ -51,6 +51,8 @@ import {
   isTeamsCacheValid,
 } from "@/lib/cache/teams";
 import { Project } from "@/lib/data";
+import { useDraftProject } from "@/hooks/projects/use-draft-project";
+import { se } from "date-fns/locale";
 
 type ProjectPlannerProps = {
   onNext: () => void;
@@ -94,6 +96,7 @@ export function ProjectCreatePage({ onNext }: ProjectPlannerProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [viewMode, setViewMode] = useState<FteViewMode>("normal");
   const [showResetDialog, setShowResetDialog] = useState(false);
+  const { data: draftProject } = useDraftProject();
 
   // Function to refresh teams data - exposed for manual refresh if needed
   // Usage: window.refreshTeams() in browser console (for debugging)
@@ -141,7 +144,25 @@ export function ProjectCreatePage({ onNext }: ProjectPlannerProps) {
     closeForm,
     resetProject,
     initializeProject,
+    updateProjectDetails,
   } = useProject();
+
+  React.useEffect(() => {
+    if (draftProject) {
+      initializeProject(draftProject.activities);
+      updateProjectDetails({
+        name: draftProject.name,
+        budget: draftProject.budget.toLocaleString("id-ID"),
+        team: draftProject.team,
+        priority: draftProject.priority as string,
+        category: draftProject.category as string,
+      });
+    } else {
+      // If no draft project, initialize with default data
+      initializeProject(initialProjectData);
+    }
+    setIsLoading(false);
+  }, [draftProject, initializeProject]);
 
   const formatBudgetValue = (value: string) => {
     const rawValue = value.replace(/\D/g, "");
@@ -228,13 +249,11 @@ export function ProjectCreatePage({ onNext }: ProjectPlannerProps) {
   useEffect(() => {
     const token = localStorage.getItem("token");
     const fetchProjectData = async () => {
-      const { data } = (await axios.get(
-        JAVA_SERVER_URL + "/api/my/draft", {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      )) as { data: ProjectCreateResponse };
+      const { data } = (await axios.get(JAVA_SERVER_URL + "/api/my/draft", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })) as { data: ProjectCreateResponse };
     };
 
     fetchProjectData();
@@ -262,7 +281,7 @@ export function ProjectCreatePage({ onNext }: ProjectPlannerProps) {
             </div>
             <div className="space-y-2 col-span-1">
               <Label htmlFor="team">Team</Label>
-              <Select value={projectDetails.team} onValueChange={updateTeam}>
+              <Select value={projectDetails.team.id} onValueChange={updateTeam}>
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select team" />
                 </SelectTrigger>
@@ -325,8 +344,8 @@ export function ProjectCreatePage({ onNext }: ProjectPlannerProps) {
                 </SelectTrigger>
                 <SelectContent>
                   {projectCategories.map((c) => (
-                    <SelectItem key={c} value={c.toLowerCase()}>
-                      {c}
+                    <SelectItem key={c.value} value={c.value}>
+                      {c.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -472,14 +491,6 @@ export function ProjectCreatePage({ onNext }: ProjectPlannerProps) {
             >
               Save as Draft
             </Button>
-            {/* Uncomment this if you need manual refresh teams button */}
-            {/* <Button
-              variant="outline"
-              onClick={refreshTeamsData}
-              size="sm"
-            >
-              Refresh Teams
-            </Button> */}
             <Button
               onClick={onNext}
               className="px-8 bg-black hover:bg-gray-800"

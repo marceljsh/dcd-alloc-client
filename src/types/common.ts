@@ -9,9 +9,24 @@ export const employeeRoles = [
 
 export const employeeLevels = ["Junior", "Middle", "Senior"] as const;
 export const employmentStatuses = ["Contract", "Permanent"] as const;
-export const projectCategories = ["Small", "Medium", "Big"] as const;
-export const projectPriorities = ["Low", "Medium", "High", "Critical"] as const;
+// export const projectCategories = ["Small", "Medium", "Big"] as const;
+export const projectPriorities = ["LOW", "MEDIUM", "HIGH", "CRITICAL"] as const;
 export const teams = ["DMA", "NCM", "CRM", "CM", "FRM", "RRM"] as const;
+
+export const projectCategories = [
+  {
+    label: "Small",
+    value: "SM",
+  },
+  {
+    label: "Medium",
+    value: "MD",
+  },
+  {
+    label: "Large",
+    value: "LG",
+  },
+];
 
 export type EmployeeRole = (typeof employeeRoles)[number];
 export type EmployeeLevel = (typeof employeeLevels)[number];
@@ -43,3 +58,8 @@ export interface StageWithTasks extends StageRow {
 export interface ProjectWithStages extends ProjectRow {
   stages: StageWithTasks[];
 }
+
+export type Team = {
+  id: string;
+  name: string;
+};

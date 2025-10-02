@@ -25,7 +25,10 @@ interface DateRange {
 interface ProjectDetails {
   name: string;
   budget: string;
-  team: string;
+  team: {
+    id: string;
+    name: string;
+  };
   priority: string;
   category: string;
 }

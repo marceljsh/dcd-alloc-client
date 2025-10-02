@@ -47,17 +47,6 @@ export interface Task {
   assignedEmployees: Employee[];
 }
 
-export type ProjectDraft = {
-  name: string;
-  team: Team;
-  category: ProjectCategory;
-  priority: ProjectPriority;
-  budget: number;
-  startDate: string;
-  endDate: string;
-  stages: string[];
-};
-
 export interface ProjectStage {
   id: string;
   label: string;
@@ -148,4 +137,22 @@ export type ProjectResultsProps = {
   onNext: () => void;
   onPrevious: () => void;
   onUpdateTeamComposition: (updatedComposition: TeamMember[]) => void;
+};
+
+export type ProjectDraftResponse = {
+  message: string;
+  status: boolean;
+  data: ProjectDraft;
+};
+
+export type ProjectDraft = {
+  id: number;
+  name: string;
+  team: Team;
+  category: ProjectCategory;
+  priority: ProjectPriority;
+  budget: number;
+  startDate: string;
+  endDate: string;
+  activities: ProjectActivity[];
 };
