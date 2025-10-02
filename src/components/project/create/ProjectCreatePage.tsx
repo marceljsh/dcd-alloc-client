@@ -36,31 +36,104 @@ import { GanttPanel } from "./Gantt";
 import { ActivitiesPanel } from "./LeftPanel";
 import { GanttToolbar, FteViewMode } from "./GanttToolbar";
 
-import { initialProjectData } from "@/data/projects";
 import { useProject, useProjectDetails } from "@/hooks/projects/use-project";
 import { projectCategoryOpt, projectPriorityOpt } from "@/types/common";
-import { ProjectPlannerSkeleton } from "./ProjectPlannerSkeleton";
 import { NewItemButton } from "./NewItemButton";
 import { SubActivityForm } from "./SubActivityForm";
 import { ProjectActivity, ProjectSubActivity } from "@/types/projects";
 import { TeamInfo } from "@/types/employee";
 import { ApiResponse } from "@/types/api";
 import { toast } from "sonner";
+import axios from "axios";
+import { JAVA_SERVER_URL } from "@/lib/api/constant";
+import {
+  loadTeamsFromCache,
+  saveTeamsToCache,
+  isTeamsCacheValid,
+} from "@/lib/cache/teams";
 
 type ProjectPlannerProps = {
   onNext: () => void;
+};
+
+type Team = {
+  id: string;
+  name: string;
+};
+
+type ProjectCreateResponse = {
+  id: string;
+  name: string;
+  team: Team;
+  category: string;
+  priority: string;
+  budget: number;
+  activities: [
+    {
+      id: string;
+      name: string;
+      startDate: string;
+      endDate: string;
+      subActivities: [
+        {
+          id: string;
+          name: string;
+          startDate: string;
+          endDate: string;
+          workload: number;
+          fte: number;
+          minimumLevel: string;
+          role: string;
+        }
+      ];
+    }
+  ];
 };
 
 export function ProjectCreatePage({ onNext }: ProjectPlannerProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [viewMode, setViewMode] = useState<FteViewMode>("normal");
   const [showResetDialog, setShowResetDialog] = useState(false);
+
+  // Function to refresh teams data - exposed for manual refresh if needed
+  // Usage: window.refreshTeams() in browser console (for debugging)
+  const refreshTeamsData = React.useCallback(async () => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
+    try {
+      const res = await axios.get(
+        JAVA_SERVER_URL + "/api/my/teams/as-dropdown",
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      const teamsData = res.data.data;
+      setTeamOptions(teamsData);
+      saveTeamsToCache(teamsData);
+    } catch (err) {
+      console.error("Failed to refresh teams data:", err);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  React.useEffect(() => {
+    if (typeof window !== "undefined") {
+      (
+        window as unknown as { refreshTeams?: () => Promise<void> }
+      ).refreshTeams = refreshTeamsData;
+    }
+  }, [refreshTeamsData]);
   const {
     activities,
     form,
     dates,
     groupedDates,
     expandedItems,
+    teamOptions,
+    setTeamOptions,
     handleAction,
     handleFormSubmit,
     openAddActivity,
@@ -127,25 +200,73 @@ export function ProjectCreatePage({ onNext }: ProjectPlannerProps) {
   } = useProjectDetails();
 
   useEffect(() => {
-    setIsLoading(true);
+    const init = async () => {
+      const token = localStorage.getItem("token");
 
-    const loadDataFromLocal = async () => {
-      await initializeProject(initialProjectData);
-      await new Promise((resolve) => setTimeout(resolve, 300));
+      setIsLoading(true);
+
+      const promises = [];
+
+      // Try to load teams from cache first
+      const cachedTeams = loadTeamsFromCache();
+
+      if (cachedTeams) {
+        setTeamOptions(cachedTeams);
+      }
+
+      // Initialize with default data if no activities
+
+      // Fetch from API if no cached data or cache is expired
+      if (!isTeamsCacheValid()) {
+        promises.push(
+          axios
+            .get(JAVA_SERVER_URL + "/api/my/teams/as-dropdown", {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            })
+            .then((res) => {
+              const teamsData = res.data.data;
+              setTeamOptions(teamsData);
+              saveTeamsToCache(teamsData);
+            })
+            .catch((err) => {
+              // fallback to default teams if API fails
+              const defaultTeams = [
+                { id: "team-a", name: "Team A" },
+                { id: "team-b", name: "Team B" },
+                { id: "team-c", name: "Team C" },
+              ];
+              setTeamOptions(defaultTeams);
+              saveTeamsToCache(defaultTeams);
+              console.error("Failed to fetch teams, using defaults:", err);
+            })
+        );
+      }
+
+      await Promise.all(promises);
+
       setIsLoading(false);
     };
 
-    if (activities.length === 0) {
-      loadDataFromLocal();
-    } else {
-      setIsLoading(false);
-    }
+    init();
+  }, [activities.length, setTeamOptions]);
 
-  }, [initializeProject, activities.length]);
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    const fetchProjectData = async () => {
+      const { data } = (await axios.get(
+        JAVA_SERVER_URL + "/api/my/draft", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      )) as { data: ProjectCreateResponse };
+    };
 
-  if (isLoading) {
-    return <ProjectPlannerSkeleton />;
-  }
+    fetchProjectData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div>
@@ -173,8 +294,8 @@ export function ProjectCreatePage({ onNext }: ProjectPlannerProps) {
                   <SelectValue placeholder="Select team" />
                 </SelectTrigger>
                 <SelectContent>
-                  {teams.map((team) => (
-                    <SelectItem key={team.id} value={team.id.toString()}>
+                  {teamOptions.map((team) => (
+                    <SelectItem key={team.id} value={team.id}>
                       {team.name}
                     </SelectItem>
                   ))}
@@ -378,6 +499,14 @@ export function ProjectCreatePage({ onNext }: ProjectPlannerProps) {
             >
               Save as Draft
             </Button>
+            {/* Uncomment this if you need manual refresh teams button */}
+            {/* <Button
+              variant="outline"
+              onClick={refreshTeamsData}
+              size="sm"
+            >
+              Refresh Teams
+            </Button> */}
             <Button
               onClick={onNext}
               className="px-8 bg-black hover:bg-gray-800"

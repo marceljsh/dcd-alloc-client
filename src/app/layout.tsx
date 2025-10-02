@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    template: "DCD | %s", // %s will be replaced by the page-specific title
+    template: "DCD | %s",
     default: "DCD", // Default title if no specific page title is provided
   },
   description: "Created by and for BMRI",

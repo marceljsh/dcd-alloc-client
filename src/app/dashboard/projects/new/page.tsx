@@ -11,6 +11,8 @@ import { useState, useCallback } from "react";
 import ProjectAssignment from "@/components/project/assignment/ProjectAssignment";
 import { TeamMember } from "@/types/projects";
 import axios from "axios";
+import { useAlert } from "@/hooks/use-alert";
+import AlertContainer from "@/components/project/AlertContainer";
 
 // Types for backend response
 interface BackendSubActivity {
@@ -30,6 +32,7 @@ interface BackendGroupComposition {
   level: string[] | string;
   total_workload: number;
   total_fte: number;
+  total_working_days: number;
   utilization: number;
   sub_activities: BackendSubActivity[];
 }
@@ -37,11 +40,15 @@ interface BackendGroupComposition {
 interface BackendResponse {
   group_composition: BackendGroupComposition[];
   feedback: unknown[];
+  project_duration_days: number;
 }
 
 export default function ProjectCreate() {
   const [currentStep, setCurrentStep] = useState(1);
   const [teamComposition, setTeamComposition] = useState<TeamMember[]>([]);
+  const [projectDurationDays, setProjectDurationDays] = useState(30);
+
+  const { alerts, success, error, removeAlert } = useAlert();
 
   const { activities, projectDetails } = useProject();
   const { setOpen } = useSidebar();
@@ -65,16 +72,15 @@ export default function ProjectCreate() {
 
       if (step === 2) {
         if (activities.length === 0) {
-          console.warn("No activities found, cannot proceed to step 2");
+          error("No activities found, cannot proceed to step 2");
           return;
         }
 
         if (!projectDetails.name.trim()) {
-          console.warn("Project name is required");
+          error("Project name is required");
           return;
         }
 
-        // Transform activities to API format
         const transformedActivities = activities.map((activity) => ({
           id: activity.id,
           name: activity.name,
@@ -111,6 +117,8 @@ export default function ProjectCreate() {
             }
           );
 
+          setProjectDurationDays(composition.data.project_duration_days || 30);
+
           // Transform backend response to frontend format
           const backendData = composition.data as BackendResponse;
           if (
@@ -120,26 +128,39 @@ export default function ProjectCreate() {
           ) {
             const transformedTeamComposition =
               backendData.group_composition.map(
-                (member: BackendGroupComposition) => ({
+                (member: BackendGroupComposition, index: number) => ({
                   name: member.name,
                   role: member.role,
                   level: Array.isArray(member.level)
-                    ? member.level.join("/")
-                    : member.level,
+                    ? member.level
+                    : [member.level], // Convert single level to array
                   workload_hours: member.total_workload,
                   total_working_days: Math.ceil(member.total_workload / 8), // Assuming 8 hours per day
                   utilization_rate: `${member.utilization}%`,
-                  assigned_activities: member.sub_activities || [],
+                  assignee_id: `${member.role.toLowerCase()}-${index + 1}`, // Generate unique ID
+                  assigned_activities:
+                    member.sub_activities?.map((activity) => ({
+                      id: activity.id,
+                      name: activity.name,
+                      start_date: activity.start_date,
+                      end_date: activity.end_date,
+                      workload: activity.workload,
+                      fte: activity.fte,
+                      role: activity.role,
+                      minimum_level: activity.minimum_level,
+                    })) || [],
                 })
               );
 
             setTeamComposition(transformedTeamComposition);
+            success("Team composition generated successfully!");
           } else {
             console.warn("Invalid response format:", composition.data);
             setTeamComposition([]);
           }
-        } catch (error) {
-          console.error("Error calling optimize API:", error);
+        } catch (err) {
+          console.error("Error calling optimize API:", err);
+          error("Failed to generate team composition. Please try again.");
           setTeamComposition([]);
         }
 
@@ -164,7 +185,7 @@ export default function ProjectCreate() {
       } else if (step === 4) {
         // Final validation before completing
         if (activities.length === 0) {
-          console.warn("Cannot complete project without activities");
+          error("Cannot complete project without activities");
           return;
         }
 
@@ -178,11 +199,16 @@ export default function ProjectCreate() {
         setCurrentStep(step);
       }
     },
-    [currentStep, activities, projectDetails]
+    [currentStep, activities, projectDetails, error, success]
   );
 
   return (
     <div className="space-y-6 mx-10">
+      <AlertContainer
+        alerts={alerts}
+        onRemove={removeAlert}
+        position="top-right"
+      />
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -209,12 +235,17 @@ export default function ProjectCreate() {
       <div className="mb-12">
         {currentStep === 1 && (
           <div>
-            <ProjectCreatePage onNext={() => goToStep(2)} />
+            <ProjectCreatePage
+              onNext={() => {
+                goToStep(2);
+              }}
+            />
           </div>
         )}
 
         {currentStep === 2 && (
           <ProjectResults
+            onUpdateTeamComposition={setTeamComposition}
             teamComposition={teamComposition}
             activities={activities.map((activity, index) => ({
               id: index + 1,
@@ -230,6 +261,7 @@ export default function ProjectCreate() {
             }))}
             onNext={() => goToStep(3)}
             onPrevious={() => goToStep(1)}
+            projectDurationDays={projectDurationDays}
           />
         )}
 
@@ -237,6 +269,7 @@ export default function ProjectCreate() {
           <ProjectAssignment
             onPrevious={() => goToStep(2)}
             onNext={() => goToStep(4)}
+            teamComposition={teamComposition}
           />
         )}
       </div>
