@@ -83,8 +83,10 @@ export interface ProjectSubActivity {
   workload: number;
   fte: number;
   minimumLevel: "junior" | "middle" | "senior";
-  role: "SA" | "SE" | "DE";
+  role: Role;
 }
+
+export type Role = "SA" | "SE" | "DE";
 
 export type EntityType = "activity" | "subactivity";
 export type ModeType = "Add" | "Edit";
@@ -108,13 +110,17 @@ export type TeamCompositionSummary = {
   project_duration_days: number;
 };
 
+type Level = "Junior" | "Middle" | "Senior";
+
 export type TeamMember = {
   name: string;
-  role: string;
-  level: string;
+  role: Role;
+  level: Level[];
+  selectedLevel?: Level;
   workload_hours: number;
   total_working_days: number;
   utilization_rate: string;
+  assignee_id: string;
   assigned_activities: {
     id: string;
     name: string;
@@ -138,6 +144,8 @@ export type ProjectResultsProps = {
   activities?: Activity[];
   summary?: TeamCompositionSummary;
   isLoading?: boolean;
+  projectDurationDays?: number;
   onNext: () => void;
   onPrevious: () => void;
+  onUpdateTeamComposition: (updatedComposition: TeamMember[]) => void;
 };

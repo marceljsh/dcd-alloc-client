@@ -1,8 +1,11 @@
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { formatWorkloadHours } from "@/lib/utils";
 import { TeamMember } from "@/types/projects";
-import { Calendar, Clock, User } from "lucide-react";
+import { Calendar, User, Check } from "lucide-react";
+import { useState } from "react";
+import { Select } from "@/components/ui/select";
 
 const getLevelBadgeVariant = (level: string) => {
   switch (level) {
@@ -17,10 +20,31 @@ const getLevelBadgeVariant = (level: string) => {
   }
 };
 
-export default function TeamMemberCard({ member }: { member: TeamMember }) {
+type TeamMemberCardProps = {
+  member: TeamMember;
+  mode?: "results" | "assignment";
+  onLevelSelect?: (memberName: string, selectedLevel: string) => void;
+  employeeOptions?: string[];
+};
+
+export default function TeamMemberCard({
+  member,
+  onLevelSelect,
+  mode = "results",
+  employeeOptions: e = [],
+}: TeamMemberCardProps) {
+  const [selectedLevel, setSelectedLevel] = useState<string>(
+    member.selectedLevel || member.level[0] || ""
+  );
+
   if (!member) {
     return <div>Member data is undefined</div>;
   }
+
+  const handleLevelSelect = (level: string) => {
+    setSelectedLevel(level);
+    onLevelSelect?.(member.name, level);
+  };
 
   return (
     <Card className="border-2 py-6">
@@ -30,18 +54,42 @@ export default function TeamMemberCard({ member }: { member: TeamMember }) {
             <CardTitle className="text-lg flex items-center space-x-2">
               <User className="h-5 w-5" />
               <span>{member.name}</span>
+              {mode === "assignment" && member.selectedLevel && (
+                <div className="flex flex-wrap gap-2">
+                  {
+                    /* Selected Level Badge */
+                    <Badge variant={getLevelBadgeVariant(member.selectedLevel)}>
+                      {member.selectedLevel}
+                    </Badge>
+                  }
+                </div>
+              )}
             </CardTitle>
-            <div className="flex flex-wrap gap-1 mt-2">
-              <span className="text-sm text-muted-foreground">
-                Allowed Level:
-              </span>
-              <Badge
-                variant={getLevelBadgeVariant(member.level)}
-                className="text-xs"
-              >
-                {member.level}
-              </Badge>
-            </div>
+            {mode === "results" && (
+              <div className="mt-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-sm font-medium text-muted-foreground">
+                    Choose Level:
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {member.level.map((level) => (
+                    <Button
+                      key={level}
+                      variant={selectedLevel === level ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => handleLevelSelect(level)}
+                      className="text-xs h-7 px-3"
+                    >
+                      {selectedLevel === level && (
+                        <Check className="h-3 w-3 mr-1" />
+                      )}
+                      {level}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </CardHeader>
@@ -97,10 +145,7 @@ export default function TeamMemberCard({ member }: { member: TeamMember }) {
                         </span>
                       </div>
                       <div className="flex items-center space-x-1">
-                        <Clock className="h-3 w-3" />
-                        <span>{formatWorkloadHours(subActivity.workload)}</span>
-                      </div>
-                      <div className="flex items-center space-x-1">
+                        <span>Minimum Level:</span>
                         <Badge variant="outline" className="text-xs">
                           {subActivity.minimum_level}
                         </Badge>
@@ -116,6 +161,25 @@ export default function TeamMemberCard({ member }: { member: TeamMember }) {
             )}
           </div>
         </div>
+
+        {/* Assign to Select */}
+        {mode === "assignment" && (
+          <div>
+            <p className="text-sm font-medium text-muted-foreground mb-2">
+              Assign to Employee:
+            </p>
+            <Select value={member.assignee_id || ""}>
+              <option value="" disabled>
+                Select an employee
+              </option>
+              {e.map((emp) => (
+                <option key={emp} value={emp}>
+                  {emp}
+                </option>
+              ))}
+            </Select>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

@@ -68,7 +68,7 @@ const getDefaultFormValues = (): SubActivityFormData => ({
   name: "",
   startDate: "",
   endDate: "",
-  fte: 1.0,
+  fte: 0,
   workload: 0,
   minimumLevel: "junior",
   parentID: "",

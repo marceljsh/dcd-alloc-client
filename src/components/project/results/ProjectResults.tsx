@@ -11,58 +11,81 @@ import {
 import BudgetTimelineCard from "./BudgetTimelineCard";
 import TeamMemberCard from "./TeamMemberCard";
 import TeamSizeCard from "./TeamSizeCard";
+import { groupMembersByRole } from "@/lib/utils/project";
+import { getSalary } from "@/data/salary";
+import { useProject } from "@/hooks/projects/use-project";
 
 const calculateSummary = (
-  teamMembers: TeamMember[]
+  teamMembers: TeamMember[],
+  projectDurationDays: number
 ): TeamCompositionSummary => {
-  // Ensure teamMembers is an array
   const safeTeamMembers = Array.isArray(teamMembers) ? teamMembers : [];
+  console.log("Calculating summary for team members:", safeTeamMembers);
 
   const roleCounts = safeTeamMembers.reduce((acc, member) => {
     acc[member.role] = (acc[member.role] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
 
+  // montlhy cost calculation
+  let totalBudget = safeTeamMembers.reduce((sum, member) => {
+    // Assuming each member has a 'selectedLevel' property
+    const level = member.selectedLevel || member.level[0];
+    const salary = getSalary(member.role, level);
+    return sum + salary;
+  }, 0);
+
+  totalBudget = Math.round(totalBudget * Math.ceil(projectDurationDays / 30));
+
   return {
     total_team_size: safeTeamMembers.length,
     role_counts: roleCounts,
-    total_budget: safeTeamMembers.reduce(
-      (sum, member) => sum + member.total_working_days,
-      0
-    ),
+    total_budget: totalBudget,
     total_workload: safeTeamMembers.reduce(
       (sum, member) => sum + member.workload_hours,
       0
     ),
-    project_duration_days: 30,
+    project_duration_days: projectDurationDays,
   };
-};
-
-const groupMembersByRole = (teamMembers: TeamMember[]) => {
-  const safeTeamMembers = Array.isArray(teamMembers) ? teamMembers : [];
-
-  return safeTeamMembers.reduce((acc, member) => {
-    if (!acc[member.role]) {
-      acc[member.role] = [];
-    }
-    acc[member.role].push(member);
-    return acc;
-  }, {} as Record<string, TeamMember[]>);
 };
 
 export function ProjectResults({
   teamComposition,
-  activities = [],
   summary,
   isLoading: externalLoading = false,
+  projectDurationDays = 30,
   onNext,
   onPrevious,
+  onUpdateTeamComposition,
 }: ProjectResultsProps) {
   const [internalLoading, setInternalLoading] = useState(true);
+  const [membersWithLevels, setMembersWithLevels] =
+    useState<TeamMember[]>(teamComposition);
+
+  const { projectDetails } = useProject();
 
   const isLoading = externalLoading || internalLoading;
-  const computedSummary = summary || calculateSummary(teamComposition);
-  const groupedMembers = groupMembersByRole(teamComposition);
+
+  const computedSummary =
+    summary || calculateSummary(membersWithLevels, projectDurationDays);
+  const groupedMembers = groupMembersByRole(membersWithLevels);
+
+  const handleLevelSelect = (memberName: string, selectedLevel: string) => {
+    setMembersWithLevels((prev) =>
+      prev.map((member) =>
+        member.name === memberName ? { ...member, selectedLevel } : member
+      )
+    );
+    onUpdateTeamComposition(
+      membersWithLevels.map((member) =>
+        member.name === memberName ? { ...member, selectedLevel } : member
+      )
+    );
+  };
+
+  useEffect(() => {
+    setMembersWithLevels(teamComposition);
+  }, [teamComposition]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -106,12 +129,8 @@ export function ProjectResults({
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
             <Briefcase className="h-5 w-5" />
-            <span>Recommended Team Composition</span>
+            <span className="text-xl">Recommended Team Composition</span>
           </CardTitle>
-          <p className="text-sm text-muted-foreground mt-2">
-            Clear role assignments with specific quantities needed and activity
-            allocations
-          </p>
         </CardHeader>
         <CardContent>
           <div className="space-y-8">
@@ -141,6 +160,7 @@ export function ProjectResults({
                       <TeamMemberCard
                         key={`${member.name}-${index}`}
                         member={member}
+                        onLevelSelect={handleLevelSelect}
                       />
                     ))}
                   </div>
@@ -151,7 +171,10 @@ export function ProjectResults({
 
           <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
             <TeamSizeCard summary={computedSummary} />
-            <BudgetTimelineCard summary={computedSummary} />
+            <BudgetTimelineCard
+              summary={computedSummary}
+              maxBudget={projectDetails.budget}
+            />
           </div>
         </CardContent>
       </Card>
@@ -160,9 +183,11 @@ export function ProjectResults({
         <Button variant="outline" onClick={onPrevious} className="px-8">
           Previous
         </Button>
-        <Button onClick={onNext} className="px-8 bg-black hover:bg-gray-800">
-          Continue
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button onClick={onNext} className="px-8 bg-black hover:bg-gray-800">
+            Continue
+          </Button>
+        </div>
       </div>
     </div>
   );

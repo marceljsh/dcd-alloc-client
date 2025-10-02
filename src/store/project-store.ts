@@ -30,10 +30,16 @@ interface ProjectDetails {
   category: string;
 }
 
+interface TeamOption {
+  id: string;
+  name: string;
+}
+
 interface ProjectState {
   projectDetails: ProjectDetails;
   activities: ProjectActivity[];
   form: FormState;
+  teamOptions: TeamOption[];
 
   expandedItems: string[];
 
@@ -62,6 +68,7 @@ interface ProjectState {
 
   setActivityDetails: (details: ProjectActivity | null) => void;
   setSubActivityDetails: (details: ProjectSubActivity | null) => void;
+  setTeamOptions: (teams: TeamOption[]) => void;
 
   // Actions for UI
   setExpandedItems: (items: string[]) => void;
@@ -153,6 +160,7 @@ const initialState = {
     start: new Date(),
     end: new Date(),
   },
+  teamOptions: [],
 };
 
 export const useProjectStore = create<ProjectState>()(
@@ -325,6 +333,11 @@ export const useProjectStore = create<ProjectState>()(
     resetProject: () =>
       set((state) => {
         Object.assign(state, initialState);
+      }),
+
+    setTeamOptions: (teams) =>
+      set((state) => {
+        state.teamOptions = teams;
       }),
   }))
 );

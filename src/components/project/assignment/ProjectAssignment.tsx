@@ -13,9 +13,18 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { Users, UserCheck, Clock, Briefcase } from "lucide-react";
+import {
+  Users,
+  UserCheck,
+  Clock,
+  Briefcase,
+  User,
+  Calendar,
+} from "lucide-react";
 import { TeamMember, ProjectSubActivity } from "@/types/projects";
 import { EmployeeRow } from "@/types/employee";
+import { groupMembersByRole } from "@/lib/utils/project";
+import TeamMemberCard from "../results/TeamMemberCard";
 
 // Sample data - in real app this would come from props or API
 const sampleEmployees: EmployeeRow[] = [
@@ -68,65 +77,61 @@ const sampleEmployees: EmployeeRow[] = [
   },
 ];
 
-const sampleActivities = [
-  { id: 1, name: "Wireframing", date_range: "Nov 1-3, 2024" },
-  { id: 2, name: "Prototyping", date_range: "Nov 4-8, 2024" },
-  { id: 3, name: "Design System", date_range: "Nov 3-6, 2024" },
-  { id: 4, name: "Development", date_range: "Nov 9-15, 2024" },
-  { id: 5, name: "Testing", date_range: "Nov 16-20, 2024" },
-  { id: 6, name: "Deployment Support", date_range: "Nov 21-22, 2024" },
-];
-
 const sampleSubActivities: ProjectSubActivity[] = [
   {
-    id: 1,
-    parentId: 1,
-    activity: "Database Design",
+    id: "1",
+    parentId: "1",
+    name: "Database Design",
     startDate: "2024-11-01",
-    endDate: "2024-11-03",
-    duration: 3,
+    endDate: "2024-11-05",
+    workload: 40,
     fte: 1,
     role: "SA",
+    minimumLevel: "middle",
   },
   {
-    id: 2,
-    parentId: 1,
-    activity: "API Design",
-    startDate: "2024-11-04",
-    endDate: "2024-11-06",
-    duration: 3,
-    fte: 1,
-    role: "SE",
-  },
-  {
-    id: 3,
-    parentId: 2,
-    activity: "Frontend Development",
-    startDate: "2024-11-07",
-    endDate: "2024-11-10",
-    duration: 4,
+    id: "2",
+    parentId: "1",
+    name: "UI Design",
+    startDate: "2024-11-06",
+    endDate: "2024-11-08",
+    workload: 24,
     fte: 2,
     role: "SE",
+    minimumLevel: "junior",
   },
   {
-    id: 4,
-    parentId: 2,
-    activity: "Backend Development",
+    id: "3",
+    parentId: "2",
+    name: "Frontend Development",
+    startDate: "2024-11-07",
+    endDate: "2024-11-10",
+    workload: 32,
+    fte: 2,
+    role: "SE",
+    minimumLevel: "middle",
+  },
+  {
+    id: "4",
+    parentId: "2",
+    name: "Backend Development",
     startDate: "2024-11-07",
     endDate: "2024-11-12",
-    duration: 6,
+    workload: 48,
     fte: 1,
     role: "SE",
+    minimumLevel: "senior",
   },
   {
-    id: 5,
-    parentId: 3,
-    activity: "Data Pipeline Setup",
+    id: "5",
+    parentId: "3",
+    name: "Data Pipeline Setup",
     startDate: "2024-11-13",
     endDate: "2024-11-15",
-    duration: 3,
+    workload: 24,
     fte: 1,
     role: "DE",
+    minimumLevel: "middle",
   },
 ];
 
@@ -134,25 +139,63 @@ const sampleTeamComposition: TeamMember[] = [
   {
     name: "Designer",
     role: "Designer",
-    level: "Mixed",
+    level: ["Junior", "Middle"],
+    selectedLevel: "Middle",
     workload_hours: 96,
     total_working_days: 30000000,
     utilization_rate: "Week 2-3",
     assigned_activities: [
-      { activity_id: 1, workload_hours: 48 },
-      { activity_id: 2, workload_hours: 48 },
+      {
+        id: "1",
+        name: "UI Design",
+        start_date: "2024-11-01",
+        end_date: "2024-11-05",
+        workload: 48,
+        fte: 1,
+        role: "Designer",
+        minimum_level: "junior",
+      },
+      {
+        id: "2",
+        name: "Prototyping",
+        start_date: "2024-11-06",
+        end_date: "2024-11-08",
+        workload: 48,
+        fte: 1,
+        role: "Designer",
+        minimum_level: "middle",
+      },
     ],
   },
   {
     name: "Software Engineer",
     role: "Software Engineer",
-    level: "Mixed",
+    level: ["Middle", "Senior"],
+    selectedLevel: "Senior",
     workload_hours: 128,
     total_working_days: 40000000,
     utilization_rate: "Week 3-4",
     assigned_activities: [
-      { activity_id: 3, workload_hours: 64 },
-      { activity_id: 4, workload_hours: 64 },
+      {
+        id: "3",
+        name: "Frontend Development",
+        start_date: "2024-11-07",
+        end_date: "2024-11-10",
+        workload: 64,
+        fte: 2,
+        role: "SE",
+        minimum_level: "middle",
+      },
+      {
+        id: "4",
+        name: "Backend Development",
+        start_date: "2024-11-11",
+        end_date: "2024-11-15",
+        workload: 64,
+        fte: 2,
+        role: "SE",
+        minimum_level: "senior",
+      },
     ],
   },
 ];
@@ -190,8 +233,11 @@ export default function ProjectAssignment({
     EmployeeAssignment[]
   >([]);
   const [groupAssignments, setGroupAssignments] = useState<GroupAssignment[]>(
-    [],
+    []
   );
+
+  // grouped by role for easier rendering
+  const groupedMembers = groupMembersByRole(teamComposition);
 
   // Initialize group assignments from team composition
   useEffect(() => {
@@ -210,48 +256,22 @@ export default function ProjectAssignment({
   const handleManualAssignment = (
     subActivityId: number,
     employeeId: number,
-    allocation: number,
+    allocation: number
   ) => {
     setManualAssignments((prev) => {
       const existing = prev.find(
-        (a) => a.subActivityId === subActivityId && a.employeeId === employeeId,
+        (a) => a.subActivityId === subActivityId && a.employeeId === employeeId
       );
       if (existing) {
         return prev.map((a) =>
           a.subActivityId === subActivityId && a.employeeId === employeeId
             ? { ...a, allocation }
-            : a,
+            : a
         );
       } else {
         return [...prev, { subActivityId, employeeId, allocation }];
       }
     });
-  };
-
-  const handleGroupAssignment = (roleGroup: string, employeeIds: number[]) => {
-    setGroupAssignments((prev) =>
-      prev.map((group) =>
-        group.roleGroup === roleGroup ? { ...group, employeeIds } : group,
-      ),
-    );
-  };
-
-  const getRoleIcon = (role: string) => {
-    switch (role.toLowerCase()) {
-      case "system analyst":
-      case "sa":
-        return "📊";
-      case "software engineer":
-      case "se":
-        return "💻";
-      case "data engineer":
-      case "de":
-        return "🔧";
-      case "designer":
-        return "🎨";
-      default:
-        return "👤";
-    }
   };
 
   const getAvailableEmployeesByRole = (role: string) => {
@@ -311,206 +331,42 @@ export default function ProjectAssignment({
                 distribute work based on project requirements.
               </p>
             </CardHeader>
-            <CardContent className="space-y-6">
-              {teamComposition.map((group, index) => (
-                <div key={index} className="space-y-4">
-                  {/* Group Header */}
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="text-2xl">{getRoleIcon(group.role)}</div>
-                      <div>
-                        <h3 className="font-semibold text-lg">{group.role}</h3>
-                        <p className="text-sm text-gray-600">
-                          ({group.assigned_activities.length})
-                        </p>
-                      </div>
-                    </div>
+            <CardContent>
+              <div className="space-y-8">
+                {Object.keys(groupedMembers).length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    <p>No team composition data available.</p>
+                    <p className="text-sm mt-2">
+                      Please check the API response and try again.
+                    </p>
                   </div>
-
-                  {/* Individual Team Members */}
-                  {group.assigned_activities.map((activity, activityIndex) => (
-                    <div
-                      key={activityIndex}
-                      className="bg-gray-50 rounded-lg p-4 space-y-4"
-                    >
-                      <div className="flex items-center gap-3">
-                        <Avatar className="w-10 h-10">
-                          <AvatarFallback>
-                            {group.name
-                              .split(" ")
-                              .map((n) => n[0])
-                              .join("")
-                              .slice(0, 2)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1">
-                          <h4 className="font-medium">
-                            {group.name} {activityIndex + 1}
-                          </h4>
-                          <div className="flex items-center gap-2 mt-1">
-                            <span className="text-sm text-gray-600">
-                              Allowed Level:
-                            </span>
-                            <Badge
-                              variant={
-                                group.level === "Senior"
-                                  ? "destructive"
-                                  : group.level === "Middle"
-                                    ? "default"
-                                    : "secondary"
-                              }
-                              className="text-xs"
-                            >
-                              {group.level === "Mixed" ? "Mid" : group.level}
-                            </Badge>
-                          </div>
-                        </div>
+                ) : (
+                  Object.entries(groupedMembers).map(([role, members]) => (
+                    <div key={role} className="space-y-4">
+                      {/* Role Header */}
+                      <div className="flex items-center space-x-2 pb-2 border-b border-gray-200">
+                        <h3 className="text-lg font-semibold text-gray-900">
+                          {role}
+                        </h3>
+                        <span className="text-sm text-gray-500">
+                          ({members.length})
+                        </span>
                       </div>
 
-                      {/* Stats Grid */}
-                      <div className="grid grid-cols-3 gap-4">
-                        <div>
-                          <p className="text-sm text-gray-600">
-                            Total Workload
-                          </p>
-                          <p className="font-medium">
-                            {activity.workload_hours} jam
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-sm text-gray-600">Budget</p>
-                          <p className="font-medium">
-                            Rp {group.total_working_days.toLocaleString()}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-sm text-gray-600">Peak Week</p>
-                          <p className="font-medium">
-                            {group.utilization_rate}
-                          </p>
-                        </div>
+                      {/* Members in this role */}
+                      <div className="space-y-4 ml-4">
+                        {members.map((member, index) => (
+                          <TeamMemberCard
+                            key={`${member.name}-${index}`}
+                            member={member}
+                            mode="assignment"
+                          />
+                        ))}
                       </div>
-
-                      {/* Assigned Activities & Timeline */}
-                      <div>
-                        <p className="text-sm text-gray-600 mb-3">
-                          Assigned Activities & Timeline
-                        </p>
-                        <div className="space-y-2">
-                          {sampleActivities
-                            .filter((act) => act.id === activity.activity_id)
-                            .map((filteredActivity) => (
-                              <div
-                                key={filteredActivity.id}
-                                className="flex items-center justify-between p-3 bg-white rounded border"
-                              >
-                                <div>
-                                  <p className="font-medium text-sm">
-                                    {filteredActivity.name}
-                                  </p>
-                                  <p className="text-xs text-gray-500 flex items-center gap-2">
-                                    <Clock className="w-3 h-3" />
-                                    {filteredActivity.date_range}
-                                    <span className="ml-2">
-                                      {activity.workload_hours} jam
-                                    </span>
-                                  </p>
-                                </div>
-                                <span className="text-sm font-medium">
-                                  {activity.workload_hours} jam
-                                </span>
-                              </div>
-                            ))}
-                        </div>
-                      </div>
-
-                      {/* Assign To Button */}
-                      <div className="flex justify-end">
-                        <Select
-                          value={
-                            groupAssignments
-                              .find(
-                                (g) =>
-                                  g.roleGroup ===
-                                  `${group.role}_${activityIndex}`,
-                              )
-                              ?.employeeIds[0]?.toString() || ""
-                          }
-                          onValueChange={(employeeId) => {
-                            if (employeeId) {
-                              handleGroupAssignment(
-                                `${group.role}_${activityIndex}`,
-                                [parseInt(employeeId)],
-                              );
-                            }
-                          }}
-                        >
-                          <SelectTrigger className="w-48">
-                            <SelectValue placeholder="Assign to:" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {getAvailableEmployeesByRole(group.role).map(
-                              (employee) => (
-                                <SelectItem
-                                  key={employee.id}
-                                  value={employee.id.toString()}
-                                >
-                                  <div className="flex items-center gap-2">
-                                    <Avatar className="w-6 h-6">
-                                      <AvatarFallback className="text-xs">
-                                        {employee.name
-                                          .split(" ")
-                                          .map((n) => n[0])
-                                          .join("")}
-                                      </AvatarFallback>
-                                    </Avatar>
-                                    <span>{employee.name}</span>
-                                    <Badge
-                                      variant="outline"
-                                      className="text-xs"
-                                    >
-                                      {employee.level}
-                                    </Badge>
-                                  </div>
-                                </SelectItem>
-                              ),
-                            )}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      {/* Show assigned employee */}
-                      {groupAssignments.find(
-                        (g) => g.roleGroup === `${group.role}_${activityIndex}`,
-                      )?.employeeIds[0] && (
-                        <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                          <div className="flex items-center gap-2">
-                            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                            <span className="text-sm font-medium text-green-800">
-                              Assigned to:{" "}
-                              {
-                                availableEmployees.find(
-                                  (e) =>
-                                    e.id ===
-                                    groupAssignments.find(
-                                      (g) =>
-                                        g.roleGroup ===
-                                        `${group.role}_${activityIndex}`,
-                                    )?.employeeIds[0],
-                                )?.name
-                              }
-                            </span>
-                          </div>
-                        </div>
-                      )}
                     </div>
-                  ))}
-
-                  {index < teamComposition.length - 1 && (
-                    <Separator className="my-6" />
-                  )}
-                </div>
-              ))}
+                  ))
+                )}
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -533,17 +389,12 @@ export default function ProjectAssignment({
                 <div key={subActivity.id} className="space-y-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <div className="text-2xl">
-                        {getRoleIcon(subActivity.role)}
-                      </div>
                       <div>
-                        <h3 className="font-semibold">
-                          {subActivity.activity}
-                        </h3>
+                        <h3 className="font-semibold">{subActivity.name}</h3>
                         <div className="flex items-center gap-4 text-sm text-gray-600">
                           <span className="flex items-center gap-1">
                             <Clock className="w-4 h-4" />
-                            {subActivity.duration} days
+                            {subActivity.workload} jam
                           </span>
                           <span className="flex items-center gap-1">
                             <Briefcase className="w-4 h-4" />
@@ -569,9 +420,9 @@ export default function ProjectAssignment({
                         onValueChange={(employeeId) => {
                           if (employeeId) {
                             handleManualAssignment(
-                              subActivity.id,
+                              parseInt(subActivity.id),
                               parseInt(employeeId),
-                              100,
+                              100
                             );
                           }
                         }}
@@ -601,7 +452,7 @@ export default function ProjectAssignment({
                                   </Badge>
                                 </div>
                               </SelectItem>
-                            ),
+                            )
                           )}
                         </SelectContent>
                       </Select>
@@ -609,13 +460,13 @@ export default function ProjectAssignment({
                       <Select
                         onValueChange={(allocation) => {
                           const assignment = manualAssignments.find(
-                            (a) => a.subActivityId === subActivity.id,
+                            (a) => a.subActivityId === parseInt(subActivity.id)
                           );
                           if (assignment) {
                             handleManualAssignment(
-                              subActivity.id,
+                              parseInt(subActivity.id),
                               assignment.employeeId,
-                              parseInt(allocation),
+                              parseInt(allocation)
                             );
                           }
                         }}
@@ -634,7 +485,7 @@ export default function ProjectAssignment({
 
                     {/* Show current assignment */}
                     {manualAssignments.find(
-                      (a) => a.subActivityId === subActivity.id,
+                      (a) => a.subActivityId === parseInt(subActivity.id)
                     ) && (
                       <div className="bg-green-50 border border-green-200 rounded-lg p-3">
                         <div className="flex items-center justify-between">
@@ -650,7 +501,8 @@ export default function ProjectAssignment({
                           >
                             {
                               manualAssignments.find(
-                                (a) => a.subActivityId === subActivity.id,
+                                (a) =>
+                                  a.subActivityId === parseInt(subActivity.id)
                               )?.allocation
                             }
                             % allocation

@@ -68,6 +68,7 @@ export const useProject = () => {
     activities: store.activities,
     projectDetails: store.projectDetails,
     expandedItems: store.expandedItems,
+    teamOptions: store.teamOptions,
 
     form: store.form,
 
@@ -80,6 +81,7 @@ export const useProject = () => {
     updateProjectDetails: store.updateProjectDetails,
     setExpandedItems: store.setExpandedItems,
     toggleExpanded: store.toggleExpanded,
+    setTeamOptions: store.setTeamOptions,
 
     // Form actions
     closeForm: store.closeForm,

@@ -18,7 +18,6 @@ export type EmployeeLevel = (typeof employeeLevels)[number];
 export type EmploymentStatus = (typeof employmentStatuses)[number];
 export type ProjectCategory = (typeof projectCategories)[number];
 export type ProjectPriority = (typeof projectPriorities)[number];
-export type Team = (typeof teams)[number];
 
 export interface DateRange {
   label: string;

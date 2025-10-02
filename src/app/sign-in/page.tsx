@@ -10,6 +10,7 @@ import Image from "next/image";
 import { toast } from "sonner";
 import { Eye, EyeClosed, UserPlus } from "lucide-react";
 import Link from "next/link";
+import { JAVA_SERVER_URL } from "@/lib/api/constant";
 
 export default function SignInPage() {
   const router = useRouter();
@@ -28,7 +29,7 @@ export default function SignInPage() {
     const password = formData.get("password") as string;
 
     const loginPromise = async () => {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/sign-in`, {
+      const res = await fetch(`${JAVA_SERVER_URL}/api/auth/sign-in`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -62,7 +63,7 @@ export default function SignInPage() {
       },
       error: (error) => {
         setIsSubmitting(false);
-        console.log(error.message)
+        console.log(error.message);
         return error.message || "Something went wrong. Try again.";
       },
     });
