@@ -22,14 +22,49 @@ interface EmployeeBase {
 }
 
 export interface PermanentEmployee extends EmployeeBase {
-  status: "Permanent";
+  status: "OR";
 }
 
 export interface ContractEmployee extends EmployeeBase {
-  status: "Contract";
+  status: "CR";
   contractFilePath?: string;
   contractStartDate: string;
   contractEndDate: string | null;
+}
+
+export interface Contract {
+  startDate: string
+  endDate: string
+  fileUrl: string
+}
+
+export interface EmployeeDetail {
+  phoneNumber : string
+  address     : string
+  joinDate    : string
+  contract    : Contract | null
+}
+
+export interface RawEmployee {
+  id     : number
+  nip    : string
+  name   : string
+  email  : string
+  role   : string
+  level  : string
+  team   : Team
+  status : string
+}
+
+export interface Employee {
+  id     : number
+  nip    : string
+  name   : string
+  email  : string
+  role   : EmployeeRole
+  level  : EmployeeLevel
+  team   : Team
+  status : EmploymentStatus
 }
 
 export type EmployeeRow = PermanentEmployee | ContractEmployee;
@@ -54,30 +89,3 @@ export function normalizeEmployeeUtilization(raw: any): EmployeeUtilization {
 export type NewEmployee =
   | (Omit<PermanentEmployee, "createdAt" | "updatedAt"> & { status: "Permanent" })
   | (Omit<ContractEmployee, "createdAt" | "updatedAt"> & { status: "Contract" });
-
-export function createEmployeeRow({
-  status,
-  ...data
-}: NewEmployee): EmployeeRow {
-  switch (status) {
-    case "Permanent":
-      return { ...data, status: "Permanent" } as PermanentEmployee;
-    case "Contract":
-      return {
-        ...data,
-        status: "Contract",
-        contractFilePath: (data as any).contractFilePath ?? "",
-        contractStartDate: (data as any).contractStartDate ?? "",
-        contractEndDate: (data as any).contractEndDate ?? "",
-      } as ContractEmployee;
-
-    default:
-      throw new Error("Invalid employee status");
-  }
-}
-
-export interface Employee {
-  id: number;
-  name: string;
-  role: 'Solution Analyst' | 'Software Engineer' | 'Data Engineer';
-}

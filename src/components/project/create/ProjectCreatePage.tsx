@@ -38,7 +38,7 @@ import { GanttToolbar, FteViewMode } from "./GanttToolbar";
 
 import { initialProjectData } from "@/data/projects";
 import { useProject, useProjectDetails } from "@/hooks/projects/use-project";
-import { projectCategories, projectPriorities } from "@/types/common";
+import { projectCategoryOpt, projectPriorityOpt } from "@/types/common";
 import { ProjectPlannerSkeleton } from "./ProjectPlannerSkeleton";
 import { NewItemButton } from "./NewItemButton";
 import { SubActivityForm } from "./SubActivityForm";
@@ -53,6 +53,7 @@ import {
 import { Project } from "@/lib/data";
 import { useDraftProject } from "@/hooks/projects/use-draft-project";
 import { se } from "date-fns/locale";
+import { formatCategory, formatPriority } from "@/lib/strings";
 
 type ProjectPlannerProps = {
   onNext: () => void;
@@ -325,9 +326,9 @@ export function ProjectCreatePage({ onNext }: ProjectPlannerProps) {
                   <SelectValue placeholder="Select priority" />
                 </SelectTrigger>
                 <SelectContent>
-                  {projectPriorities.map((priority) => (
+                  {projectPriorityOpt.map((priority) => (
                     <SelectItem key={priority} value={priority}>
-                      {priority}
+                      {formatPriority(priority)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -343,9 +344,9 @@ export function ProjectCreatePage({ onNext }: ProjectPlannerProps) {
                   <SelectValue placeholder="Select category" />
                 </SelectTrigger>
                 <SelectContent>
-                  {projectCategories.map((c) => (
-                    <SelectItem key={c.value} value={c.value}>
-                      {c.label}
+                  {projectCategoryOpt.map((c) => (
+                    <SelectItem key={c} value={c}>
+                      {formatCategory(c)}
                     </SelectItem>
                   ))}
                 </SelectContent>

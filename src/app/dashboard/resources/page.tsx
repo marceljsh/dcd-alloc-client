@@ -1,12 +1,11 @@
 "use client";
 
-import { ComponentType, ReactNode, useMemo, useState,useRef } from "react"
+import { ComponentType, ReactNode, useMemo, useState, useRef, useEffect } from "react"
 import {
   ColumnDef,
   flexRender,
   getCoreRowModel,
-  getFilteredRowModel,
-  getSortedRowModel,
+  getPaginationRowModel,
   useReactTable,
   SortingState,
   ColumnFiltersState,
@@ -36,7 +35,7 @@ import {
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Search, Plus, MoreHorizontal, Edit, Trash2, Mail, Phone, Calendar, MapPin, Filter, Table2, Grid3X3 } from "lucide-react"
-import { initials } from "@/lib/strings"
+import { formatEmploymentStatus, formatLevel, formatRole, initials } from "@/lib/strings"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { toast } from "sonner"
 import { DateRangePicker } from "@/components/ui/date-range-picker"
@@ -59,83 +58,73 @@ import {
   PaginationPrevious,
   PaginationNext,
 } from "@/components/ui/pagination";
-import { employeeLevels, EmployeeRole, employeeRoles, EmploymentStatus, employmentStatuses } from "@/types/common"
-import rawEmployees from "@/data/employees.json"
-import { ContractEmployee, EmployeeRow, PermanentEmployee } from "@/types/employee"
+import { EmployeeLevel, employeeLevelOpt, EmployeeRole, employeeRoleOpt, EmploymentStatus, employmentStatusOpt, ProjectCategory, ProjectPriority } from "@/types/common"
+import { Contract, Employee, EmployeeDetail, RawEmployee } from "@/types/employee"
 import { AddEmployeeFormValues, AddEmployeeForm } from "@/components/employee/AddEmployeeForm"
 import { Separator } from "@/components/ui/separator"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import EmployeeHeatmap from "@/components/employee/EmployeeHeatmap"
+import { ApiResponse, Paging } from "@/types/api";
+import { mapRawToEmployee } from "@/lib/mapper";
 
 type ViewMode = "table" | "heatmap";
 
+/**
+ * NOTE:
+ * - This file implements server-side paging/sorting/filtering.
+ * - Endpoint builder uses NEXT_PUBLIC_API_URL if set, else falls back to "http://localhost".
+ * - Server query params: page (0-based), size, sort=field,asc (repeatable), keyword=<string>
+ */
+
 export default function ResourcesPage() {
-  const [employees, setEmployees] = useState<EmployeeRow[]>(initialEmployees);
-  const [selectedEmployee, setSelectedEmployee] = useState<EmployeeRow | null>(
-    null,
-  );
+  // main data
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [employeeToDelete, setEmployeeToDelete] = useState<EmployeeRow | null>(
-    null,
-  );
+  const [employeeToDelete, setEmployeeToDelete] = useState<Employee | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("table");
 
-  const [selectedRoles, setSelectedRoles] = useState<string[]>([])
-  const [selectedLevels, setSelectedLevels] = useState<string[]>([])
-  const [selectedStatuses, setSelectedStatuses] = useState<string[]>([])
+  // UI filters (these drive the keyword for server)
+  const [selectedRoles, setSelectedRoles] = useState<EmployeeRole[]>([])
+  const [selectedLevels, setSelectedLevels] = useState<EmployeeLevel[]>([])
+  const [selectedStatuses, setSelectedStatuses] = useState<EmploymentStatus[]>([])
   const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({
       from: undefined,
       to: undefined,
   })
 
+  // --- Server-side table state (TanStack) ---
   const [sorting, setSorting] = useState<SortingState>([])
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [globalFilter, setGlobalFilter] = useState('')
-  const [currentPage, setCurrentPage] = useState(1);
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
+  const [pageIndex, setPageIndex] = useState<number>(0) // 0-based for server
+  const [pageSize, setPageSize] = useState<number>(10)
 
-  const filteredEmployees = useMemo(() => {
-    return employees.filter(employee => {
-      if (globalFilter && !employee.name.toLowerCase().includes(globalFilter.toLowerCase())) {
-        return false;
-      }
-      if (selectedRoles.length > 0 && !selectedRoles.includes(employee.role)) {
-        return false;
-      }
-      if (selectedLevels.length > 0 && !selectedLevels.includes(employee.level)) {
-        return false;
-      }
-      if (selectedStatuses.length > 0 && !selectedStatuses.includes(employee.status)) {
-        return false;
-      }
-      return true;
-    });
-  }, [employees, globalFilter, selectedRoles, selectedLevels, selectedStatuses]);
+  // server response bookkeeping
+  const [totalElements, setTotalElements] = useState<number>(0)
+  const [pageCount, setPageCount] = useState<number>(0)
+  const [isLoading, setIsLoading] = useState<boolean>(false)
 
-  const scrollRef = useRef<HTMLDivElement>(null)
+  // debounce + abort
+  const debounceRef = useRef<number | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+  const SEARCH_DEBOUNCE_MS = 300;
 
-  const onMouseDown = (e: React.MouseEvent) => {
-    if (!scrollRef.current) return
-    const startX = e.pageX - scrollRef.current.offsetLeft
-    const scrollLeft = scrollRef.current.scrollLeft
+  // helper: build keyword from globalFilter + dropdown filters
+  const keyword = useMemo(() => {
+    const parts: string[] = [];
+    if (globalFilter && globalFilter.trim()) parts.push(globalFilter.trim());
+    // compose role/level/status as field:value tokens
+    selectedRoles.forEach(r => parts.push(`role:${r}`));
+    selectedLevels.forEach(l => parts.push(`level:${l}`));
+    selectedStatuses.forEach(s => parts.push(`status:${s}`));
+    // dateRange if needed (optional, commented)
+    // if (dateRange.from) parts.push(`from:${dateRange.from.toISOString().slice(0,10)}`);
+    return parts.join(" ");
+  }, [globalFilter, selectedRoles, selectedLevels, selectedStatuses]);
 
-    const onMouseMove = (moveEvent: MouseEvent) => {
-      const x = moveEvent.pageX - scrollRef.current!.offsetLeft
-      const walk = (x - startX) * 1.2
-      scrollRef.current!.scrollLeft = scrollLeft - walk
-    }
-
-    const onMouseUp = () => {
-      document.removeEventListener("mousemove", onMouseMove)
-      document.removeEventListener("mouseup", onMouseUp)
-    }
-
-    document.addEventListener("mousemove", onMouseMove)
-    document.addEventListener("mouseup", onMouseUp)
-  }
-
-
-
-  const columns = useMemo<ColumnDef<EmployeeRow>[]>(
+  // columns same as before
+  const columns = useMemo<ColumnDef<Employee>[]>(
     () => [
       {
         accessorKey: "name",
@@ -143,9 +132,9 @@ export default function ResourcesPage() {
         cell: ({ row }) => <IdentityCell employee={row.original} />,
       },
       {
-        accessorKey: "code",
+        accessorKey: "nip",
         header: "NIP",
-        cell: ({ row }) => <div className="font-mono">{row.original.code}</div>,
+        cell: ({ row }) => <div className="font-mono">{row.original.nip}</div>,
       },
       {
         accessorKey: "role",
@@ -153,8 +142,8 @@ export default function ResourcesPage() {
         cell: ({ row }) => <RoleBadge role={row.original.role} />,
         filterFn: "arrIncludesSome",
       },
-      { accessorKey: "level", header: "Level", filterFn: "arrIncludesSome" },
-      { accessorKey: "team", header: "Team" },
+      { accessorKey: "level", header: "Level", filterFn: "arrIncludesSome", cell: ({ row }) => formatLevel(row.original.level) },
+      { accessorKey: "team", header: "Team", cell: ({ row }) => row.original.team.name },
       {
         accessorKey: "status",
         header: "Status",
@@ -178,15 +167,39 @@ export default function ResourcesPage() {
     [],
   );
 
+  // --- TanStack table: manual (server-side) mode ---
   const table = useReactTable({
-    data: filteredEmployees,
+    data: employees,
     columns,
-    state: { sorting, globalFilter },
-    onSortingChange: setSorting,
-    onGlobalFilterChange: setGlobalFilter,
+    state: {
+      sorting,
+      globalFilter,
+      columnFilters,
+      pagination: { pageIndex, pageSize },
+    },
+    manualPagination: true,
+    pageCount,
+    manualSorting: true,
+    manualFiltering: true,
+    onSortingChange: (next) => {
+      setSorting(next);
+      setPageIndex(0); // reset
+    },
+    onGlobalFilterChange: (v) => {
+      setGlobalFilter(String(v ?? ""));
+      setPageIndex(0);
+    },
+    onColumnFiltersChange: (next) => {
+      setColumnFilters(next);
+      setPageIndex(0);
+    },
+    onPaginationChange: (updater) => {
+      const next = typeof updater === "function" ? updater({ pageIndex, pageSize }) : updater;
+      setPageIndex(next.pageIndex ?? 0);
+      setPageSize(next.pageSize ?? pageSize);
+    },
     getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
     filterFns: {
       arrIncludesSome: (row, columnId, value) => {
         if (!value || value.length === 0) return true;
@@ -195,45 +208,196 @@ export default function ResourcesPage() {
     },
   });
 
-    const allFilteredAndSortedRows = table.getSortedRowModel().rows
-    const itemsPerPage = 10
-    const totalPages = Math.ceil(allFilteredAndSortedRows.length / itemsPerPage)
-    const paginatedRows = allFilteredAndSortedRows.slice(
-      (currentPage - 1) * itemsPerPage,
-      currentPage * itemsPerPage
-    )
+  // --- Fetch logic (debounced + abort) ---
+  // Builds URL with page (0-based), size, repeated sort, keyword
+  function buildUrlForFetch({ pageIndex, pageSize, sorting, keyword }: {
+    pageIndex: number;
+    pageSize: number;
+    sorting: SortingState;
+    keyword: string;
+  }) {
+    // prefer NEXT_PUBLIC_API_URL if provided; otherwise use http://localhost
+    const base = process.env.NEXT_PUBLIC_API_URL
+      ? `${process.env.NEXT_PUBLIC_API_URL}/my/employees`
+      : `http://localhost/api/my/employees`;
 
-  // Fungsi untuk menangani navigasi halaman
-  const handlePageChange = (page) => {
-    if (page >= 1 && page <= totalPages) {
-      setCurrentPage(page);
+    const params = new URLSearchParams();
+    params.set("page", String(pageIndex));
+    params.set("size", String(pageSize));
+    for (const s of sorting) {
+      params.append("sort", `${s.id},${s.desc ? "desc" : "asc"}`);
+    }
+    if (keyword && keyword.trim()) params.set("keyword", keyword.trim());
+
+    return `${base}?${params.toString()}`;
+  }
+
+  // The core fetch function (non-debounced). Returns mapped employees and total count.
+  const fetchNow = async (opts?: { pageIndex?: number; pageSize?: number; sorting?: SortingState; keyword?: string }) => {
+    const pIndex = opts?.pageIndex ?? pageIndex;
+    const pSize = opts?.pageSize ?? pageSize;
+    const s = opts?.sorting ?? sorting;
+    const kw = opts?.keyword ?? keyword;
+
+    try {
+      const token = localStorage.getItem('token')
+      if (!token) throw new Error('You are not authenticated')
+
+      // abort previous immediate fetch if any
+      if (abortRef.current) abortRef.current.abort();
+      const ac = new AbortController();
+      abortRef.current = ac;
+
+      setIsLoading(true);
+
+      const url = buildUrlForFetch({ pageIndex: pIndex, pageSize: pSize, sorting: s, keyword: kw });
+
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` },
+        signal: ac.signal,
+      });
+
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        throw new Error(text || `HTTP ${res.status}`);
+      }
+
+      const fetched: ApiResponse<Paging<RawEmployee>> = await res.json()
+      if (!fetched.success || !fetched.data) {
+        throw new Error(fetched.message || 'Failed to fetch employees')
+      }
+
+      const mapped: Employee[] = fetched.data.items.map((r: RawEmployee) => mapRawToEmployee(r));
+      setEmployees(mapped);
+      setTotalElements(fetched.data.meta.totalItems);
+      setPageCount(fetched.data.meta.totalPages);
+    } catch (err: any) {
+      if (err?.name === "AbortError") {
+        // aborted, ignore
+        return;
+      }
+      console.error("Error fetching employees (server-side):", err);
+      toast.error(err instanceof Error ? err.message : "Failed to load employees");
+      setEmployees([]);
+      setTotalElements(0);
+      setPageCount(0);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleAddEmployee = (data: AddEmployeeFormValues) => {
-    const employee = createEmployee(data);
-    setEmployees((prev) => [...prev, employee]);
-    setIsAddDialogOpen(false);
-    toast(`${employee.name} has been added to the team.`);
-  };
+  // Debounced effect so typing/filter/sort/paging triggers fetch with debounce
+  useEffect(() => {
+    if (debounceRef.current) window.clearTimeout(debounceRef.current);
+    debounceRef.current = window.setTimeout(() => {
+      fetchNow({ pageIndex, pageSize, sorting, keyword });
+    }, SEARCH_DEBOUNCE_MS);
 
-  const handleDeleteEmployee = (employee: EmployeeRow) => {
-    setEmployees((prev) => prev.filter((emp) => emp.id !== employee.id));
-    setEmployeeToDelete(null);
-    toast.success(`${employee.name} has been removed.`);
-  };
+    return () => {
+      if (debounceRef.current) window.clearTimeout(debounceRef.current);
+    };
+    // stringify sorting because it's array of objects
+  }, [pageIndex, pageSize, JSON.stringify(sorting), keyword]);
 
-  const handleDropdownFilterChange = (
-    setter: React.Dispatch<React.SetStateAction<string[]>>
-  ) => (value: string, checked: boolean) => {
-    setter(prev =>
-      checked ? [...prev, value] : prev.filter(item => item !== value)
-    );
-  };
+  // initial load
+  useEffect(() => {
+    // immediate load on mount
+    fetchNow({ pageIndex, pageSize, sorting, keyword });
+    // cleanup abort when component unmounts
+    return () => {
+      if (abortRef.current) abortRef.current.abort();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  const handleRoleFilterChange = handleDropdownFilterChange(setSelectedRoles);
-  const handleLevelFilterChange = handleDropdownFilterChange(setSelectedLevels);
-  const handleStatusFilterChange = handleDropdownFilterChange(setSelectedStatuses);
+
+  // The old fetchEmployees is repurposed to trigger a refresh (immediate)
+  const fetchEmployees = async () => {
+    await fetchNow({ pageIndex: 0, pageSize, sorting, keyword });
+    setPageIndex(0);
+  }
+
+  // Add / Delete still call API and then refresh
+  const handleAddEmployee = async (data: AddEmployeeFormValues) => {
+    try {
+      const token = localStorage.getItem('token')
+      if (!token) throw new Error('You are not authenticated')
+
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost'}/employees`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(data),
+      })
+
+      if (!res.ok) {
+        const errText = await res.text()
+        throw new Error(errText || 'Failed to add employee')
+      }
+
+      const response: ApiResponse<RawEmployee> = await res.json()
+      if (!response.success || !response.data) {
+        throw new Error(response.message || 'Failed to add employee')
+      }
+
+      setIsAddDialogOpen(false)
+      toast.success(`${data.name} has been added`)
+
+      // refresh from server (go to first page)
+      setPageIndex(0);
+      await fetchNow({ pageIndex: 0, pageSize, sorting, keyword });
+    } catch (error) {
+      console.error('Error adding employee:', error)
+      toast.error(error instanceof Error ? error.message : 'Failed to add employee')
+    }
+  }
+
+  const handleDeleteEmployee = async (employee: Employee) => {
+    try {
+      const token = localStorage.getItem('token')
+      if (!token) throw new Error('You are not authenticated')
+
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost'}/employees/${employee.id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!res.ok) {
+        const errText = await res.text()
+        throw new Error(errText || `Failed to delete employee ${employee.name}`)
+      }
+
+      toast.success(`${employee.name} has been removed.`)
+      setEmployeeToDelete(null)
+
+      // refresh current page (ensure valid pageIndex)
+      const newPageIndex = Math.min(pageIndex, Math.max(0, pageCount - 1));
+      setPageIndex(newPageIndex)
+      await fetchNow({ pageIndex: newPageIndex, pageSize, sorting, keyword })
+    } catch (error) {
+      console.error('Error deleting employee:', error)
+      toast.error(error instanceof Error ? error.message : `Failed to delete employee ${employee.name}`)
+    }
+  }
+
+  // UI helper: dropdown filter setter
+  function handleDropdownFilterChange<T extends string>(
+    setter: React.Dispatch<React.SetStateAction<T[]>>
+  ) {
+    return (value: T, checked: boolean) => {
+      setter((prev) =>
+        checked ? [...prev, value] : prev.filter((item) => item !== value)
+      );
+      setPageIndex(0);
+    };
+  }
+
+  // Pagination UI binding: display is 1-based
+  const handlePageChange = (pageOneBased: number) => {
+    const newIndex = Math.max(0, pageOneBased - 1);
+    if (newIndex !== pageIndex) setPageIndex(newIndex);
+  }
 
   return (
     <div className="space-y-2 mx-10">
@@ -259,25 +423,25 @@ export default function ResourcesPage() {
           title="Contract Resources"
           value={
             <>
-            {filteredEmployees.filter((emp) => emp.status === "Contract").length}
-            <span className="text-base font-normal">{` / ${filteredEmployees.length}`}</span>
+            {employees.filter((emp) => emp.status === 'CR').length}
+            <span className="text-base font-normal">{` / ${totalElements}`}</span>
             </>
           }
           description="Members"
         />
         <StatCard
           title="Software Engineer"
-          value={filteredEmployees.filter((emp) => emp.role === 'Software Engineer').length}
+          value={employees.filter((emp) => emp.role === 'SWE').length}
           description="People"
         />
         <StatCard
           title="Data Engineer"
-          value={filteredEmployees.filter((emp) => emp.role === 'Data Engineer').length}
+          value={employees.filter((emp) => emp.role === 'DTE').length}
           description="People"
         />
         <StatCard
           title="System Analyst"
-          value={filteredEmployees.filter((emp) => emp.role === 'System Analyst').length}
+          value={employees.filter((emp) => emp.role === 'SLA').length}
           description="People"
         />
       </div>
@@ -308,105 +472,113 @@ export default function ResourcesPage() {
                <DateRangePicker
                  dateRange={dateRange}
                  onDateRangeChange={setDateRange}
-                 placeholder={<span className="font-semibold">Period</span>}
+                 placeholder="Period"
                  data-testid="date-range-picker"
                />
              ) : null}
 
             <FilterDropdown
               label="Role"
-              options={employeeRoles}
+              options={employeeRoleOpt}
               selected={selectedRoles}
-              onChange={handleRoleFilterChange}
+              onChange={handleDropdownFilterChange(setSelectedRoles)}
             />
             <FilterDropdown
               label="Level"
-              options={employeeLevels}
+              options={employeeLevelOpt}
               selected={selectedLevels}
-              onChange={handleLevelFilterChange}
+              onChange={handleDropdownFilterChange(setSelectedLevels)}
             />
             <FilterDropdown
               label="Status"
-              options={employmentStatuses}
+              options={employmentStatusOpt}
               selected={selectedStatuses}
-              onChange={handleStatusFilterChange}
+              onChange={handleDropdownFilterChange(setSelectedStatuses)}
             />
             <div className="relative">
               <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search resources..."
                 value={globalFilter}
-                onChange={(e) => setGlobalFilter(e.target.value)}
+                onChange={(e) => {
+                  setGlobalFilter(e.target.value);
+                }}
                 className="pl-8"
               />
             </div>
           </div>
         </CardHeader>
         <CardContent>
-              {viewMode === "heatmap" ? (
-                <div className="relative rounded-md">
-                  <EmployeeHeatmap 
-                    employees={filteredEmployees.map(emp => ({
-                      ...emp,
-                      utilization: Math.random() * 100,
-                      currentProjects: [],
-                      hoursThisWeek: 0,
-                    }))}
-                  />
-                </div>
-              )  : (
-              <Table>
-                <TableHeader className="sticky top-0 z-10 bg-background shadow-sm">
-                  {table.getHeaderGroups().map((headerGroup) => (
-                    <TableRow key={headerGroup.id} className="hover:bg-white">
-                      {headerGroup.headers.map((header) => (
-                        <TableHead
-                          key={header.id}
-                          className={
-                            header.column.getCanSort()
-                              ? "cursor-pointer select-none"
-                              : ""
-                          }
-                          onClick={header.column.getToggleSortingHandler()}
-                        >
-                          <div className="flex items-center gap-2">
-                            {flexRender(
-                              header.column.columnDef.header,
-                              header.getContext(),
-                            )}
-                            {{ asc: "▲", desc: "▼" }[
-                              header.column.getIsSorted() as string
-                            ] ?? null}
-                          </div>
-                        </TableHead>
-                      ))}
-                    </TableRow>
-                  ))}
-                </TableHeader>
-                <TableBody>
-                {paginatedRows?.length ? (
-                  paginatedRows.map(row => (
-                    <TableRow key={row.id}>
-                      {row.getVisibleCells().map(cell => (
-                    <TableCell key={cell.id}>
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
-                  ) : (
-                    <TableRow>
-                      <TableCell
-                        colSpan={columns.length}
-                        className="h-24 text-center"
+          {viewMode === "heatmap" ? (
+            <div className="relative rounded-md">
+              <EmployeeHeatmap
+                selectedStartDate={dateRange.from}
+                selectedEndDate={dateRange.to}
+                employees={employees.map(emp => ({
+                  ...emp,
+                  utilization: Math.random() * 100,
+                  currentProjects: [],
+                  hoursThisWeek: 0,
+                }))}
+              />
+            </div>
+          ) : (
+            <Table>
+              <TableHeader className="sticky top-0 z-10 bg-background">
+                {table.getHeaderGroups().map((headerGroup) => (
+                  <TableRow key={headerGroup.id} className="hover:bg-white">
+                    {headerGroup.headers.map((header) => (
+                      <TableHead
+                        key={header.id}
+                        className={
+                          header.column.getCanSort()
+                            ? "cursor-pointer select-none"
+                            : ""
+                        }
+                        onClick={header.column.getToggleSortingHandler()}
                       >
-                        No results.
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            )}
+                        <div className="flex items-center gap-2">
+                          {flexRender(
+                            header.column.columnDef.header,
+                            header.getContext(),
+                          )}
+                          {{ asc: "▲", desc: "▼" }[
+                            header.column.getIsSorted() as string
+                          ] ?? null}
+                        </div>
+                      </TableHead>
+                    ))}
+                  </TableRow>
+                ))}
+              </TableHeader>
+              <TableBody>
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={columns.length} className="h-24 text-center">Loading…</TableCell>
+                </TableRow>
+              ) : table.getRowModel().rows?.length ? (
+                table.getRowModel().rows.map(row => (
+                  <TableRow key={row.id}>
+                    {row.getVisibleCells().map(cell => (
+                  <TableCell key={cell.id}>
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                  </TableCell>
+                ))}
+              </TableRow>
+            ))
+                ) : (
+                  <TableRow>
+                    <TableCell
+                      colSpan={columns.length}
+                      className="h-24 text-center"
+                    >
+                      No results.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
 
         {viewMode === 'table' && (
@@ -415,17 +587,17 @@ export default function ResourcesPage() {
               <PaginationContent>
                 <PaginationItem>
                   <PaginationPrevious
-                    onClick={() => handlePageChange(currentPage - 1)}
-                    aria-disabled={currentPage === 1}
-                    tabIndex={currentPage === 1 ? -1 : undefined}
-                    className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
+                    onClick={() => handlePageChange((pageIndex + 1) - 1)}
+                    aria-disabled={pageIndex === 0}
+                    tabIndex={pageIndex === 0 ? -1 : undefined}
+                    className={pageIndex === 0 ? "pointer-events-none opacity-50" : ""}
                   />
                 </PaginationItem>
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                {Array.from({ length: pageCount }, (_, i) => i + 1).map((page) => (
                   <PaginationItem key={page}>
                     <PaginationLink
                       onClick={() => handlePageChange(page)}
-                      isActive={page === currentPage}
+                      isActive={page === pageIndex + 1}
                     >
                       {page}
                     </PaginationLink>
@@ -433,23 +605,28 @@ export default function ResourcesPage() {
                 ))}
                 <PaginationItem>
                   <PaginationNext
-                    onClick={() => handlePageChange(currentPage + 1)}
-                    aria-disabled={currentPage === totalPages}
-                    tabIndex={currentPage === totalPages ? -1 : undefined}
-                    className={currentPage === totalPages ? "pointer-events-none opacity-50" : ""}
+                    onClick={() => handlePageChange((pageIndex + 1) + 1)}
+                    aria-disabled={pageIndex + 1 === pageCount || pageCount === 0}
+                    tabIndex={pageIndex + 1 === pageCount ? -1 : undefined}
+                    className={pageIndex + 1 === pageCount ? "pointer-events-none opacity-50" : ""}
                   />
                 </PaginationItem>
               </PaginationContent>
             </Pagination>
+            <div className="mt-2 text-sm text-muted-foreground">
+              Showing page {pageIndex + 1} of {pageCount} — total {totalElements} items
+            </div>
           </div>
         )}
       </Card>
-      <EmployeeDetailDialog
-        employee={selectedEmployee}
-        onClose={() => setSelectedEmployee(null)}
-        getRoleColor={getRoleColor}
-        initials={initials}
-      />
+
+      {selectedEmployee && (
+        <EmployeeDetailDialog
+          employee={selectedEmployee}
+          onClose={() => setSelectedEmployee(null)}
+        />
+      )}
+
       <DeleteEmployeeDialog
         employee={employeeToDelete}
         isOpen={!!employeeToDelete}
@@ -461,67 +638,22 @@ export default function ResourcesPage() {
   );
 }
 
+/* ---------- helper components unchanged ---------- */
+
 const getRoleColor = (role: EmployeeRole): string => {
   switch (role) {
-    case "System Analyst":
-      return "bg-blue-100 text-blue-800";
-    case "Data Engineer":
-      return "bg-green-100 text-green-800";
-    case "Software Engineer":
-      return "bg-purple-100 text-purple-800";
+    case "SLA": return "bg-blue-100 text-blue-800";
+    case "DTE": return "bg-green-100 text-green-800";
+    case "SWE": return "bg-purple-100 text-purple-800";
   }
 };
 
 const getStatusColor = (status: EmploymentStatus): string => {
   switch (status) {
-    case "Permanent":
-      return "bg-green-100 text-green-800";
-    case "Contract":
-      return "bg-yellow-100 text-yellow-800";
+    case "OR": return "bg-green-100 text-green-800";
+    case "CR": return "bg-yellow-100 text-yellow-800";
   }
 };
-
-const createEmployee = ({
-  status,
-  ...data
-}: AddEmployeeFormValues): EmployeeRow => {
-  const now = new Date().toISOString();
-  const base = {
-    id: Math.floor(Math.random() * 1000000),
-    createdAt: now,
-    updatedAt: now,
-    status,
-  };
-
-  switch (status) {
-    case "Permanent":
-      return {
-        ...base,
-        ...data,
-        code: `ORG-${Math.floor(Math.random() * 1000000)}`,
-      } as PermanentEmployee;
-    case "Contract":
-      return {
-        ...base,
-        ...data,
-        status: "Contract",
-        code: `CR-${Math.floor(Math.random() * 10000000)}`,
-      } as ContractEmployee;
-  }
-};
-
-const initialEmployees: EmployeeRow[] = rawEmployees.map(
-  ({ status, ...data }: any) => {
-    switch (status) {
-      case "Permanent":
-        return { status, ...data } as PermanentEmployee;
-      case "Contract":
-        return { status, ...data } as ContractEmployee;
-      default:
-        throw new Error("Invalid employee status");
-    }
-  },
-);
 
 const AddEmployeeDialog = ({
   isOpen,
@@ -607,7 +739,7 @@ const FilterDropdown = <T extends string>({
   </DropdownMenu>
 );
 
-const IdentityCell = ({ employee }: { employee: EmployeeRow }) => (
+const IdentityCell = ({ employee }: { employee: Employee }) => (
   <div className="flex items-center space-x-3">
     <Avatar>
       <AvatarFallback
@@ -627,13 +759,13 @@ const IdentityCell = ({ employee }: { employee: EmployeeRow }) => (
 
 const RoleBadge = ({ role }: { role: EmployeeRole }) => (
   <Badge variant="outline" className={getRoleColor(role)}>
-    {role}
+    {formatRole(role)}
   </Badge>
 );
 
 const StatusBadge = ({ status }: { status: EmploymentStatus }) => (
   <Badge variant="outline" className={getStatusColor(status)}>
-    {status}
+    {formatEmploymentStatus(status)}
   </Badge>
 );
 
@@ -643,10 +775,10 @@ const ActionMenu = ({
   onSendEmail,
   onRemove,
 }: {
-  employee: EmployeeRow;
-  onViewDetails: (employee: EmployeeRow) => void;
-  onSendEmail: (employee: EmployeeRow) => void;
-  onRemove: (employee: EmployeeRow) => void;
+  employee: Employee;
+  onViewDetails: (employee: Employee) => void;
+  onSendEmail: (employee: Employee) => void;
+  onRemove: (employee: Employee) => void;
 }) => (
   <div className="text-center">
     <DropdownMenu>
@@ -690,10 +822,10 @@ const DeleteEmployeeDialog = ({
   onOpenChange,
   onDelete,
 }: {
-  employee: EmployeeRow | null;
+  employee: Employee | null;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  onDelete: (employee: EmployeeRow) => void;
+  onDelete: (employee: Employee) => void;
 }) => (
   <AlertDialog open={isOpen} onOpenChange={onOpenChange}>
     <AlertDialogContent>
@@ -718,75 +850,107 @@ const DeleteEmployeeDialog = ({
   </AlertDialog>
 );
 
-const EmployeeDetailDialog = ({
-  employee,
-  onClose,
-  getRoleColor,
-  initials,
-}: {
-  employee: EmployeeRow | null;
-  onClose: () => void;
-  getRoleColor: (role: EmployeeRole) => string;
-  initials: (name: string) => string;
-}) => {
-  if (!employee) return null;
+const EmployeeDetailDialog = ({ employee, onClose }: { employee: Employee, onClose: () => void }) => {
+  const [details, setDetails] = useState<EmployeeDetail | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!employee) return
+    const fetchDetails = async () => {
+      setLoading(true)
+      setError(null)
+      try {
+        const token = localStorage.getItem('token')
+        if (!token) throw new Error('You are not authenticated')
+
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost'}/employees/${employee.id}/detail`, {
+          headers: { 'Authorization': `Bearer ${token}` },
+        })
+
+        if (!res.ok) {
+          const errText = await res.text()
+          throw new Error(errText || 'Failed to fetch employee details')
+        }
+
+        const fetched: ApiResponse<EmployeeDetail> = await res.json()
+        if (!fetched.success || !fetched.data) {
+          throw new Error(fetched.message || 'No detail data')
+        }
+
+        setDetails(fetched.data)
+      } catch (err: any) {
+        setError(err.message)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchDetails()
+  }, [employee])
+
+  if (!employee) return null
 
   return (
-    <Dialog open={!!employee} onOpenChange={onClose}>
+    <Dialog open={true} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle className="flex items-center space-x-3">
             <Avatar>
-              <AvatarFallback
-                className={`font-mono text-background ${getRoleColor(employee.role)}`}
-              >
+              <AvatarFallback className={`font-mono text-background ${getRoleColor(employee.role)}`}>
                 {initials(employee.name)}
               </AvatarFallback>
             </Avatar>
             <div>
               <div>{employee.name}</div>
               <div className="text-sm text-muted-foreground font-normal">
-                {employee.role}
+                {formatRole(employee.role)}
               </div>
             </div>
           </DialogTitle>
         </DialogHeader>
 
-        <div className="grid gap-4 py-4">
-          <DetailItem icon={Mail} value={employee.email} />
-          <DetailItem icon={Phone} value={`+${employee.phone}`} />
-          <DetailItem icon={MapPin} value={employee.location} />
-          <DetailItem
-            icon={Calendar}
-            value={`Joined ${new Date(employee.joinDate).toLocaleDateString("id-ID")}`}
-          />
+        {loading && <p className="text-sm text-muted-foreground">Loading…</p>}
+        {error && (
+          <p className="text-sm text-red-500">Failed: {error}</p>
+        )}
+        {details && (
+          <div className="grid gap-4 py-4">
+            <DetailItem icon={Mail} value={employee.email} />
+            <DetailItem icon={Phone} value={`+${details.phoneNumber}`} />
+            <DetailItem icon={MapPin} value={details.address} />
+            <DetailItem
+              icon={Calendar}
+              value={`Joined ${new Date(details.joinDate).toLocaleDateString("en-US")}`}
+            />
 
-          {employee.status === "Contract" && (
-            <>
-              <Separator className="my-4" />
-              <ContractDetails employee={employee as ContractEmployee} />
-            </>
-          )}
-        </div>
+            {employee.status === 'CR' && details.contract && (
+              <>
+                <Separator className="my-4" />
+                <ContractDetails contract={details.contract} />
+              </>
+            )}
+          </div>
+        )}
       </DialogContent>
     </Dialog>
-  );
+  )
 };
 
-const ContractDetails = ({ employee }: { employee: ContractEmployee }) => (
+const ContractDetails = ({ contract }: { contract: Contract }) => (
   <div>
     <p className="text-md font-semibold">Contract Details</p>
     <div className="grid grid-cols-2 gap-4">
-      <ContractField label="Start" value={employee.contractStartDate} />
-      <ContractField label="End" value={employee.contractEndDate} />
+      <ContractField label="Start" value={contract.startDate} />
+      <ContractField label="End" value={contract.endDate} />
 
       <div className="col-span-2">
         <Label className="text-xs text-muted-foreground">Contract File</Label>
 
-        {employee.contractFilePath ? (
+        {contract.fileUrl ? (
           <div className="mt-2 border rounded overflow-hidden">
             <iframe
-              src={employee.contractFilePath}
+              src={contract.fileUrl}
               title="Contract PDF"
               className="w-full h-48"
             />

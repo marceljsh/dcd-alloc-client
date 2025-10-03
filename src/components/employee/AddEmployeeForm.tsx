@@ -20,14 +20,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import {
-  employeeLevels,
-  employeeRoles,
-  employmentStatuses,
-  teams,
-} from "@/types/common";
+import { employeeLevelOpt, employeeRoleOpt, employmentStatusOpt, Team } from "@/types/common";
+import { ApiResponse } from "@/types/api";
 
 async function getSignedUploadUrl(args: { path: string; bucket?: string }) {
   const res = await fetch("/api/storage/signed-upload-url", {
@@ -65,10 +61,10 @@ async function uploadViaSignedUrlWithToken(
 const schema = z.object({
   name: z.string().min(1, "Name is required"),
   email: z.email("Invalid email"),
-  role: z.enum(employeeRoles, "Role is required"),
-  level: z.enum(employeeLevels, "Level is required"),
-  status: z.enum(employmentStatuses, "Status is required"),
-  team: z.enum(teams, "Team is required"),
+  role: z.enum(employeeRoleOpt, "Role is required"),
+  level: z.enum(employeeLevelOpt, "Level is required"),
+  status: z.enum(employmentStatusOpt, "Status is required"),
+  teamId: z.number("Team is required"),
   phone: z
     .string()
     .min(1, "Phone number is required")
@@ -102,7 +98,7 @@ export function AddEmployeeForm({ onSubmit, onCancel }: AddEmployeeFormProps) {
       role: undefined,
       level: undefined,
       status: undefined,
-      team: undefined,
+      teamId: undefined,
       phone: "",
       location: "",
       joinDate: "",
@@ -111,6 +107,33 @@ export function AddEmployeeForm({ onSubmit, onCancel }: AddEmployeeFormProps) {
 
   const status = form.watch("status");
   const [contractFile, setContractFile] = useState<File | null>(null);
+  const [teams, setTeams] = useState<Team[]>([]);
+
+  useEffect(() => {
+    const fetchTeams = async () => {
+      const token = localStorage.getItem('token')
+      if (!token) throw new Error('You are not authenticated')
+
+      try {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/my/teams/as-dropdown`, {
+          method: 'GET',
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+        });
+        if (!res.ok)
+          throw new Error('Failed to fetch teams');
+
+        const fetched: ApiResponse<Team[]> = await res.json();
+        if (!fetched.success || !fetched.data)
+          throw new Error(fetched.message || 'Failed to fetch teams');
+
+        setTeams(fetched.data.sort((a, b) => a.name.localeCompare(b.name)));
+      } catch (err) {
+        console.error('Error fetching teams:', err)
+        toast.error(err instanceof Error ? err.message : 'An error occurred while fetching teams')
+      }
+    }
+    fetchTeams()
+  }, [])
 
   async function uploadContractFileIfNeeded(
     currentStatus: string | undefined
@@ -225,7 +248,7 @@ export function AddEmployeeForm({ onSubmit, onCancel }: AddEmployeeFormProps) {
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    {employeeRoles.map((role) => (
+                    {employeeRoleOpt.map((role) => (
                       <SelectItem key={role} value={role}>
                         {role}
                       </SelectItem>
@@ -259,7 +282,7 @@ export function AddEmployeeForm({ onSubmit, onCancel }: AddEmployeeFormProps) {
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    {employeeLevels.map((level) => (
+                    {employeeLevelOpt.map((level) => (
                       <SelectItem key={level} value={level}>
                         {level}
                       </SelectItem>
@@ -293,7 +316,7 @@ export function AddEmployeeForm({ onSubmit, onCancel }: AddEmployeeFormProps) {
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    {employmentStatuses.map((status) => (
+                    {employmentStatusOpt.map((status) => (
                       <SelectItem key={status} value={status}>
                         {status}
                       </SelectItem>
@@ -309,7 +332,7 @@ export function AddEmployeeForm({ onSubmit, onCancel }: AddEmployeeFormProps) {
         {/* Team */}
         <FormField
           control={form.control}
-          name="team"
+          name="teamId"
           render={({ field }) => (
             <FormItem className="grid grid-cols-4 items-center gap-4">
               <FormLabel className="text-left">Team</FormLabel>
@@ -317,9 +340,9 @@ export function AddEmployeeForm({ onSubmit, onCancel }: AddEmployeeFormProps) {
                 <Select
                   onValueChange={(val) => {
                     field.onChange(val);
-                    form.clearErrors("team");
+                    form.clearErrors("teamId");
                   }}
-                  defaultValue={field.value}
+                  defaultValue={String(field.value)}
                 >
                   <FormControl>
                     <SelectTrigger>
@@ -328,8 +351,8 @@ export function AddEmployeeForm({ onSubmit, onCancel }: AddEmployeeFormProps) {
                   </FormControl>
                   <SelectContent>
                     {teams.map((team) => (
-                      <SelectItem key={team} value={team}>
-                        {team}
+                      <SelectItem key={team.id} value={String(team.id)}>
+                        {team.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -411,7 +434,7 @@ export function AddEmployeeForm({ onSubmit, onCancel }: AddEmployeeFormProps) {
         />
 
         {/* Contract-only fields */}
-        {status === "Contract" && (
+        {status === "CR" && (
           <>
             <Separator className="my-4" />
             <p className="text-lg font-semibold">Contract Details</p>

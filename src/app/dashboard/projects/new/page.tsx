@@ -111,7 +111,7 @@ export default function ProjectCreate() {
 
         try {
           const composition = await axios.post(
-            "http://10.113.75.77:8000/optimize",
+            "http://localhost:8000/optimize",
             {
               activities: transformedActivities,
             }

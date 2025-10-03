@@ -1,6 +1,26 @@
 import { Employee } from "@/types/employee";
 import { ProjectPriority, ProjectCategory, Team } from "@/types/common";
 
+export interface RawProject {
+  id: number
+  code: string
+  name: string
+  team: Team
+  category: string
+  priority: string
+  crew: number
+  budgetCode: string
+  budget: number
+  startDate: string
+  endDate: string
+}
+
+export interface Project extends RawProject {
+  category: ProjectCategory
+  priority: ProjectPriority
+  activities: ProjectActivity[]
+}
+
 export interface ProjectRow {
   id: number;
   code: string;
